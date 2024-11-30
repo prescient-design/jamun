@@ -30,7 +30,6 @@ callbacks:
     sigma_list: [0.06]
 
 data:
-  average_squared_distance: 0.25
   datamodule:
     batch_size: 32
     datasets:

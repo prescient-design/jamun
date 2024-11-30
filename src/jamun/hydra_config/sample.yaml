@@ -1,16 +1,18 @@
 defaults:
   - _self_
-  - model: ncsm_pretrained
-  - hydra: default
+  - model: e3ncsm_pretrained
   - batch_sampler: single_measurement_sampler
   - logger: default
-  - callbacks: ["sampler/fid_sample", "sampler/viz_xhat"]
+  - paths: default
+  - hydra: default
+  - callbacks: sampler/default
   - experiment: null
 
-float32_matmul_precision: "medium"
+float32_matmul_precision: "high"
 
-num_samples: 128
-batch_size: 32
+repeat_init_samples: 1 # enables generating multiple parallel changes per initial sample
+num_batches: 1
+continue_chain: true
 
 seed: 42
 task_name: "sample"
@@ -20,3 +22,4 @@ root_dir: "."
 sampler:
   _target_: jamun.sampling.Sampler
   _convert_: "partial" # loggers argument must be passed as plain list
+  precision: "32-true"

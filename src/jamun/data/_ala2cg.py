@@ -17,7 +17,7 @@ def mask_atom_type(data: torch_geometric.data.Data) -> torch_geometric.data.Data
     return data
 
 
-class ALA2_CG_Dataset(torch.utils.data.Dataset):
+class ALA2CGDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         root,
@@ -60,7 +60,7 @@ class ALA2_CG_Dataset(torch.utils.data.Dataset):
         return len(self.dset)
 
 
-class ALA2_CG_DataModule(pl.LightningDataModule):
+class ALA2CGDataModule(pl.LightningDataModule):
     def __init__(
         self,
         root,

@@ -1,7 +1,7 @@
 defaults:
   - _self_
-  - data: cifar10
-  - model: ncsm
+  - data: md
+  - model: e3ncsm
   - trainer: default
   - logger: default
   - callbacks: default

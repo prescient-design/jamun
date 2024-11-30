@@ -29,7 +29,6 @@ callbacks:
     sigma_list: [0.01]
 
 data:
-  average_squared_distance: 0.25
   datamodule:
     batch_size: 32
     datasets:
@@ -40,21 +39,12 @@ data:
         pdb_pattern: "^(..)-traj-state0.pdb"
 
       val:
-        _target_: jamun.data.concatenate_datasets
-        datasets:
-          - _target_: jamun.data.parse_datasets_from_directory
-            root: "/data/bucket/kleinhej/timewarp/2AA-1-large/val/"
-            traj_pattern: "^(..)-traj-arrays.npz"
-            pdb_pattern: "^(..)-traj-state0.pdb"
-            subsample: 100
-            max_datasets: 20
-
-          - _target_: jamun.data.parse_datasets_from_directory
-            root: "/data/bucket/kleinhej/timewarp/4AA-large/val/"
-            traj_pattern: "^(....)-traj-arrays.npz"
-            pdb_pattern: "^(....)-traj-state0.pdb"
-            subsample: 100
-            max_datasets: 20
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data/bucket/kleinhej/timewarp/2AA-1-large/val/"
+        traj_pattern: "^(..)-traj-arrays.npz"
+        pdb_pattern: "^(..)-traj-state0.pdb"
+        subsample: 100
+        max_datasets: 20
 
       test:
         _target_: jamun.data.parse_datasets_from_directory

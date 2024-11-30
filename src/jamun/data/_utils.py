@@ -8,7 +8,7 @@ import requests
 import torch
 from tqdm.auto import tqdm
 
-from jamun.data._MDpointcloud_traj import MDtrajDataset
+from jamun.data._mdtraj import MDtrajDataset
 
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):

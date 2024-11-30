@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - arch: e3transformer.yaml
+  - arch: e3conv.yaml
   - optim: adam.yaml
   - sigma_distribution: md.yaml
   - lr_scheduler_config: null
@@ -17,7 +17,7 @@ arch:
           trace.fx_graph: true
           
 max_radius: 1.0
-average_squared_distance: ${data.average_squared_distance}
+average_squared_distance: null
 add_fixed_noise: false
 add_fixed_ones: false
 align_noisy_input_during_training: true
