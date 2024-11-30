@@ -13,6 +13,16 @@ pip install -r env/linux-cuda/requirements.txt
 pip install -e .[dev]
 ```
 
+## Data
+
 ## Training
 
+```bash
+jamun_train configs/train_2AA.yaml
+```
+
 ## Inference
+
+```bash
+jamun_sample configs/sample_2AA.yaml
+```
