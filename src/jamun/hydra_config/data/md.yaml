@@ -1,0 +1,7 @@
+datamodule:
+  _target_: jamun.data.MDtrajDataModule
+  batch_size: 32
+  num_workers: 2
+
+average_squared_distance: 0.115
+use_residue_information: true

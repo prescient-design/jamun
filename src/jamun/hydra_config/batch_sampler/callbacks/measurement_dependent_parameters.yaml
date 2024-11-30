@@ -1,0 +1,4 @@
+measurement_dependent_parameters:
+  _target_: jamun.sampling.walkjump.MeasurementDependentParametersCallback
+  parameters_by_measurement: null
+  verbose: false

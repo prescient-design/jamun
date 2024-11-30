@@ -1,0 +1,11 @@
+_target_: jamun.sampling.mcmc.ABOBA
+delta: 1.0
+friction: 1.0
+M: 1.0
+steps: 128
+save_trajectory: false
+save_every_n_steps: 1
+burn_in_steps: 0
+verbose: false
+cpu_offload: false
+v_init: "zero"

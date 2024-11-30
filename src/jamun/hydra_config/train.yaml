@@ -1,0 +1,24 @@
+defaults:
+  - _self_
+  - data: cifar10
+  - model: ncsm
+  - trainer: default
+  - logger: default
+  - callbacks: default
+  - paths: default
+  - hydra: default
+  - profiler: null
+  - experiment: null
+
+float32_matmul_precision: "medium"
+
+task_name: "train"
+run_group: "dev"
+
+run_key: ${now:%Y-%m-%d}_${now:%H-%M-%S} # NOTE in DDP this must be set consistently across ranks
+
+python:
+  version: ${python_version:micro}
+
+init_time: ${now:%y-%m-%d_%H:%M:%S}
+compute_average_squared_distance_from_data: true

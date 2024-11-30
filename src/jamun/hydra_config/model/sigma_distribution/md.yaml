@@ -1,0 +1,5 @@
+_target_: jamun.distributions.ClippedLogNormalSigma
+log_sigma_mean: -4.0
+log_sigma_std: 1.0
+sigma_max: 0.1
+

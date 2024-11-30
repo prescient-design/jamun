@@ -1,0 +1,7 @@
+chemical_validity:
+  _target_: jamun.callbacks.sampler.ChemicalValidityMetricsCallback
+  datasets: ${init_datasets}
+  bond_length_tolerance: 0.2
+  volume_exclusion_tolerance: 0.1
+  num_molecules_per_trajectory: 1000
+

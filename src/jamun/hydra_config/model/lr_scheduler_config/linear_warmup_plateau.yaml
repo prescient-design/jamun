@@ -1,0 +1,12 @@
+scheduler:
+  _target_: torch.optim.lr_scheduler.LambdaLR
+  _partial_: true
+  lr_lambda:
+    _target_: jamun.lr_schedules.linear_warmup_plateau_lr_lambda
+    _partial_: true
+    num_warmup_steps: 100000
+    start_factor: 0.0
+    end_factor: 1.0
+
+interval: step
+frequency: 1

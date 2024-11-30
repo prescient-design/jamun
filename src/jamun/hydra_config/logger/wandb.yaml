@@ -1,0 +1,5 @@
+wandb:
+  _target_: lightning.pytorch.loggers.WandbLogger
+  project: jamun
+  entity: null
+    #  save_dir: "${paths.output_dir}"

@@ -1,0 +1,8 @@
+datamodule:
+  _target_: jamun.data.ALA2_CG_DataModule
+  download: false
+  batch_size: 32
+  num_workers: 16
+  root: /home/daigavaa/prescient/e3wj/
+
+input_variance: 1.0 # FIXME

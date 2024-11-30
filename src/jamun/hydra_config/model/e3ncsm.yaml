@@ -1,0 +1,30 @@
+defaults:
+  - _self_
+  - arch: e3transformer.yaml
+  - optim: adam.yaml
+  - sigma_distribution: md.yaml
+  - lr_scheduler_config: null
+
+arch:
+  hidden_layer_factory:
+    conv:
+      use_torch_compile: true
+      torch_compile_kwargs:
+        fullgraph: true
+        dynamic: true
+        options:
+          trace.enabled: true
+          trace.fx_graph: true
+          
+max_radius: 1.0
+average_squared_distance: ${data.average_squared_distance}
+add_fixed_noise: false
+add_fixed_ones: false
+align_noisy_input_during_training: true
+align_noisy_input_during_evaluation: true
+mean_center_input: true
+mean_center_output: true
+save_tensors: false
+mirror_augmentation_rate: 0.0
+
+_target_: jamun.model.e3NoiseConditionedScoreModel

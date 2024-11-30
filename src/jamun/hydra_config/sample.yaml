@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+  - model: ncsm_pretrained
+  - hydra: default
+  - batch_sampler: single_measurement_sampler
+  - logger: default
+  - callbacks: ["sampler/fid_sample", "sampler/viz_xhat"]
+  - experiment: null
+
+float32_matmul_precision: "medium"
+
+num_samples: 128
+batch_size: 32
+
+seed: 42
+task_name: "sample"
+run_group: "dev"
+root_dir: "."
+
+sampler:
+  _target_: jamun.sampling.Sampler
+  _convert_: "partial" # loggers argument must be passed as plain list

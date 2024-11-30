@@ -1,0 +1,6 @@
+model_checkpoint:
+  _target_: "lightning.pytorch.callbacks.ModelCheckpoint"
+  dirpath: "${hydra:runtime.output_dir}/checkpoints"
+  save_top_k: 5
+  save_last: true
+  monitor: "val/loss"

@@ -1,0 +1,64 @@
+# @package _global_
+
+defaults:
+  - override /data: md.yaml
+  - override /model: e3ncsm.yaml
+  - override /model/arch: e3conv.yaml
+  - override /model/sigma_distribution: constant.yaml
+  - override /callbacks:
+    - default.yaml
+    - model_checkpoint.yaml
+    - visualize_denoise.yaml
+  - _self_
+
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  arch:
+    n_layers: 4
+    max_radius: 1.0
+    use_residue_sequence_index: false
+  optim:
+    lr: 0.002
+  save_tensors: false
+
+
+callbacks:
+  viz:
+    sigma_list: [0.06]
+
+data:
+  average_squared_distance: 0.25
+  datamodule:
+    batch_size: 32
+    datasets:
+      train:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data/bucket/kleinhej/timewarp/4AA-large/train/"
+        traj_pattern: "^(....)-traj-arrays.npz"
+        pdb_pattern: "^(....)-traj-state0.pdb"
+
+      val:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data/bucket/kleinhej/timewarp/4AA-large/val/"
+        traj_pattern: "^(....)-traj-arrays.npz"
+        pdb_pattern: "^(....)-traj-state0.pdb"
+        subsample: 100
+        max_datasets: 20
+
+      test:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data/bucket/kleinhej/timewarp/4AA-large/test/"
+        traj_pattern: "^(....)-traj-arrays.npz"
+        pdb_pattern: "^(....)-traj-state0.pdb"
+        subsample: 100
+        max_datasets: 20
+
+trainer:
+  val_check_interval: 0.1
+
+logger:
+  wandb:
+   offline: false

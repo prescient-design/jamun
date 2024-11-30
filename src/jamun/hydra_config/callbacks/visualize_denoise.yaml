@@ -1,0 +1,8 @@
+viz:
+  _target_: jamun.callbacks.MDVisualizeDenoise
+  datasets: ${data.datamodule.datasets.val}
+  sigma_list:
+    - 0.01
+    - 0.02
+    - 0.05
+

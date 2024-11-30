@@ -1,0 +1,2 @@
+plot_loss_distribution:
+  _target_: jamun.callbacks.PlotLossDistribution

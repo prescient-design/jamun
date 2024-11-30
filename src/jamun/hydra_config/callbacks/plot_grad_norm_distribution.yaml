@@ -1,0 +1,2 @@
+plot_grad_norm_distribution:
+  _target_: jamun.callbacks.PlotGradNormDistribution

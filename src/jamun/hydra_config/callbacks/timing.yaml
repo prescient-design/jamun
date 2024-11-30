@@ -1,0 +1,2 @@
+timing:
+  _target_: "jamun.callbacks.Timing"

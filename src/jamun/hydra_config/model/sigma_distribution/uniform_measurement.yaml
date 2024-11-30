@@ -1,0 +1,3 @@
+_target_: jamun.distributions.UniformMeasurement
+sigma: 1.0
+m: 100

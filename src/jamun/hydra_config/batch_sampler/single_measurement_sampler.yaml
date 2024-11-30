@@ -1,0 +1,7 @@
+defaults:
+  - mcmc: baoab.yaml
+  - callbacks: null
+  - _self_
+
+_target_: jamun.sampling.walkjump.SingleMeasurementSampler
+sigma: 1.0

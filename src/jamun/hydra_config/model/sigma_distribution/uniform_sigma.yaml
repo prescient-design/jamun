@@ -1,0 +1,3 @@
+_target_: jamun.distributions.UniformSigma
+sigma_max: 1.0
+sigma_min: 1e-4

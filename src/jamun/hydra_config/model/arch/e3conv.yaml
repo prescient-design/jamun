@@ -1,0 +1,25 @@
+_target_: jamun.archs.E3NN
+_partial_: true
+irreps_out: "1x1e"
+irreps_hidden: "120x0e + 32x1e"
+irreps_sh: "1x0e + 1x1e"
+n_layers: 6
+hidden_layer_factory:
+  _target_: e3tools.nn.ConvBlock
+  _partial_: true
+  conv:
+    _target_: e3tools.nn.Conv
+    _partial_: true
+    use_torch_compile: false
+    torch_compile_kwargs: {}
+output_head_factory:
+  _target_: e3tools.nn.EquivariantMLP
+  _partial_: true
+  irreps_hidden_list:
+    - ${model.arch.irreps_hidden}
+edge_attr_dim: 64
+atom_type_embedding_dim: 8
+atom_code_embedding_dim: 8
+residue_code_embedding_dim: 8
+residue_index_embedding_dim: 8
+use_residue_information: ${data.use_residue_information}

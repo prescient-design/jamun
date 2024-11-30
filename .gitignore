@@ -1,0 +1,6 @@
+**/__pycache__
+*.zip
+*.pyc
+*.egg-info
+.ipynb_checkpoints
+build

@@ -1,0 +1,4 @@
+trajectory_visualizer:
+  _target_: jamun.callbacks.sampler.TrajectoryVisualizerCallback
+  datasets: ${init_datasets}
+  num_frames_to_animate: 100

@@ -1,0 +1,11 @@
+scheduler:
+  _target_: torch.optim.lr_scheduler.LambdaLR
+  _partial_: true
+  lr_lambda:
+    _target_: jamun.lr_schedules.linear
+    _partial_: true
+    start_factor: 0.0
+    slope: 1e-6
+
+interval: step
+frequency: 1
