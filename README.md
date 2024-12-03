@@ -3,7 +3,13 @@
 This is the official implementation of the paper
 [JAMUN: Transferable Molecular Conformational Ensemble Generation with Walk-Jump Sampling](https://arxiv.org/abs/2410.14621v1).
 
+JAMUN learns a $SE(3)$-equivariant model for walk-jump sampling for conformations of small peptides.
+
 ![JAMUN results on capped 2AA peptides](figures/jamun-results.png)
+
+<p align="center">
+  <img src="https://github.com/prescient-design/jamun/blob/main/figures/walk-jump-overview.png?raw=true" alt="Overview of walk-jump sampling in JAMUN" width="400"/>
+</p>
 
 ## Setup
 
