@@ -3,11 +3,7 @@
 This is the official implementation of the paper
 [JAMUN: Transferable Molecular Conformational Ensemble Generation with Walk-Jump Sampling](https://arxiv.org/abs/2410.14621v1).
 
-
 ![JAMUN results on capped 2AA peptides](figures/jamun-results.png)
-
-![Overview of walk-jump sampling performed by JAMUN](figures/walk-jump-overview.png)
-
 
 ## Setup
 
@@ -50,14 +46,14 @@ you have three options for JAMUN to find the right folder:
 export JAMUN_DATA_PATH=/path/to/data/root/
 ```
 
-- Override `paths.data_path` in the command-line:
+- Or, override `paths.data_path` in the command-line:
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml  paths.data_path=/path/to/data/root
 
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml  paths.data_path=/path/to/data/root
 ```
 
-- Change the `paths.data_path` in the actual [hydra config](https://github.com/prescient-design/jamun/blob/main/src/jamun/hydra_config/paths/default.yaml).
+- Or, change the `paths.data_path` in the actual [hydra config](https://github.com/prescient-design/jamun/blob/main/src/jamun/hydra_config/paths/default.yaml).
 
 
 ## Training
