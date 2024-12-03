@@ -31,7 +31,7 @@ pip install -e .[dev]
 
 The uncapped 2AA data from [Timewarp](https://arxiv.org/abs/2302.01170) can be obtained from [Hugging Face](https://huggingface.co/datasets/microsoft/timewarp).
 
-If this is your directory structure for your data:
+Once you have downloaded the data, if this is your directory structure:
 ```bash
 /path/to/data/root/
 └── timewarp/
@@ -40,7 +40,7 @@ If this is your directory structure for your data:
     ├── 2AA-1-large/
     │   └── ...
 ```
-you have three options for JAMUN to find the right folder:
+you have three options for JAMUN to find the data directory:
 - Set the environment variable `JAMUN_DATA_PATH` to point to the directory containing `timewarp`:
 ```bash
 export JAMUN_DATA_PATH=/path/to/data/root/
@@ -73,16 +73,20 @@ jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 
 ## Inference
 
-To sample conformations from the test set peptides, Once you have a trained model,
-either specify the `wandb_train_run_path` (obtainable from the wandb UI for your training run):
+To sample conformations from the test set peptides once you have a trained model,
+either specify the `wandb_train_run_path` (obtainable from the Weights and Biases UI for your training run):
 
-![Run path as indicated on the wandb Overview page for your training run](figures/wandb-run-path.png)
+<p align="center">
+  <img src="https://github.com/prescient-design/jamun/blob/master/figures/wandb-run-path.png?raw=true" alt="Run path as indicated on the Weights and Biases 'Overview' page for your training run"/>
+</p>
+
+and start sampling with:
 
 ```bash
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_train_run_path=...
 ```
 
-or the `checkpoint_dir` of the trained model:
+Alternatively, you can specify the `checkpoint_dir` of the trained model:
 
 ```bash
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
