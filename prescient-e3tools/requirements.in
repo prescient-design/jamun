@@ -1,0 +1,8 @@
+# NOTE this requirements file does not enforce that torch and torch_scatter have compatible cudatoolkit version
+torch
+torch_geometric
+torch_scatter
+torch_cluster
+numpy
+e3nn
+einops

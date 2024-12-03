@@ -1,0 +1,2 @@
+torch==2.4.0
+e3nn @ git+https://github.com/e3nn/e3nn.git@0.5.2

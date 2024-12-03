@@ -1,5 +1,3 @@
-root_path: ${oc.env:jamun_ROOT_PATH,"."}
-root_path_s3: ${oc.env:jamun_ROOT_PATH_S3, "s3://prescient-data-dev/kleinhej/jamun"}
-data_path: ${oc.env:jamun_DATA_PATH, ${paths.root_path}/data}
+root_path: ${oc.env:JAMUN_ROOT_PATH, "."}
+data_path: ${oc.env:JAMUN_DATA_PATH, ${paths.root_path}/data}
 run_path: ${paths.root_path}/outputs/${task_name}/${run_group}/runs/${run_key}
-run_path_s3: ${paths.root_path_s3}/outputs/${task_name}/${run_group}/runs/${run_key}

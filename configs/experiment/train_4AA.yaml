@@ -35,13 +35,13 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "/data/bucket/kleinhej/timewarp/4AA-large/train/"
+        root: "${paths.data_path}/timewarp/4AA-large/train/"
         traj_pattern: "^(....)-traj-arrays.npz"
         pdb_pattern: "^(....)-traj-state0.pdb"
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "/data/bucket/kleinhej/timewarp/4AA-large/val/"
+        root: "${paths.data_path}/timewarp/4AA-large/val/"
         traj_pattern: "^(....)-traj-arrays.npz"
         pdb_pattern: "^(....)-traj-state0.pdb"
         subsample: 100
@@ -49,7 +49,7 @@ data:
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "/data/bucket/kleinhej/timewarp/4AA-large/test/"
+        root: "${paths.data_path}/timewarp/4AA-large/test/"
         traj_pattern: "^(....)-traj-arrays.npz"
         pdb_pattern: "^(....)-traj-state0.pdb"
         subsample: 100

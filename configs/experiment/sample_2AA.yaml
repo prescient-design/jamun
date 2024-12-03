@@ -4,12 +4,6 @@ defaults:
     - default.yaml
   - _self_
 
-paths:
-  root_path: ${oc.env:JAMUN_ROOT_PATH, "."}
-  data_path: ${oc.env:JAMUN_DATA_PATH, ${paths.root_path}/data}
-  run_path: ${paths.root_path}/outputs/${task_name}/${run_group}/runs/${run_key}
-
-
 num_sampling_steps_per_batch: 1000
 num_batches: 100
 num_init_samples_per_dataset: 1
@@ -27,18 +21,10 @@ score_fn_clip: 100.0
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
-  root: "/data/bucket/kleinhej/timewarp/2AA-1-large/test/"
+  root: "${paths.data_path}/timewarp/2AA-1-large/test/"
   traj_pattern: "^(..)-traj-arrays.npz"
   pdb_pattern: "^(..)-traj-state0.pdb"
   subsample: 1
-
-  _target_: jamun.data.parse_datasets_from_directory
-  root: "/data/bucket/kleinhej/timewarp/4AA-large/test/"
-  traj_pattern: "^(....)-traj-arrays.npz"
-  pdb_pattern: "^(....)-traj-state0.pdb"
-  subsample: 1
-  max_datasets: 10
-  max_datasets_offset: 0
 
 sampler:
   _target_: jamun.sampling.Sampler
@@ -86,17 +72,17 @@ callbacks:
     datasets: ${init_datasets}
     output_dir: ${paths.run_path}/saved/
   
-  # posebusters:
-  #   _target_: jamun.callbacks.sampler.PoseBustersCallback
-  #   datasets: ${init_datasets}
-  #   num_molecules_per_trajectory: 1000
+  posebusters:
+    _target_: jamun.callbacks.sampler.PoseBustersCallback
+    datasets: ${init_datasets}
+    num_molecules_per_trajectory: 1000
 
-  # chemical_validity:
-  #   _target_: jamun.callbacks.sampler.ChemicalValidityMetricsCallback
-  #   datasets: ${init_datasets}
-  #   bond_length_tolerance: 0.2
-  #   volume_exclusion_tolerance: 0.1
-  #   num_molecules_per_trajectory: 1000
+  chemical_validity:
+    _target_: jamun.callbacks.sampler.ChemicalValidityMetricsCallback
+    datasets: ${init_datasets}
+    bond_length_tolerance: 0.2
+    volume_exclusion_tolerance: 0.1
+    num_molecules_per_trajectory: 1000
 
 logger:
   wandb:

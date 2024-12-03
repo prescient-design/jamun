@@ -5,7 +5,6 @@ uv pip compile \
   --no-emit-index-url \
   --emit-find-links \
   --find-links https://data.pyg.org/whl/torch-2.4.0+cu121.html \
-  --only-binary mdtraj \
-  -c env/linux-cuda/constraints.txt \
-  -o env/linux-cuda/requirements.txt \
-  requirements.in \
+  -c constraints.txt \
+  -o requirements.txt \
+  ../requirements.in
