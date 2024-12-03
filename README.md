@@ -77,12 +77,19 @@ jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 
 ## Inference
 
-Once you have a trained model, specify the `wandb_train_run_path` (obtainable from the wandb UI for your training run)
+To sample conformations from the test set peptides, Once you have a trained model,
+either specify the `wandb_train_run_path` (obtainable from the wandb UI for your training run):
+
 ![Run path as indicated on the wandb Overview page for your training run](figures/wandb-run-path.png)
-or `checkpoint_dir` of the trained model to sample conformations from the test set peptides:
 
 ```bash
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_train_run_path=...
+```
+
+or the `checkpoint_dir` of the trained model:
+
+```bash
+jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
 ```
 
 If you want to sample conformations for a particular protein sequence:
