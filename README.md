@@ -77,7 +77,7 @@ To sample conformations from the test set peptides once you have a trained model
 either specify the `wandb_train_run_path` (obtainable from the Weights and Biases UI for your training run):
 
 <p align="center">
-  <img src="https://github.com/prescient-design/jamun/blob/main/figures/wandb-run-path.png?raw=true" alt="Run path as indicated on the Weights and Biases 'Overview' page for your training run"/>
+  <img src="https://github.com/prescient-design/jamun/blob/main/figures/wandb-run-path.png?raw=true" alt="Run path as indicated on the Weights and Biases 'Overview' page for your training run" width="200"/>
 </p>
 
 and start sampling with:
