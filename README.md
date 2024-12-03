@@ -48,24 +48,24 @@ export JAMUN_DATA_PATH=/path/to/data/root/
 
 - Or, override `paths.data_path` in the command-line:
 ```bash
-jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml  paths.data_path=/path/to/data/root
+jamun_train paths.data_path=/path/to/data/root ...
 
-jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml  paths.data_path=/path/to/data/root
+jamun_sample paths.data_path=/path/to/data/root ...
 ```
 
-- Or, change the `paths.data_path` in the actual [hydra config](https://github.com/prescient-design/jamun/blob/main/src/jamun/hydra_config/paths/default.yaml).
+- Or, change `paths.data_path` in the actual [hydra config](https://github.com/prescient-design/jamun/blob/main/src/jamun/hydra_config/paths/default.yaml).
 
 
 ## Training
 
-Once you have set the data directory variables correctly,
-you can start training on 2AA peptides:
+Once you have imported the data and set the appropriate data variables correctly, 
+you can start training on uncapped 2AA peptides from Timewarp:
 
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml
 ```
 
-or 4AA peptides:
+or uncapped 4AA peptides from Timewarp:
 
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
