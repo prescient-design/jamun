@@ -4,12 +4,18 @@ This is the official implementation of the paper
 [JAMUN: Transferable Molecular Conformational Ensemble Generation with Walk-Jump Sampling](https://arxiv.org/abs/2410.14621v1).
 
 
+![JAMUN results on capped 2AA peptides](figures/jamun-results.png)
+
+![Overview of walk-jump sampling performed by JAMUN](figures/walk-jump-overview.png)
+
+
 ## Setup
 
 Clone the repository (either HTTPS or SSH):
 ```bash
+# HTTPS
 git clone https://github.com/prescient-design/jamun.git
-# or
+# or SSH:
 git clone git@github.com:prescient-design/jamun.git
 ```
 
@@ -43,12 +49,14 @@ you have three options for JAMUN to find the right folder:
 ```bash
 export JAMUN_DATA_PATH=/path/to/data/root/
 ```
+
 - Override `paths.data_path` in the command-line:
 ```bash
-jamun_train --config-dir=configs experiment=train_2AA.yaml  paths.data_path=/path/to/data/root
+jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml  paths.data_path=/path/to/data/root
 
-jamun_sample --config-dir=configs experiment=sample_2AA.yaml  paths.data_path=/path/to/data/root
+jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml  paths.data_path=/path/to/data/root
 ```
+
 - Change the `paths.data_path` in the actual [hydra config](https://github.com/prescient-design/jamun/blob/main/src/jamun/hydra_config/paths/default.yaml).
 
 
@@ -58,25 +66,28 @@ Once you have set the data directory variables correctly,
 you can start training on 2AA peptides:
 
 ```bash
-jamun_train --config-dir=configs experiment=train_2AA.yaml
+jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml
 ```
 
 or 4AA peptides:
 
 ```bash
-jamun_train --config-dir=configs experiment=train_4AA.yaml
+jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 ```
 
 ## Inference
 
-Once you have a trained model, specify the `wandb_run_path` or `checkpoint_dir` of the trained model to sample conformations from the test set peptides:
+Once you have a trained model, specify the `wandb_train_run_path` (obtainable from the wandb UI for your training run)
+![Run path as indicated on the wandb Overview page for your training run](figures/wandb-run-path.png)
+or `checkpoint_dir` of the trained model to sample conformations from the test set peptides:
 
 ```bash
-jamun_sample --config-dir=configs experiment=sample_2AA.yaml wandb_run_path=
+jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_train_run_path=...
 ```
 
 If you want to sample conformations for a particular protein sequence:
 ```bash
+
 ```
 
 We provide trained weights at ...
