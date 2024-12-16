@@ -3,7 +3,7 @@ name = "jamun"
 description = "JAMUN: Transferable Molecular Conformational Ensemble Generation with Walk-Jump Sampling"
 authors = [{name = "Prescient Design"}]
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.in"]}
@@ -11,6 +11,7 @@ readme = {file = "README.md"}
 
 [tool.setuptools.dynamic.optional-dependencies]
 dev = {file = ["requirements-dev.in"]}
+analysis = {file = ["requirements-analysis.in"]}
 
 [project.scripts]
 jamun_train = "jamun.cmdline.train:main"
@@ -54,4 +55,28 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = [
     "F401", # MODULE IMPORTED BUT UNUSED
+]
+
+[tool.uv]
+#no-build-package = ["pyemma"]
+constraint-dependencies = ["torch==2.5.1", "numpy==1.23.4", "cython==0.22"] # FIXME numpy/cython pins from pyemma
+cache-keys = [{file = "requirements.in"}, {file = "requirements-dev.in"}, {file = "requirements-analysis.in"}]
+
+# see https://github.com/astral-sh/uv/issues/9079
+[tool.uv.sources]
+torch_scatter = [
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_scatter-2.1.2-cp310-cp310-macosx_10_9_universal2.whl", marker = "sys_platform == 'darwin' and python_version == '3.10'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_scatter-2.1.2-cp311-cp311-macosx_10_9_universal2.whl", marker = "sys_platform == 'darwin' and python_version == '3.11'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_scatter-2.1.2-cp312-cp312-macosx_10_13_universal2.whl", marker = "sys_platform == 'darwin' and python_version == '3.12'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcu121/torch_scatter-2.1.2%2Bpt25cu121-cp310-cp310-linux_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.10'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcu121/torch_scatter-2.1.2%2Bpt25cu121-cp311-cp311-linux_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.11'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcu121/torch_scatter-2.1.2%2Bpt25cu121-cp312-cp312-linux_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.12'"}
+]
+torch_cluster = [
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_cluster-1.6.3-cp310-cp310-macosx_10_9_universal2.whl", marker = "sys_platform == 'darwin' and python_version == '3.10'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_cluster-1.6.3-cp311-cp311-macosx_10_9_universal2.whl", marker = "sys_platform == 'darwin' and python_version == '3.11'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_cluster-1.6.3-cp312-cp312-macosx_10_13_universal2.whl", marker = "sys_platform == 'darwin' and python_version == '3.12'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcu121/torch_cluster-1.6.3%2Bpt25cu121-cp310-cp310-linux_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.10'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcu121/torch_cluster-1.6.3%2Bpt25cu121-cp311-cp311-linux_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.11'"},
+  {url = "https://data.pyg.org/whl/torch-2.5.0%2Bcu121/torch_cluster-1.6.3%2Bpt25cu121-cp312-cp312-linux_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.12'"}
 ]
