@@ -55,7 +55,7 @@ class TrajectoryMetric(torchmetrics.Metric):
     def on_sample_end(self):
         """Called at the end of sampling."""
         pass
-    
+
     def update(self, sample: torch_geometric.data.Batch) -> None:
         """Update the metric with a new sample."""
         # py_logger = logging.getLogger("jamun")
@@ -85,8 +85,9 @@ class TrajectoryMetric(torchmetrics.Metric):
 
     def joined_sample_tensor(self) -> torch.Tensor:
         """Return the samples as a torch.Tensor, concatenated across all batches."""
-        return einops.rearrange(self.samples,
-                                "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords")
+        return einops.rearrange(
+            self.samples, "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords"
+        )
 
     def sample_trajectories(self, *, new: bool) -> List[md.Trajectory]:
         """Convert the samples to MD trajectories."""

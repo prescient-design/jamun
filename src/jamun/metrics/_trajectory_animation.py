@@ -44,27 +44,26 @@ class TrajectoryVisualizer(TrajectoryMetric):
         true_trajectory = self.dataset.trajectory
         true_trajectory_subset = true_trajectory[: self.num_frames_to_animate]
 
-        _save_pdb_to_wandb(
-            true_trajectory_subset,
-            label=f"{self.dataset.label()}/animated_trajectory_pdb/true_traj")
+        _save_pdb_to_wandb(true_trajectory_subset, label=f"{self.dataset.label()}/animated_trajectory_pdb/true_traj")
         _log_trajectory_animation_to_wandb(
-            true_trajectory_subset,
-            label=f"{self.dataset.label()}/trajectory_animation/true_traj"
+            true_trajectory_subset, label=f"{self.dataset.label()}/trajectory_animation/true_traj"
         )
 
     def compute(self) -> Dict[str, float]:
         true_trajectory = self.dataset.trajectory
         pred_trajectories = self.sample_trajectories(new=True)
         pred_trajectory_joined = self.joined_sample_trajectory()
-    
-        for trajectory_index, pred_trajectory in enumerate(pred_trajectories + [pred_trajectory_joined], start=self.num_chains_seen):
+
+        for trajectory_index, pred_trajectory in enumerate(
+            pred_trajectories + [pred_trajectory_joined], start=self.num_chains_seen
+        ):
             if trajectory_index == len(pred_trajectories) + self.num_chains_seen:
                 trajectory_index = "joined"
-    
+
             pred_trajectory_subset = pred_trajectory[: self.num_frames_to_animate]
             pred_trajectory_subset = pred_trajectory_subset.superpose(true_trajectory[0])
             _log_trajectory_animation_to_wandb(
                 pred_trajectory_subset,
-                label=f"{self.dataset.label()}/trajectory_animation/pred_traj_{trajectory_index}"
+                label=f"{self.dataset.label()}/trajectory_animation/pred_traj_{trajectory_index}",
             )
         return {}

@@ -47,7 +47,9 @@ def main(cfg):
     # Compute data normalization.
     if cfg.get("compute_average_squared_distance_from_data"):
         average_squared_distance = compute_average_squared_distance_from_config(cfg)
-        py_logger.info(f"Overwriting average_squared_distance in config from {cfg.model.average_squared_distance} to {average_squared_distance}.")
+        py_logger.info(
+            f"Overwriting average_squared_distance in config from {cfg.model.average_squared_distance} to {average_squared_distance}."
+        )
         cfg.model.average_squared_distance = average_squared_distance
 
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)

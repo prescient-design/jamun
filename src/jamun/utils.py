@@ -135,13 +135,15 @@ def mean_by_attribute(x: torch.Tensor, attributes: Sequence[int]) -> List[Tuple[
     unique_attrs = np.unique(attributes)
     mean_xs = []
     for attr in unique_attrs:
-        mask = (attributes == attr)
+        mask = attributes == attr
         mean_x = x[mask].mean(dim=0)
         mean_xs.append((attr.item(), mean_x.item()))
     return mean_xs
 
 
-def compute_average_squared_distance_from_data(dataloader: torch.utils.data.DataLoader, cutoff: float, num_estimation_graphs: int = 5000) -> float:
+def compute_average_squared_distance_from_data(
+    dataloader: torch.utils.data.DataLoader, cutoff: float, num_estimation_graphs: int = 5000
+) -> float:
     """Computes the average squared distance for normalization."""
     avg_sq_dists = collections.defaultdict(list)
     num_graphs = 0
@@ -151,14 +153,16 @@ def compute_average_squared_distance_from_data(dataloader: torch.utils.data.Data
             avg_sq_dist = compute_average_squared_distance(pos, cutoff=cutoff)
             avg_sq_dists[graph.dataset_label].append(avg_sq_dist)
             num_graphs += 1
-        
+
         if num_graphs >= num_estimation_graphs:
             break
-    
+
     logger = logging.getLogger("jamun")
     logger.info(f"For cutoff {cutoff} nm:")
     for label in sorted(avg_sq_dists):
-        logger.info(f"- Dataset {label}: Average squared distance = {np.mean(avg_sq_dists[label]):0.3f} +- {np.std(avg_sq_dists[label]):0.3f} nm^2")
+        logger.info(
+            f"- Dataset {label}: Average squared distance = {np.mean(avg_sq_dists[label]):0.3f} +- {np.std(avg_sq_dists[label]):0.3f} nm^2"
+        )
 
     mean_avg_sq_dist = sum(np.sum(avg_sq_dists[label]) for label in avg_sq_dists) / num_graphs
     logger.info(f"Mean average squared distance = {mean_avg_sq_dist:0.3f} nm^2")

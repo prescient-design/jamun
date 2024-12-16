@@ -67,7 +67,15 @@ class SingleMeasurementSampler:
         else:
             xhat_traj = None
 
-        return {"xhat": xhat, "y": y, "v": v, "xhat_traj": xhat_traj, "y_traj": y_traj, "t_traj": t_traj, "score_traj": score_traj}
+        return {
+            "xhat": xhat,
+            "y": y,
+            "v": v,
+            "xhat_traj": xhat_traj,
+            "y_traj": y_traj,
+            "t_traj": t_traj,
+            "score_traj": score_traj,
+        }
 
     def sample(
         self,

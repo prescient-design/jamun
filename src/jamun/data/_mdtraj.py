@@ -123,11 +123,13 @@ class MDtrajDataset(torch.utils.data.Dataset):
         bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in self.top.bonds], dtype=torch.long).T
         positions = torch.tensor(self.traj.xyz[0][self.traj.top.select("protein and not type H")], dtype=torch.float)
         loss_weight = torch.tensor([self.loss_weight], dtype=torch.float)
-    
+
         # Create the graph.
         # Positions will be updated in __getitem__.
         self.graph = torch_geometric.data.Data(
-            x=x, edge_index=bonds, pos=positions,
+            x=x,
+            edge_index=bonds,
+            pos=positions,
         )
         self.graph.residues = [x.residue.name for x in self.top.atoms]
         self.graph.atom_names = [x.name for x in self.top.atoms]
@@ -135,7 +137,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.loss_weight = loss_weight
         self.graph = self.residue_information_transform(self.graph)
 
-        py_logger.info(f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}.")
+        py_logger.info(
+            f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
+        )
         self.save_modified_pdb()
 
     def save_modified_pdb(self):

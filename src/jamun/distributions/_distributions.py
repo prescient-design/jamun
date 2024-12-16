@@ -109,5 +109,3 @@ class ClippedLogNormalSigma(torch.distributions.Distribution):
 
     def __repr__(self):
         return f"LogNormalSigma(log_sigma_mean={self.log_sigma_mean}, log_sigma_std={self.log_sigma_std}, sigma_max={self.sigma_max})"
-
-

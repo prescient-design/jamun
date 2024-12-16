@@ -54,7 +54,16 @@ class ResidueMetadata:
 class DataWithResidueInformation(torch_geometric.data.Data):
     def __inc__(self, key, value, *args, **kwargs):
         del value, args, kwargs
-        if key in ["pos", "atom_type_index", "atom_code_index", "residue_code_index", "residue_sequence_index", "x", "num_residues", "loss_weight"]:
+        if key in [
+            "pos",
+            "atom_type_index",
+            "atom_code_index",
+            "residue_code_index",
+            "residue_sequence_index",
+            "x",
+            "num_residues",
+            "loss_weight",
+        ]:
             return 0
         if key in ["edge_index"]:
             return self.num_nodes
@@ -217,5 +226,3 @@ class AddResidueInformation(BaseTransform):
         data.residue_index = data.residue_sequence_index
         data.num_residues = data.residue_sequence_index.max().item() + 1
         return data
-
-

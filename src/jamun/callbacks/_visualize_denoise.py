@@ -73,7 +73,7 @@ class MDVisualizeDenoise(pl.Callback):
         for visualizer in self.visualizers.values():
             if visualizer.has_samples:
                 trajectories, scaled_rmsd_per_sigma = visualizer.compute()
-                
+
                 if rank_zero_only.rank == 0 and trajectories is not None:
                     visualizer.log(trajectories, scaled_rmsd_per_sigma)
 

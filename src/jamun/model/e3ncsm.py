@@ -160,7 +160,7 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
 
     def effective_radial_cutoff(self, sigma: Union[float, torch.Tensor]) -> torch.Tensor:
         """Compute the effective radial cutoff for the noise level."""
-        return torch.sqrt((self.max_radius ** 2) + 6 * (sigma ** 2))
+        return torch.sqrt((self.max_radius**2) + 6 * (sigma**2))
 
     def xhat_normalized(
         self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor], save_prefix: str = ""
@@ -212,7 +212,6 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         align_noisy_input: bool,
         save_prefix: str = "",
     ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
-
         with torch.no_grad():
             y = self.add_noise(x, sigma)
             if self.mean_center_input:
@@ -295,7 +294,7 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         # Average the loss over all graphs.
         loss = loss.mean()
         self.log("train/loss", loss, prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
-    
+
         for key, value in aux.items():
             value = value.mean()
             self.log(f"train/{key}", value, prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)

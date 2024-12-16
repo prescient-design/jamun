@@ -31,7 +31,7 @@ class E3NN(torch.nn.Module):
         residue_index_embedding_dim: int,
         use_residue_sequence_index: bool = True,
         test_equivariance: bool = False,
-        max_radius: float = 1.0, # deprecated
+        max_radius: float = 1.0,  # deprecated
     ):
         super().__init__()
 
@@ -87,9 +87,15 @@ class E3NN(torch.nn.Module):
         self.output_head = output_head_factory(irreps_in=self.irreps_hidden, irreps_out=self.irreps_out)
         self.output_gain = torch.nn.Parameter(torch.tensor(0.0))
 
-    def forward(self, data: torch_geometric.data.Batch, c_noise: torch.Tensor, effective_radial_cutoff: Optional[torch.Tensor] = None) -> torch_geometric.data.Batch:
+    def forward(
+        self,
+        data: torch_geometric.data.Batch,
+        c_noise: torch.Tensor,
+        effective_radial_cutoff: Optional[torch.Tensor] = None,
+    ) -> torch_geometric.data.Batch:
         # Test equivariance on the first forward pass.
         if self.test_equivariance:
+
             def forward_wrapped(pos: torch.Tensor):
                 data_copy = data.clone()
                 data_copy.pos = pos
@@ -144,6 +150,6 @@ class E3NN(torch.nn.Module):
             node_attr = skip(node_attr, layer(scaling(node_attr, c_noise), edge_index, edge_attr, edge_sh), c_noise)
         node_attr = self.output_head(node_attr)
         node_attr = node_attr * self.output_gain
-        
+
         data.pos = node_attr
         return data

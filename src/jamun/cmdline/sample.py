@@ -118,8 +118,10 @@ def run(cfg):
     wandb_train_run_path = cfg.get("wandb_train_run_path")
     checkpoint_dir = cfg.get("checkpoint_dir")
     if (wandb_train_run_path and checkpoint_dir) or (not wandb_train_run_path and not checkpoint_dir):
-        raise ValueError("Exactly one of wandb_train_run_path or checkpoint_dir must be provided."
-                         f"Obtained: wandb_train_run_path={wandb_train_run_path}, checkpoint_dir={checkpoint_dir}")
+        raise ValueError(
+            "Exactly one of wandb_train_run_path or checkpoint_dir must be provided."
+            f"Obtained: wandb_train_run_path={wandb_train_run_path}, checkpoint_dir={checkpoint_dir}"
+        )
 
     if wandb_train_run_path:
         checkpoint_dir = find_checkpoint_directory(wandb_train_run_path)

@@ -25,7 +25,7 @@ def initialize_velocity(v_init: Union[str, torch.Tensor], y: torch.Tensor, u: fl
 
 def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_clip: Optional[float]) -> Callable:
     """Create a score function that is clipped and scaled by the inverse temperature."""
-    
+
     def score_fn_processed(y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Score function clipped and scaled by the inverse temperature."""
         orig_score = score_fn(y).to(dtype=y.dtype)
@@ -37,6 +37,7 @@ def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_cli
             score = (score / norm) * clip
         score = score * inverse_temperature
         return score, orig_score
+
     return score_fn_processed
 
 
@@ -98,7 +99,7 @@ def aboba(
         if y_traj is not None and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
             y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
-    
+
     if y_traj is not None:
         y_traj = torch.stack(y_traj)
 
@@ -148,7 +149,6 @@ def baoab(
     if verbose:
         steps_iter = tqdm(steps_iter, leave=False, desc="BAOAB")
 
-
     # Wrap score function with clipping and scaling by inverse temperature.
     score_fn_processed = create_score_fn(score_fn, inverse_temperature, score_fn_clip)
     psi, orig_score = score_fn_processed(y)
@@ -168,7 +168,7 @@ def baoab(
         if y_traj is not None and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
             y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
-    
+
     if y_traj is not None:
         y_traj = torch.stack(y_traj)
 

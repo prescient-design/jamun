@@ -47,7 +47,7 @@ class Conv(torch.nn.Module):
             if `None` then
                 ```
                 functools.partial(
-                    e3tools.nn.ScalarMLP,
+                    jamun.e3tools.nn.ScalarMLP,
                     hidden_features=[edge_attr_dim],
                     activation_layer=torch.nn.SiLU,
                 )

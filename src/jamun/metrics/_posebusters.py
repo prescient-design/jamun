@@ -42,13 +42,13 @@ class PoseBustersMetrics(TrajectoryMetric):
         subsampling_factor = max(len(true_trajectory) // self.num_molecules_per_trajectory, 1)
 
         df = run_posebusters_on_trajectory(true_trajectory[::subsampling_factor])
-        
+
         metrics = {}
         if df is None:
             py_logger = logging.getLogger("jamun")
             py_logger.info("{self.dataset.label()}PoseBusters found no molecules in the trajectory.")
             return metrics
-        
+
         mean_fail_rates = 1 - df.mean()
         wandb.log(
             {
@@ -59,9 +59,8 @@ class PoseBustersMetrics(TrajectoryMetric):
         )
         for key, value in mean_fail_rates.items():
             metrics[f"{self.dataset.label()}/posebusters/{key}/true_traj"] = value
-        
-        return metrics
 
+        return metrics
 
     def compute(self) -> Dict[str, float]:
         metrics = {}

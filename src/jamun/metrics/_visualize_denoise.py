@@ -120,18 +120,20 @@ class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
 
         return trajectories, scaled_rmsd_per_sigma
 
-    def log(self, trajectories: Optional[Dict[str, md.Trajectory]] = None, scaled_rmsd_per_sigma: Optional[Dict[float, float]] = None) -> Tuple[Dict[float, plt.Figure], py3Dmol.view]:
+    def log(
+        self,
+        trajectories: Optional[Dict[str, md.Trajectory]] = None,
+        scaled_rmsd_per_sigma: Optional[Dict[float, float]] = None,
+    ) -> Tuple[Dict[float, plt.Figure], py3Dmol.view]:
         if trajectories is None:
             trajectories, _ = self.compute()
-        
+
         figs, views = {}, {}
         for sigma, sigma_trajs in trajectories.items():
             figs[sigma], _ = plot_ramachandran_grid(sigma_trajs, self.dataset.label())
-            
+
             # Convert the trajectories to RDKit mols.
-            mols = {
-                key: utils_md.to_rdkit_mols(traj[:5]) for key, traj in sigma_trajs.items()
-            }
+            mols = {key: utils_md.to_rdkit_mols(traj[:5]) for key, traj in sigma_trajs.items()}
 
             # Plot with py3Dmol.
             views[sigma] = utils_md.plot_molecules_with_py3Dmol(mols)
@@ -151,8 +153,6 @@ class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
 
         if scaled_rmsd_per_sigma is not None:
             for sigma, scaled_rmsd in scaled_rmsd_per_sigma.items():
-                wandb.log(
-                    {f"{self.dataset.label()}/scaled_rmsd_per_dataset/sigma={sigma}": scaled_rmsd}
-                )
+                wandb.log({f"{self.dataset.label()}/scaled_rmsd_per_dataset/sigma={sigma}": scaled_rmsd})
 
         return figs, views

@@ -300,10 +300,14 @@ class RamachandranPlotMetrics(TrajectoryMetric):
         # Convert the samples to trajectories.
         pred_trajectories = self.sample_trajectories(new=True)
         pred_trajectory_joined = self.joined_sample_trajectory()
-        py_logger.info(f"{self.dataset.label()}: Obtained predicted trajectories {len(pred_trajectories)=} {pred_trajectories}.")
+        py_logger.info(
+            f"{self.dataset.label()}: Obtained predicted trajectories {len(pred_trajectories)=} {pred_trajectories}."
+        )
 
         # Make plots for each trajectory.
-        for trajectory_index, pred_trajectory in enumerate(pred_trajectories + [pred_trajectory_joined], start=self.num_chains_seen):
+        for trajectory_index, pred_trajectory in enumerate(
+            pred_trajectories + [pred_trajectory_joined], start=self.num_chains_seen
+        ):
             if trajectory_index == len(pred_trajectories) + self.num_chains_seen:
                 trajectory_index = "joined"
 
@@ -330,7 +334,10 @@ class RamachandranPlotMetrics(TrajectoryMetric):
                 if self.show_animation:
                     subsample_factor = max(1, len(pred_trajectory) // 100)
                     anim = plot_ramachandran_animation(
-                        pred_trajectory, "Ramachandran Plot", subsample_factor=subsample_factor, dihedral_index=dihedral_index
+                        pred_trajectory,
+                        "Ramachandran Plot",
+                        subsample_factor=subsample_factor,
+                        dihedral_index=dihedral_index,
                     )
                     with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_mp4:
                         anim.save(temp_mp4.name, writer="ffmpeg")

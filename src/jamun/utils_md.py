@@ -232,9 +232,7 @@ def plot_molecules_with_py3Dmol(
                 break
 
             try:
-                view.addModel(
-                    Chem.MolToMolBlock(mol), "mol", {"keepH": "true"}, viewer=(i, j)
-                )
+                view.addModel(Chem.MolToMolBlock(mol), "mol", {"keepH": "true"}, viewer=(i, j))
             except ValueError:
                 # Sometimes RDKit errors out on weird molecules.
                 continue
@@ -274,9 +272,7 @@ def plot_molecules_with_py3Dmol(
                     viewer=(i, j),
                 )
 
-    view.setStyle(
-        {"stick": {"color": "spectrum", "radius": 0.2}, "sphere": {"scale": 0.3}}
-    )
+    view.setStyle({"stick": {"color": "spectrum", "radius": 0.2}, "sphere": {"scale": 0.3}})
     view.zoomTo()
     return view
 
@@ -317,10 +313,7 @@ def mean_center(y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
     return y
 
 
-def align_A_to_B_batched(
-    A: torch_geometric.data.Batch,
-    B: torch_geometric.data.Batch
-) -> torch_geometric.data.Batch:
+def align_A_to_B_batched(A: torch_geometric.data.Batch, B: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
     """Aligns each batch of A to corresponding batch in B."""
     num_batches = A.batch.max().item() + 1
     for i in range(num_batches):

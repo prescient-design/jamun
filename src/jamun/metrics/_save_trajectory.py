@@ -19,18 +19,18 @@ class SaveTrajectory(TrajectoryMetric):
 
     def __init__(self, output_dir: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.pred_samples_dir = os.path.join(output_dir, self.dataset.label(), "predicted_samples") 
+        self.pred_samples_dir = os.path.join(output_dir, self.dataset.label(), "predicted_samples")
         self.true_samples_dir = os.path.join(output_dir, self.dataset.label(), "true_samples")
-    
+
         # Create the output directories.
         self.true_samples_extensions = ["pdb", "dcd"]
         for ext in self.true_samples_extensions:
             os.makedirs(os.path.join(self.true_samples_dir, ext), exist_ok=True)
-        
+
         self.pred_samples_extensions = ["npy", "pdb", "dcd"]
         for ext in self.pred_samples_extensions:
             os.makedirs(os.path.join(self.pred_samples_dir, ext), exist_ok=True)
-    
+
     def filename_pred(self, trajectory_index: Union[int, str], extension: str) -> str:
         """Returns the filename for the predicted samples."""
         if extension not in self.pred_samples_extensions:
@@ -51,13 +51,13 @@ class SaveTrajectory(TrajectoryMetric):
             "dcd": os.path.join(self.true_samples_dir, "dcd", f"{trajectory_index}.dcd"),
         }
         return filenames[extension]
-  
+
     def on_sample_start(self):
         # Save the true trajectory as a PDB and DCD file.
         true_trajectory = self.dataset.trajectory
         utils_md.save_pdb(true_trajectory, self.filename_true(0, "pdb"))
         true_trajectory.save_dcd(self.filename_true(0, "dcd"))
-        
+
     def on_sample_end(self):
         # Save the joined samples at the very end of sampling to wandb.
         label = self.dataset.label()
@@ -74,7 +74,7 @@ class SaveTrajectory(TrajectoryMetric):
         samples_np = self.sample_tensors(new=True).cpu().detach().numpy()
         for trajectory_index, sample in enumerate(samples_np):
             np.save(self.filename_pred(trajectory_index, "npy"), sample)
-        
+
         samples_joined_np = self.joined_sample_tensor().cpu().detach().numpy()
         np.save(self.filename_pred("joined", "npy"), samples_joined_np)
 
@@ -83,9 +83,9 @@ class SaveTrajectory(TrajectoryMetric):
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
             utils_md.save_pdb(pred_trajectory, self.filename_pred(trajectory_index, "pdb"))
             pred_trajectory.save_dcd(self.filename_pred(trajectory_index, "dcd"))
-        
+
         pred_trajectory_joined = self.joined_sample_trajectory()
         utils_md.save_pdb(pred_trajectory_joined, self.filename_pred("joined", "pdb"))
         pred_trajectory_joined.save_dcd(self.filename_pred("joined", "dcd"))
-        
+
         return {}

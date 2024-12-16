@@ -32,7 +32,14 @@ def download_file(url: str, path: str, verbose: bool = False, block_size: Option
             pbar.update(len(data))
 
 
-def parse_datasets_from_directory(root: str, traj_pattern: str, pdb_pattern: str, max_datasets: Optional[int] = None, max_datasets_offset: Optional[int] = None, **dataset_kwargs) -> List[MDtrajDataset]:
+def parse_datasets_from_directory(
+    root: str,
+    traj_pattern: str,
+    pdb_pattern: str,
+    max_datasets: Optional[int] = None,
+    max_datasets_offset: Optional[int] = None,
+    **dataset_kwargs,
+) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
     py_logger = logging.getLogger("jamun")
     py_logger.info(f"Creating datasets from {root}")
@@ -71,7 +78,7 @@ def parse_datasets_from_directory(root: str, traj_pattern: str, pdb_pattern: str
         if code not in codes:
             continue
         pdb_files[code] = os.path.join(pdb_prefix, entry.name)
-    
+
     # Sort the codes and offset them, if necessary.
     if max_datasets_offset is None:
         max_datasets_offset = 0

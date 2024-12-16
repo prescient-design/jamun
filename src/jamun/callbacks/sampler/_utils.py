@@ -46,7 +46,7 @@ class TrajectoryMetricCallback:
     ):
         for sample_graph in sample:
             self.meters[sample_graph.dataset_label].update(sample_graph)
-        
+
         for meter in self.meters.values():
             sampler.fabric.log_dict(meter.compute())
             meter.on_after_sample_batch()

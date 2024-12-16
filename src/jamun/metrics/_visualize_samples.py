@@ -18,7 +18,7 @@ class MDSampleVisualizer(TrajectoryMetric):
         super().__init__(*args, **kwargs)
         # Round up to the nearest perfect square.
         num_rows = int(math.ceil(math.sqrt(num_samples_to_plot)))
-        self.num_samples_to_plot = num_rows ** 2
+        self.num_samples_to_plot = num_rows**2
         self.num_rows = num_rows
         if subsample is None:
             subsample = 1
@@ -57,7 +57,9 @@ class MDSampleVisualizer(TrajectoryMetric):
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
             logger = logging.getLogger("jamun")
-            logger.info(f"Visualizing trajectory {trajectory_index} ({pred_trajectory}) for dataset {self.dataset.label()}.")
+            logger.info(
+                f"Visualizing trajectory {trajectory_index} ({pred_trajectory}) for dataset {self.dataset.label()}."
+            )
             pred_trajectory_subset = self.align_and_subsample(pred_trajectory)
             self.plot(pred_trajectory_subset, f"pred_traj_{trajectory_index}")
         return {}
@@ -65,6 +67,3 @@ class MDSampleVisualizer(TrajectoryMetric):
     def on_sample_start(self) -> None:
         true_traj_subset = self.align_and_subsample(self.dataset.trajectory)
         self.plot(true_traj_subset, "true_traj")
-
-
-

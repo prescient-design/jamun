@@ -162,9 +162,7 @@ class ChemicalValidityMetrics(TrajectoryMetric):
                 )
             }
         )
-        metrics[f"{self.dataset.label()}/mean_volume_exclusion_issues/true_traj"] = np.mean(
-            avg_volume_exclusion_issues
-        )
+        metrics[f"{self.dataset.label()}/mean_volume_exclusion_issues/true_traj"] = np.mean(avg_volume_exclusion_issues)
 
         # Check for invalid bonds in the true trajectory.
         avg_bond_length_issues = check_bond_lengths(
@@ -190,7 +188,6 @@ class ChemicalValidityMetrics(TrajectoryMetric):
         metrics = {}
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
-
             # Subsample the trajectory.
             subsampling_factor = max(len(pred_trajectory) // self.num_molecules_per_trajectory, 1)
             pred_trajectory_subset = pred_trajectory[::subsampling_factor]

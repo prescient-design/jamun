@@ -48,9 +48,11 @@ class ScoreDistributionMetrics(TrajectoryMetric):
             plt.ylabel("Score Norms")
             plt.title(f"Score norms across frames for trajectory {trajectory_index}")
             plt.legend()
-            wandb.log({
+            wandb.log(
+                {
                     f"{self.dataset.label()}/score_distribution/pred_traj_{trajectory_index}": wandb.Image(plt),
-            })
+                }
+            )
             plt.clf()
 
         return {}
