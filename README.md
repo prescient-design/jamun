@@ -13,11 +13,12 @@ Conformational ensembles of protein structures are immensely important both to u
 
 ## Setup
 
-Clone the repository (either HTTPS or SSH):
+Clone the repository with HTTPS:
 ```bash
-# HTTPS
 git clone https://github.com/prescient-design/jamun.git
-# or SSH:
+```
+or SSH:
+```bash
 git clone git@github.com:prescient-design/jamun.git
 ```
 
@@ -29,6 +30,7 @@ mamba activate jamun
 
 Then, install all dependencies:
 ```bash
+cd jamun
 pip install -r env/linux-cuda/requirements.txt
 pip install -e .[dev]
 ```

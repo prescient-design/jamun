@@ -27,7 +27,6 @@ torch_cluster
 torch_spline_conv
 e3nn @ git+https://github.com/e3nn/e3nn.git@0.5.2
 mdtraj
-prescient-e3tools @ file:./prescient-e3tools
 py3Dmol
 rdkit
 pot

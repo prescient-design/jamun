@@ -52,13 +52,9 @@ cycler==0.12.1
 docker-pycreds==0.4.0
     # via wandb
 e3nn @ git+https://github.com/e3nn/e3nn.git@7f6be7d3055bb2682eaf1316a043c2b944522341
-    # via
-    #   -r requirements.in
-    #   prescient-e3tools
+    # via -r requirements.in
 einops==0.8.0
-    # via
-    #   -r requirements.in
-    #   prescient-e3tools
+    # via -r requirements.in
 filelock==3.15.4
     # via
     #   torch
@@ -137,7 +133,6 @@ numpy==1.26.4
     #   pandas
     #   posebusters
     #   pot
-    #   prescient-e3tools
     #   rdkit
     #   scikit-learn
     #   scipy
@@ -212,8 +207,6 @@ plotly==5.23.0
 posebusters==0.3.1
     # via -r requirements.in
 pot==0.9.4
-    # via -r requirements.in
-file:./prescient-e3toolz
     # via -r requirements.in
 protobuf==5.27.3
     # via wandb
@@ -307,25 +300,18 @@ torch==2.4.0
     #   e3nn
     #   lightning
     #   opt-einsum-fx
-    #   prescient-e3tools
     #   pytorch-lightning
     #   torch-fidelity
     #   torchmetrics
     #   torchvision
 torch-cluster==1.6.3+pt24cu121
-    # via
-    #   -r requirements.in
-    #   prescient-e3tools
+    # via -r requirements.in
 torch-fidelity==0.3.0
     # via -r requirements.in
 torch-geometric==2.5.3
-    # via
-    #   -r requirements.in
-    #   prescient-e3tools
+    # via -r requirements.in
 torch-scatter==2.1.2+pt24cu121
-    # via
-    #   -r requirements.in
-    #   prescient-e3tools
+    # via -r requirements.in
 torch-sparse==0.6.18+pt24cu121
     # via -r requirements.in
 torch-spline-conv==1.2.2+pt24cu121
