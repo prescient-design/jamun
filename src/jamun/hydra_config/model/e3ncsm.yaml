@@ -12,8 +12,8 @@ arch:
         fullgraph: true
         dynamic: true
         options:
-          trace.enabled: true
-          trace.fx_graph: true
+          trace.enabled: false
+          trace.fx_graph: false
           
 max_radius: 1.0
 average_squared_distance: null
