@@ -4,7 +4,6 @@ defaults:
   - override /data: md.yaml
   - override /model: e3ncsm.yaml
   - override /model/arch: e3conv.yaml
-  - override /model/sigma_distribution: constant.yaml
   - override /callbacks:
     - default.yaml
     - model_checkpoint.yaml
@@ -17,12 +16,11 @@ model:
     sigma: 0.04
   arch:
     n_layers: 4
-    max_radius: 1.0
     use_residue_sequence_index: false
+  max_radius: 1.0
   optim:
     lr: 0.002
   save_tensors: false
-
 
 callbacks:
   viz:

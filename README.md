@@ -63,7 +63,6 @@ pip install -e .[dev]
 ## Data
 
 The uncapped 2AA data from [Timewarp](https://arxiv.org/abs/2302.01170) can be obtained from [Hugging Face](https://huggingface.co/datasets/microsoft/timewarp).
-
 ```bash
 cd /path/to/data/root/
 git lfs install
@@ -95,19 +94,16 @@ Once you have downloaded the data and set the appropriate data variables correct
 you can start training on Timewarp.
 
 We recommend first running our test config to check that installation was successful:
-
 ```bash
 jamun_train --config-dir=configs experiment=train_test.yaml
 ```
 
 Then, you can train on the uncapped 2AA peptides dataset:
-
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml
 ```
 
 or the uncapped 4AA peptides dataset:
-
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 ```
@@ -126,13 +122,11 @@ either specify the `wandb_train_run_path` (obtainable from the Weights and Biase
 </p>
 
 and start sampling with:
-
 ```bash
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_train_run_path=...
 ```
 
 Alternatively, you can specify the `checkpoint_dir` of the trained model:
-
 ```bash
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
 ```
@@ -143,6 +137,25 @@ If you want to sample conformations for a particular protein sequence:
 ```
 
 We provide trained weights at ...
+
+## Analysis
+
+We provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
+
+This analysis script requires the run path from Weights and Biases for your sampling run.
+
+Unfortunately, some dependencies (`pyemma`) are tricky to install with `uv` or `pip`, so we recommend a `mamba` environment:
+```bash
+mamba create -n jamun-analysis python=3.11 -y
+mamba activate jamun-analysis
+mamba install pyemma ipykernel -y
+```
+
+Then, install all dependencies:
+```bash
+pip install -r env/linux-cuda/requirements-analysis.txt
+pip install -e .[dev]
+```
 
 ## Citation
 
