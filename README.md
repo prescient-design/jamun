@@ -97,7 +97,8 @@ Once you have downloaded the data and set the appropriate data variables correct
 you can start training on Timewarp.
 
 We recommend first running our test config to check that installation was successful:
-```
+
+```bash
 jamun_train --config-dir=configs experiment=train_test.yaml
 ```
 
@@ -113,9 +114,9 @@ or the uncapped 4AA peptides dataset:
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 ```
 
-By default, all run outputs will be saved to `outputs` in the current directory.
-
 We also provide example SLURM launcher scripts for [training](https://github.com/prescient-design/jamun/blob/main/slurm/train.sh) and [sampling](https://github.com/prescient-design/jamun/blob/main/slurm/sample.sh) on SLURM clusters.
+
+By default, all run outputs will be saved to `outputs` in the current directory.
 
 ## Inference
 
@@ -147,7 +148,7 @@ We provide trained weights at ...
 
 ## Citation
 
-If this repository was useful to you, please cite our preprint!
+If you found this repository useful, please cite our preprint!
 
 ```bibtex
 @misc{daigavane2024jamuntransferablemolecularconformational,
