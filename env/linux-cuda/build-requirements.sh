@@ -18,7 +18,6 @@ uv pip compile \
     --only-binary mdtraj \
     -c env/linux-cuda/constraints-analysis.txt \
     -o env/linux-cuda/requirements-analysis.txt \
-    requirements.in \
     requirements-analysis.in &&
   
   uv pip compile \

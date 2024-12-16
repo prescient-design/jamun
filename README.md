@@ -139,20 +139,30 @@ We provide trained weights at ...
 ## Analysis
 
 We provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
+This notebook requires the run path from Weights and Biases of your sampling run.
 
-This analysis script requires the run path from Weights and Biases for your sampling run.
+The analysis script has certain dependencies (eg. `pyemma`) which are slightly tricky to install.
+We create a new environment to avoid dependency clashes.
+Again, we recommend `uv` but also provide instructions for `mamba` / `conda`.
 
-Unfortunately, some dependencies (`pyemma`) are tricky to install with `uv` or `pip`, so we recommend a `mamba` environment:
+### Setup with `uv`
+
+```bash
+uv venv .venv-analysis --python 3.11
+source .venv-analysis/bin/activate
+
+uv run --no-project -m pip install wheel pyemma
+uv pip install -r env/linux-cuda/requirements-analysis.txt 
+```
+
+### Setup with `mamba` / `conda`
+
 ```bash
 mamba create -n jamun-analysis python=3.11 -y
 mamba activate jamun-analysis
-mamba install pyemma ipykernel -y
-```
 
-Then, install all dependencies:
-```bash
+mamba install pyemma ipykernel -y
 pip install -r env/linux-cuda/requirements-analysis.txt
-pip install -e .[dev]
 ```
 
 ## Citation
