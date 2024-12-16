@@ -28,11 +28,13 @@ cd jamun
 ```
 
 ### Setup with `uv`
+
 We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
 
 Create a virtual enviroment:
 ```bash
 uv venv --python 3.11
+source .venv/bin/activate
 ```
 
 Then, install all dependencies:
@@ -78,31 +80,34 @@ This should be your directory structure:
     ├── 2AA-1-large/
     │   └── ...
 ```
-Now, you have three options for JAMUN to find the data directory:
+Now, you have have two options for JAMUN to find the data directory:
 - Set the environment variable `JAMUN_DATA_PATH`:
 ```bash
 export JAMUN_DATA_PATH=/path/to/data/root/
 ```
 
-- Or, override `paths.data_path` in the command-line:
-```bash
-jamun_train paths.data_path=/path/to/data/root ...
-jamun_sample paths.data_path=/path/to/data/root ...
+- or, create a `.env` file and set `JAMUN_DATA_PATH`:
 ```
-
-- Or, change `paths.data_path` in the actual [hydra config](https://github.com/prescient-design/jamun/blob/main/src/jamun/hydra_config/paths/default.yaml).
-
+JAMUN_DATA_PATH=/path/to/data/root/
+```
 
 ## Training
 
-Once you have imported the data and set the appropriate data variables correctly, 
-you can start training on uncapped 2AA peptides from Timewarp:
+Once you have downloaded the data and set the appropriate data variables correctly, 
+you can start training on Timewarp.
+
+We recommend first running our test config to check that installation was successful:
+```
+jamun_train --config-dir=configs experiment=train_test.yaml
+```
+
+Then, you can train on the uncapped 2AA peptides dataset:
 
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_2AA.yaml
 ```
 
-or uncapped 4AA peptides from Timewarp:
+or the uncapped 4AA peptides dataset:
 
 ```bash
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml

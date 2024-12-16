@@ -5,8 +5,6 @@ import torch
 from e3nn import o3
 import torch_geometric
 
-from jamun.utils import make_product_batch, unsqueeze_trailing
-
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
 from jamun.model.skip_connection import NoiseConditionalSkipConnection
 from jamun.model.noise_conditioning import NoiseConditionalScaling

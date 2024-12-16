@@ -1,9 +1,8 @@
 defaults:
-  - _self_
   - arch: e3conv.yaml
   - optim: adam.yaml
-  - sigma_distribution: md.yaml
   - lr_scheduler_config: null
+  - _self_
 
 arch:
   hidden_layer_factory:

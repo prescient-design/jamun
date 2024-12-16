@@ -42,7 +42,7 @@ def parse_datasets_from_directory(
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
     py_logger = logging.getLogger("jamun")
-    py_logger.info(f"Creating datasets from {root}")
+    py_logger.info(f"Creating datasets from {root}.")
 
     traj_prefix, traj_pattern = os.path.split(traj_pattern)
     traj_pattern_compiled = re.compile(traj_pattern)
@@ -89,7 +89,7 @@ def parse_datasets_from_directory(
         if max_datasets is not None and index >= max_datasets:
             break
 
-        py_logger.info(f"Creating dataset for {code} with trajectories {traj_files[code]} and PDB {pdb_files[code]}")
+        py_logger.info(f"Creating dataset for {code} with trajectories {traj_files[code]} and PDB {pdb_files[code]}.")
         dataset = MDtrajDataset(
             root,
             xtcfiles=traj_files[code],

@@ -88,5 +88,4 @@ callbacks:
 
 logger:
   wandb:
-    offline: false
     group: sample_4AA

@@ -11,7 +11,6 @@ defaults:
     - visualize_denoise.yaml
   - _self_
 
-
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
@@ -27,7 +26,7 @@ model:
 
 callbacks:
   viz:
-    sigma_list: [0.06]
+    sigma_list: ["${model.sigma_distribution.sigma}"]
 
 data:
   datamodule:
@@ -57,7 +56,8 @@ data:
 
 trainer:
   val_check_interval: 0.1
+  max_epochs: 10
 
 logger:
   wandb:
-   offline: false
+    group: train_4AA

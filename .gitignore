@@ -2,8 +2,10 @@
 *.zip
 *.pyc
 *.egg-info
+.env
 .venv
 .ruff_cache
 .ipynb_checkpoints
 build
 outputs
+torch_compile_debug

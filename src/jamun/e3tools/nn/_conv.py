@@ -27,7 +27,7 @@ class Conv(torch.nn.Module):
         edge_attr_dim: int,
         radial_nn: Optional[Callable[..., torch.nn.Module]] = None,
         tensor_product: Optional[Callable[..., torch.nn.Module]] = None,
-        use_torch_compile: bool = False,
+        use_torch_compile: bool = True,
         torch_compile_kwargs: dict | None = None,
     ):
         """
@@ -67,7 +67,7 @@ class Conv(torch.nn.Module):
                 )
                 ```
             is used.
-        use_torch_compile: bool = False
+        use_torch_compile: bool = True
             Use torch.compile to compile the tensor product instead of torch script
         """
 

@@ -36,6 +36,8 @@ data:
         root: "${paths.data_path}/timewarp/2AA-1-large/train/"
         traj_pattern: "^(..)-traj-arrays.npz"
         pdb_pattern: "^(..)-traj-state0.pdb"
+        subsample: 10
+        max_datasets: 1
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -43,7 +45,7 @@ data:
         traj_pattern: "^(..)-traj-arrays.npz"
         pdb_pattern: "^(..)-traj-state0.pdb"
         subsample: 100
-        max_datasets: 20
+        max_datasets: 1
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -51,12 +53,12 @@ data:
         traj_pattern: "^(..)-traj-arrays.npz"
         pdb_pattern: "^(..)-traj-state0.pdb"
         subsample: 100
-        max_datasets: 20
+        max_datasets: 1
 
 trainer:
-  val_check_interval: 0.1
-  max_epochs: 10
+  val_check_interval: 0.5
+  max_epochs: 1
 
 logger:
   wandb:
-    group: train_2AA
+    group: train_test

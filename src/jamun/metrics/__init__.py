@@ -1,5 +1,4 @@
 from ._utils import TrajectoryMetric
-from ._fid import FID
 from ._ramachandran import RamachandranPlotMetrics
 from ._score_distribution import ScoreDistributionMetrics
 from ._chemical_validity import ChemicalValidityMetrics
