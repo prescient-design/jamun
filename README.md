@@ -44,9 +44,9 @@ uv pip install -e .[dev]
 ### Setup with `mamba` or `conda`
 
 Alternatively, you can install
-[`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install).
+[`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) or [`conda`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install).
 
-Create a virtual environment (either `mamba` or `conda` will work):
+Create an environment:
 ```bash
 mamba create -n jamun-env python=3.11 -y
 mamba activate jamun-env
@@ -87,7 +87,6 @@ export JAMUN_DATA_PATH=/path/to/data/root/
 - Or, override `paths.data_path` in the command-line:
 ```bash
 jamun_train paths.data_path=/path/to/data/root ...
-
 jamun_sample paths.data_path=/path/to/data/root ...
 ```
 
@@ -127,8 +126,7 @@ jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_trai
 Alternatively, you can specify the `checkpoint_dir` of the trained model:
 
 ```bash
-jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml
-checkpoint_dir=...
+jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
 ```
 
 If you want to sample conformations for a particular protein sequence:
