@@ -27,9 +27,10 @@ Navigate to the cloned repository:
 cd jamun
 ```
 
-### Setup with `uv`
+We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation/). Alternatively, you can install
+[`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) or [`conda`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install).
 
-We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+### Setup with `uv`
 
 Create a virtual enviroment:
 ```bash
@@ -44,9 +45,6 @@ uv pip install -e .[dev]
 ```
 
 ### Setup with `mamba` or `conda`
-
-Alternatively, you can install
-[`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) or [`conda`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install).
 
 Create an environment:
 ```bash
