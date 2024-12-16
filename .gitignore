@@ -2,6 +2,7 @@
 *.zip
 *.pyc
 *.egg-info
+*.out
 .env
 .venv
 .ruff_cache
