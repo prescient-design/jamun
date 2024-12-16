@@ -7,7 +7,11 @@
 #SBATCH --cpus-per-task 8
 #SBATCH --time 72:00:00
 
+# if using mamba or conda, comment the following:
 source .venv/bin/activate
+# if using mamba or conda, uncomment the following:
+# eval "$(mamba shell.bash hook)"
+# mamba activate jamun-env
 
 set -eux
 
