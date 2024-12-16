@@ -113,6 +113,8 @@ or the uncapped 4AA peptides dataset:
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 ```
 
+By default, all run outputs will be saved to `outputs` in the current directory.
+
 ## Inference
 
 To sample conformations from the test set peptides once you have a trained model,
