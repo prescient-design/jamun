@@ -39,7 +39,14 @@ pip install -e .[dev]
 
 The uncapped 2AA data from [Timewarp](https://arxiv.org/abs/2302.01170) can be obtained from [Hugging Face](https://huggingface.co/datasets/microsoft/timewarp).
 
-Once you have downloaded the data, if this is your directory structure:
+```bash
+cd /path/to/data/root/
+git lfs install
+git clone https://huggingface.co/datasets/microsoft/timewarp
+```
+where `/path/to/data/root/` is the path where you want to store the datasets.
+
+This should be your directory structure:
 ```bash
 /path/to/data/root/
 └── timewarp/
@@ -48,8 +55,8 @@ Once you have downloaded the data, if this is your directory structure:
     ├── 2AA-1-large/
     │   └── ...
 ```
-you have three options for JAMUN to find the data directory:
-- Set the environment variable `JAMUN_DATA_PATH` to point to the directory containing `timewarp`:
+Now, you have three options for JAMUN to find the data directory:
+- Set the environment variable `JAMUN_DATA_PATH`:
 ```bash
 export JAMUN_DATA_PATH=/path/to/data/root/
 ```
@@ -97,7 +104,8 @@ jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_trai
 Alternatively, you can specify the `checkpoint_dir` of the trained model:
 
 ```bash
-jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
+jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml
+checkpoint_dir=...
 ```
 
 If you want to sample conformations for a particular protein sequence:
