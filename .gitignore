@@ -2,6 +2,8 @@
 *.zip
 *.pyc
 *.egg-info
+.venv
+.ruff_cache
 .ipynb_checkpoints
 build
 outputs

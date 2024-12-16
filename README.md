@@ -22,15 +22,38 @@ or SSH:
 git clone git@github.com:prescient-design/jamun.git
 ```
 
-We recommend creating either a `mamba` or a `conda` environment:
+Navigate to the cloned repository:
 ```bash
-mamba create -n jamun python=3.11 -y
-mamba activate jamun
+cd jamun
+```
+
+### Setup with `uv`
+We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+
+Create a virtual enviroment:
+```bash
+uv venv --python 3.11
 ```
 
 Then, install all dependencies:
 ```bash
-cd jamun
+uv pip install -r env/linux-cuda/requirements.txt
+uv pip install -e .[dev]
+```
+
+### Setup with `mamba` or `conda`
+
+Alternatively, you can install
+[`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install).
+
+Create a virtual environment (either `mamba` or `conda` will work):
+```bash
+mamba create -n jamun-env python=3.11 -y
+mamba activate jamun-env
+```
+
+Then, install all dependencies:
+```bash
 pip install -r env/linux-cuda/requirements.txt
 pip install -e .[dev]
 ```
