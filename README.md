@@ -115,7 +115,7 @@ jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 
 By default, all run outputs will be saved to `outputs` in the current directory.
 
-We also provide sample SLURM scripts for training on clusters in `slurm`[(figures/jamun-results.png)]
+We also provide example SLURM launcher scripts for [training](https://github.com/prescient-design/jamun/blob/main/slurm/train.sh) and [sampling](https://github.com/prescient-design/jamun/blob/main/slurm/sample.sh) on SLURM clusters.
 
 ## Inference
 
