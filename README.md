@@ -143,7 +143,7 @@ This notebook requires the run path from Weights and Biases of your sampling run
 
 The analysis script has certain dependencies (eg. `pyemma`) which are slightly tricky to install.
 We create a new environment to avoid dependency clashes.
-Again, we recommend `uv` but also provide instructions for `mamba` / `conda`.
+Again, we recommend `uv`, but we also provide instructions for `mamba` / `conda`.
 
 ### Setup with `uv`
 
