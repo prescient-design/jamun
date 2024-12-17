@@ -143,7 +143,7 @@ This notebook requires the run path from Weights and Biases of your sampling run
 
 The analysis script has certain dependencies (eg. `pyemma`) which are slightly tricky to install.
 We create a new environment to avoid dependency clashes.
-Again, we recommend `uv`, but we also provide instructions for `mamba` / `conda`.
+Again, we recommend `uv`, but we also provide instructions for `mamba` or `conda`.
 
 ### Setup with `uv`
 
@@ -155,7 +155,7 @@ uv run --no-project -m pip install wheel pyemma
 uv pip install -r env/requirements-analysis.txt
 ```
 
-### Setup with `mamba` / `conda`
+### Setup with `mamba` or `conda`
 
 ```bash
 mamba create -n jamun-analysis python=3.11 -y
