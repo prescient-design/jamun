@@ -40,7 +40,7 @@ source .venv/bin/activate
 
 Then, install all dependencies:
 ```bash
-uv pip install -r env/linux-cuda/requirements.txt
+uv pip install -r env/requirements.txt
 uv pip install -e .[dev]
 ```
 
@@ -54,7 +54,7 @@ mamba activate jamun-env
 
 Then, install all dependencies:
 ```bash
-pip install -r env/linux-cuda/requirements.txt
+pip install -r env/requirements.txt
 pip install -e .[dev]
 ```
 
@@ -152,7 +152,7 @@ uv venv .venv-analysis --python 3.11
 source .venv-analysis/bin/activate
 
 uv run --no-project -m pip install wheel pyemma
-uv pip install -r env/linux-cuda/requirements-analysis.txt 
+uv pip install -r env/requirements-analysis.txt
 ```
 
 ### Setup with `mamba` / `conda`
@@ -162,7 +162,7 @@ mamba create -n jamun-analysis python=3.11 -y
 mamba activate jamun-analysis
 
 mamba install pyemma ipykernel -y
-pip install -r env/linux-cuda/requirements-analysis.txt
+pip install -r env/requirements-analysis.txt
 ```
 
 ## Citation
