@@ -14,6 +14,9 @@ resolution-markers = [
     "python_full_version == '3.12.*' and sys_platform == 'linux'",
 ]
 
+[manifest]
+constraints = [{ name = "torch", specifier = "==2.5.1" }]
+
 [[package]]
 name = "aiobotocore"
 version = "2.15.2"

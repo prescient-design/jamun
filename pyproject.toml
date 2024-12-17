@@ -58,10 +58,9 @@ ignore = [
 ]
 
 [tool.uv]
-no-build-package = [
-  "mdtraj"
-]
+no-build-package = ["mdtraj"]
 cache-keys = [{file = "requirements.in"}, {file = "requirements-dev.in"}, {file = "requirements-analysis.in"}]
+constraint-dependencies = ["torch==2.5.1"]
 
 # see https://github.com/astral-sh/uv/issues/9079
 [tool.uv.sources]
