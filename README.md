@@ -34,14 +34,8 @@ We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation
 
 Create a virtual enviroment:
 ```bash
-uv venv --python 3.11
+uv sync
 source .venv/bin/activate
-```
-
-Then, install all dependencies:
-```bash
-uv pip install -r env/requirements.txt
-uv pip install -e .[dev]
 ```
 
 ### Setup with `mamba` or `conda`
