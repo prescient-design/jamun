@@ -9,4 +9,5 @@ uv export \
 uv pip compile \
     --verbose \
     -o env/requirements-analysis.txt \
+    -c env/constraints-analysis.txt \
     requirements-analysis.in

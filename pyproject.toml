@@ -61,7 +61,6 @@ ignore = [
 no-build-package = [
   "mdtraj"
 ]
-constraint-dependencies = ["torch==2.5.1", "numpy==1.23.4", "cython==0.22"] # FIXME numpy/cython pins from pyemma
 cache-keys = [{file = "requirements.in"}, {file = "requirements-dev.in"}, {file = "requirements-analysis.in"}]
 
 # see https://github.com/astral-sh/uv/issues/9079

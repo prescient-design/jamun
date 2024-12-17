@@ -14,13 +14,6 @@ resolution-markers = [
     "python_full_version == '3.12.*' and sys_platform == 'linux'",
 ]
 
-[manifest]
-constraints = [
-    { name = "cython", specifier = "==0.22" },
-    { name = "numpy", specifier = "==1.23.4" },
-    { name = "torch", specifier = "==2.5.1" },
-]
-
 [[package]]
 name = "aiobotocore"
 version = "2.15.2"
@@ -975,7 +968,7 @@ wheels = [
 
 [[package]]
 name = "jamun"
-version = "0.0.post1.dev34+g6b89a66.d20241217"
+version = "0.0.post1.dev36+g11ec4e8.d20241217"
 source = { editable = "." }
 dependencies = [
     { name = "ase" },
