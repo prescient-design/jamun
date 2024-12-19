@@ -71,7 +71,7 @@ This should be your directory structure:
     ├── 2AA-1-large/
     │   └── ...
 ```
-Now, you have to set the environment variable `JAMUN_DATA_PATH`:
+Now, set the environment variable `JAMUN_DATA_PATH`:
 ```bash
 export JAMUN_DATA_PATH=/path/to/data/root/
 ```
