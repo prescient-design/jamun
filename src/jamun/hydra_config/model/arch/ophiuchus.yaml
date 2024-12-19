@@ -3,7 +3,7 @@ _partial_: true
 irreps_out: "1x1e"
 irreps_hidden: "64x0e + 64x1e"
 irreps_sh: "1x0e + 1x1e"
-n_layers: 1
+n_layers: 4
 mul_factor: 64
 edge_attr_dim: 8
 atom_type_embedding_dim: 1

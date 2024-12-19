@@ -278,7 +278,7 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         aux["loss"] = loss
         for key in aux:
             aux[key] = aux[key].mean()
-            self.log(f"train/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=True)
+            self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
 
         return {
             "sigma": sigma,
@@ -295,7 +295,7 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         aux["loss"] = loss
         for key in aux:
             aux[key] = aux[key].mean()
-            self.log(f"val/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
+            self.log(f"val/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=True)
 
         return {
             "sigma": sigma,

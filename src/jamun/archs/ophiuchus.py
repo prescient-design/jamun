@@ -140,27 +140,27 @@ class InitialResidueEmbedding(nn.Module):
         residue_pad_length: int,
     ):
         super().__init__()
-        self.irreps_out = e3nn.o3.Irreps(irreps_out).regroup()
+        self.irreps_out = e3nn.o3.Irreps(irreps_out)
         self.use_residue_sequence_index = use_residue_sequence_index
         self.residue_pad_length = residue_pad_length
 
-        # self.atom_code_embedder = torch.nn.Embedding(
-        #     num_embeddings=len(utils.ResidueMetadata.ATOM_CODES) + 1,
-        #     embedding_dim=atom_code_embedding_dim,
-        # )
-        # self.atom_type_embedder = torch.nn.Embedding(
-        #     num_embeddings=len(utils.ResidueMetadata.ATOM_TYPES) + 1,
-        #     embedding_dim=atom_type_embedding_dim,
-        # )
+        self.atom_code_embedder = torch.nn.Embedding(
+            num_embeddings=len(utils.ResidueMetadata.ATOM_CODES) + 1,
+            embedding_dim=atom_code_embedding_dim,
+        )
+        self.atom_type_embedder = torch.nn.Embedding(
+            num_embeddings=len(utils.ResidueMetadata.ATOM_TYPES) + 1,
+            embedding_dim=atom_type_embedding_dim,
+        )
 
         self.residue_code_embedder = torch.nn.Embedding(
             num_embeddings=len(utils.ResidueMetadata.RESIDUE_CODES) + 1,
             embedding_dim=residue_code_embedding_dim,
         )
         irreps_embed = e3nn.o3.Irreps(
-            f"{residue_pad_length}x1o + "
-            # f"{residue_pad_length * atom_code_embedding_dim}x0e + "
-            # f"{residue_pad_length * atom_type_embedding_dim}x0e + "
+            f"{residue_pad_length}x1e + "
+            f"{residue_pad_length * atom_code_embedding_dim}x0e + "
+            f"{residue_pad_length * atom_type_embedding_dim}x0e + "
             f"{residue_code_embedding_dim}x0e"
         )
         
@@ -170,7 +170,7 @@ class InitialResidueEmbedding(nn.Module):
                 embedding_dim=residue_index_embedding_dim,
             )
             irreps_embed += e3nn.o3.Irreps(f"{residue_index_embedding_dim}x0e")
-        
+
         self.post_linear = e3nn.o3.Linear(
             irreps_in=irreps_embed,
             irreps_out=self.irreps_out,
@@ -200,42 +200,38 @@ class InitialResidueEmbedding(nn.Module):
             )
 
             residue_relative_coords = residue_data.residue_relative_coords[residue_mask]
-            residue_relative_coords = F.pad(residue_relative_coords, (0, 0, 0, self.residue_pad_length - residue_relative_coords.shape[0]))
+            residue_relative_coords = F.pad(residue_relative_coords, (0, 0, 0, self.residue_pad_length - num_atoms))
             residue_relative_coords = einops.rearrange(
                 residue_relative_coords, "... pad_length coords -> ... (pad_length coords)"
             )
             relative_coords.append(residue_relative_coords)
 
-            # residue_atom_codes = residue_data.atom_code_index[residue_mask]
-            # residue_atom_codes = F.pad(residue_atom_codes, (0, self.residue_pad_length - residue_atom_codes.shape[0]))
-            # atom_codes.append(residue_atom_codes)
+            residue_atom_codes = residue_data.atom_code_index[residue_mask]
+            residue_atom_codes = F.pad(residue_atom_codes, (0, self.residue_pad_length - residue_atom_codes.shape[0]))
+            atom_codes.append(residue_atom_codes)
 
-            # residue_atom_types = residue_data.atom_type_index[residue_mask]
-            # residue_atom_types = F.pad(residue_atom_types, (0, self.residue_pad_length - residue_atom_types.shape[0]))
-            # atom_types.append(residue_atom_types)
+            residue_atom_types = residue_data.atom_type_index[residue_mask]
+            residue_atom_types = F.pad(residue_atom_types, (0, self.residue_pad_length - residue_atom_types.shape[0]))
+            atom_types.append(residue_atom_types)
 
         mask = torch.stack(mask)
         relative_coords = torch.stack(relative_coords)
-        # atom_codes = torch.stack(atom_codes)
-        # atom_types = torch.stack(atom_types)
-
-        # print("base_coords.shape", base_coords.shape)
-        # print("relative_coords.shape", relative_coords.shape)
-        # print("residue_data.residue_code_index.shape", residue_data.residue_code_index.shape)
+        atom_codes = torch.stack(atom_codes)
+        atom_types = torch.stack(atom_types)
         
-        # atom_codes_embedded = self.atom_code_embedder(atom_codes)
-        # atom_codes_embedded *= mask.unsqueeze(-1)
-        # atom_codes_embedded = atom_codes_embedded.reshape(atom_codes_embedded.shape[0], -1)
+        atom_codes_embedded = self.atom_code_embedder(atom_codes)
+        atom_codes_embedded *= mask.unsqueeze(-1)
+        atom_codes_embedded = atom_codes_embedded.reshape(atom_codes_embedded.shape[0], -1)
 
-        # atom_types_embedded = self.atom_type_embedder(atom_types)
-        # atom_types_embedded *= mask.unsqueeze(-1)
-        # atom_types_embedded = atom_types_embedded.reshape(atom_types_embedded.shape[0], -1)
+        atom_types_embedded = self.atom_type_embedder(atom_types)
+        atom_types_embedded *= mask.unsqueeze(-1)
+        atom_types_embedded = atom_types_embedded.reshape(atom_types_embedded.shape[0], -1)
 
         residue_codes_embedded = self.residue_code_embedder(residue_data.residue_code_index)
         features = [
             relative_coords,
-            # atom_codes_embedded,
-            # atom_types_embedded,
+            atom_codes_embedded,
+            atom_types_embedded,
             residue_codes_embedded,
         ]
         if self.use_residue_sequence_index:
@@ -293,12 +289,11 @@ class SelfInteraction(nn.Module):
             irreps_in=self.irreps_in,
             mul_factor=mul_factor,
         )
-        self.layer_norm = LayerNorm(self.irreps_in + self.tensor_square.irreps_out)
         self.gate = Gate(
             irreps_out=self.irreps_in,
         )
         self.gate_linear = e3nn.o3.Linear(
-            irreps_in=self.layer_norm.irreps_out,
+            irreps_in=self.irreps_in + self.tensor_square.irreps_out,
             irreps_out=self.gate.irreps_in,
         )
         self.noise_scaling = NoiseConditionalScaling(
@@ -309,7 +304,6 @@ class SelfInteraction(nn.Module):
         features = residue_state.features
         features_squared = self.tensor_square(features)
         features = torch.concat([features, features_squared], dim=-1)
-        features = self.layer_norm(features)
         features = self.gate_linear(features)
         features = self.gate(features)
         features = self.noise_scaling(features, c_noise)
@@ -333,7 +327,6 @@ class SpatialConvolution(nn.Module):
             irreps_sh=irreps_sh,
             edge_attr_dim=edge_attr_dim,
         )
-        self.layer_norm = LayerNorm(self.conv.irreps_out)
         self.noise_scaling = NoiseConditionalScaling(
             self.conv.irreps_out,
         )
@@ -347,7 +340,6 @@ class SpatialConvolution(nn.Module):
         c_noise: torch.Tensor,
     ) -> ResidueState:
         features = self.conv(residue_state.features, residue_edge_index, residue_edge_attr, residue_edge_sh)
-        features = self.layer_norm(features)
         features = self.noise_scaling(features, c_noise)
         return residue_state._replace(features=features)
 
@@ -355,15 +347,15 @@ class SpatialConvolution(nn.Module):
 class OutputHead(nn.Module):
     """Output head for coordinates of all atoms."""
 
-    def __init__(self, irreps_in: e3nn.o3.Irreps, residue_pad_length: int):
+    def __init__(self, irreps_in: e3nn.o3.Irreps, irreps_out: e3nn.o3.Irreps, residue_pad_length: int):
         super().__init__()
         self.base_coords_linear = e3nn.o3.Linear(
             irreps_in=irreps_in,
-            irreps_out="1o",
+            irreps_out=irreps_out
         )
         self.relative_coords_linear = e3nn.o3.Linear(
             irreps_in=irreps_in,
-            irreps_out=f"{residue_pad_length}x1e",
+            irreps_out=residue_pad_length * irreps_out,
         )
 
     def forward(self, residue_state: ResidueState, residue_data: ResidueData) -> ResidueData:
@@ -507,6 +499,7 @@ class Ophiuchus(nn.Module):
 
         self.output_head = OutputHead(
             irreps_in=irreps_hidden,
+            irreps_out=self.irreps_out,
             residue_pad_length=self.MAX_ATOMS_IN_RESIDUE,
         )
 
