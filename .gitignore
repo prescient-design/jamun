@@ -3,10 +3,13 @@
 *.pyc
 *.egg-info
 *.out
+*.pdb
+*.ipynb
 .env
 .venv
 .ruff_cache
 .ipynb_checkpoints
+extras
 build
 outputs
 torch_compile_debug

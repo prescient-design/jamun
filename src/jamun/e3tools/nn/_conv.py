@@ -130,9 +130,7 @@ class Conv(torch.nn.Module):
         N = node_attr.shape[0]
 
         src, dst = edge_index
-
         out_ij = self.apply_per_edge(node_attr[src], edge_attr, edge_sh)
-
         out = scatter(out_ij, dst, dim=0, dim_size=N, reduce="mean")
 
         return out

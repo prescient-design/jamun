@@ -8,7 +8,7 @@ import numpy as np
 import mdtraj as md
 import pandas as pd
 
-from jamun import utils_md
+from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 
@@ -17,7 +17,7 @@ def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.Data
     # Suppress RDKit warnings.
     blocker = rdBase.BlockLogs()
 
-    mols = utils_md.to_rdkit_mols(trajectory)
+    mols = utils.to_rdkit_mols(trajectory)
     if len(mols) == 0:
         return None
 

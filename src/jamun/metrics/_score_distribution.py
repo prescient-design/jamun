@@ -5,7 +5,7 @@ import mdtraj as md
 import wandb
 import matplotlib.pyplot as plt
 
-from jamun import utils_md
+from jamun import utils
 from jamun.data import MDtrajDataset
 from jamun.metrics import TrajectoryMetric
 

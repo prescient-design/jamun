@@ -5,3 +5,4 @@ from ._layer_norm import LayerNorm
 from ._mlp import EquivariantMLP, ScalarMLP
 from ._tensor_product import ExperimentalTensorProduct, SeparableTensorProduct
 from ._transformer import Attention, MultiheadAttention, TransformerBlock
+from ._pack_unpack import MulToAxis, AxisToMul

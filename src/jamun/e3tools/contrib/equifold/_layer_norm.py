@@ -1,12 +1,14 @@
 import torch
+import e3nn.o3
 from e3nn.util.jit import compile_mode
 
 
 @compile_mode("script")
 class LayerNorm(torch.nn.Module):
-    def __init__(self, irreps):
+    """LayerNorm as in Equiformer."""
+
+    def __init__(self, irreps: e3nn.o3.Irreps):
         super().__init__()
-        """implement layernorm in the equiformer"""
         self.irreps = irreps
         self.gamma_s = torch.nn.Parameter(torch.ones(self.irreps[0]))
         self.beta_s = torch.nn.Parameter(torch.zeros(self.irreps[0]))

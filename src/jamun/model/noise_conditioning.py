@@ -29,11 +29,17 @@ class NoiseConditionalScaling(nn.Module):
 
     def __init__(self, irreps_in: e3nn.o3.Irreps, noise_input_dims: int = 1, num_layers: int = 1):
         super().__init__()
+
         self.scale_predictor = nn.Sequential()
         self.scale_predictor.append(nn.Linear(noise_input_dims, irreps_in.num_irreps))
         for _ in range(num_layers):
             self.scale_predictor.append(nn.SELU())
             self.scale_predictor.append(nn.Linear(irreps_in.num_irreps, irreps_in.num_irreps))
+
+        # Initialize such that the scaling is all ones.
+        with torch.no_grad():
+            self.scale_predictor[-1].weight.fill_(0.0)
+            self.scale_predictor[-1].bias.fill_(1.0)
 
         self.irreps_in = irreps_in
         self.irreps_out = irreps_in

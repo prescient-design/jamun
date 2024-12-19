@@ -3,21 +3,7 @@ import torch
 import torch.nn.functional as F
 from e3nn import o3
 
-
-def unpack_irreps(x: torch.Tensor, irreps: e3nn.o3.Irreps):
-    """
-    Given a packed irreps vector of dimension [..., irreps.dim]
-    yield tuples (mul, ir, field) where field has dimension [..., mul, 2*l+1]
-    for each irrep in irreps
-    """
-    assert x.shape[-1] == irreps.dim
-    ix = 0
-    for mul, ir in irreps:
-        field = x.narrow(-1, ix, mul * ir.dim).reshape(-1, mul, ir.dim)
-        ix += mul * ir.dim
-        yield mul, ir, field
-
-    assert ix == irreps.dim
+from jamun.e3tools.nn._pack_unpack import unpack_irreps
 
 
 class LayerNorm(torch.nn.Module):

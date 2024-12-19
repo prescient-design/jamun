@@ -5,6 +5,7 @@ import sys
 import traceback
 
 import dotenv
+
 dotenv.load_dotenv(".env", verbose=True)
 
 import hydra

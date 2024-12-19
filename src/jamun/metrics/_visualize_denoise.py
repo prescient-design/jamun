@@ -12,7 +12,7 @@ import torchmetrics
 from torchmetrics.utilities import dim_zero_cat
 import py3Dmol
 
-from jamun import utils_md
+from jamun import utils
 from jamun.data import MDtrajDataset
 from jamun.metrics._ramachandran import plot_ramachandran
 from jamun.metrics._utils import validate_sample
@@ -86,7 +86,7 @@ class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
     def coordinates_to_trajectories(self) -> dict[float, dict[str, md.Trajectory]]:
         return {
             sigma: {
-                key: utils_md.coordinates_to_trajectories(
+                key: utils.coordinates_to_trajectories(
                     einops.rearrange(dim_zero_cat(getattr(self, f"coordinates_{sigma}_{key}")), "b n x -> n b x"),
                     self.dataset.structure,
                 )[0]
@@ -116,7 +116,7 @@ class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
             xhat -= xhat.mean(dim=0, keepdim=True)
             x -= x.mean(dim=0, keepdim=True)
 
-            scaled_rmsd_per_sigma[sigma] = utils_md.scaled_rmsd(xhat, x, sigma)
+            scaled_rmsd_per_sigma[sigma] = utils.scaled_rmsd(xhat, x, sigma)
 
         return trajectories, scaled_rmsd_per_sigma
 
@@ -133,10 +133,10 @@ class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
             figs[sigma], _ = plot_ramachandran_grid(sigma_trajs, self.dataset.label())
 
             # Convert the trajectories to RDKit mols.
-            mols = {key: utils_md.to_rdkit_mols(traj[:5]) for key, traj in sigma_trajs.items()}
+            mols = {key: utils.to_rdkit_mols(traj[:5]) for key, traj in sigma_trajs.items()}
 
             # Plot with py3Dmol.
-            views[sigma] = utils_md.plot_molecules_with_py3Dmol(mols)
+            views[sigma] = utils.plot_molecules_with_py3Dmol(mols)
 
             # Log the HTML file to Weights & Biases.
             temp_html = tempfile.NamedTemporaryFile(suffix=".html").name

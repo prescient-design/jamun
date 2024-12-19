@@ -10,7 +10,7 @@ import torch_scatter
 import torch_geometric
 
 from jamun.utils import unsqueeze_trailing
-from jamun.utils_md import align_A_to_B_batched, mean_center
+from jamun.utils import align_A_to_B_batched, mean_center
 
 
 class e3NoiseConditionedScoreModel(pl.LightningModule):
@@ -55,11 +55,6 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
 
         self.average_squared_distance = average_squared_distance
         py_logger.info(f"Average squared distance = {self.average_squared_distance}")
-
-        # Remove the directory if it already exists
-        self.save_tensors = save_tensors
-        if self.save_tensors:
-            shutil.rmtree(os.pwd, ignore_errors=True)
 
         self.align_noisy_input_during_training = align_noisy_input_during_training
         if self.align_noisy_input_during_training:
@@ -111,7 +106,7 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
             noise = torch.randn_like(x.pos)
 
         y.pos = x.pos + sigma * noise
-        if torch.rand(1) < self.mirror_augmentation_rate:
+        if torch.rand(()) < self.mirror_augmentation_rate:
             y.pos = -y.pos
         return y
 
@@ -182,12 +177,9 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         y_scaled = y.clone()
         y_scaled.pos = y.pos * c_in
 
-        if self.save_tensors and self.global_step % 100 == 0:
-            torch.save(y_scaled.pos, f"{self.save_dir}/{save_prefix}_y_pos_scaled_{self.global_step}.pt")
-            torch.save(y_scaled.edge_index, f"{self.save_dir}/{save_prefix}_y_edges_{self.global_step}.pt")
-
         xhat = y.clone()
-        xhat.pos = c_skip * y.pos + c_out * self.g(y_scaled, c_noise, self.effective_radial_cutoff(sigma)).pos
+        g_pred = self.g(y_scaled, c_noise, self.effective_radial_cutoff(sigma))
+        xhat.pos = c_skip * y.pos + c_out * g_pred.pos
         return xhat
 
     def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor], save_prefix: str = ""):
@@ -199,9 +191,6 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         # Mean center the prediction.
         if self.mean_center_output:
             xhat = mean_center(xhat)
-
-        if self.save_tensors and self.global_step % 100 == 0:
-            torch.save(xhat.pos, f"{self.save_dir}/{save_prefix}_xhat_pos_{self.global_step}.pt")
 
         return xhat
 
@@ -217,15 +206,9 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
             if self.mean_center_input:
                 y = mean_center(y)
 
-            if self.save_tensors and self.global_step % 100 == 0:
-                torch.save(x.pos, f"{self.save_dir}/{save_prefix}_x_pos_{self.global_step}.pt")
-                torch.save(y.pos, f"{self.save_dir}/{save_prefix}_y_pos_{self.global_step}.pt")
-
             # Aligning each batch.
             if align_noisy_input:
                 y = align_A_to_B_batched(y, x)
-                if self.save_tensors and self.global_step % 100 == 0:
-                    torch.save(y.pos, f"{self.save_dir}/{save_prefix}_y_pos_aligned_{self.global_step}.pt")
 
         xhat = self.xhat(y, sigma, save_prefix=save_prefix)
         return xhat, y
@@ -291,16 +274,13 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
             batch, sigma, align_noisy_input=self.align_noisy_input_during_training, save_prefix="train"
         )
 
-        # Average the loss over all graphs.
-        loss = loss.mean()
-        self.log("train/loss", loss, prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
-
-        for key, value in aux.items():
-            value = value.mean()
-            self.log(f"train/{key}", value, prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
+        # Average the loss and other metrics over all graphs.
+        aux["loss"] = loss
+        for key in aux:
+            aux[key] = aux[key].mean()
+            self.log(f"train/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=True)
 
         return {
-            "loss": loss,
             "sigma": sigma,
             **aux,
         }
@@ -311,16 +291,13 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
             batch, sigma, align_noisy_input=self.align_noisy_input_during_training, save_prefix="val"
         )
 
-        # Average the loss over all graphs.
-        loss = loss.mean()
-        self.log("val/loss", loss, prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
-
-        for key, value in aux.items():
-            value = value.mean()
-            self.log(f"val/{key}", value, prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
+        # Average the loss and other metrics over all graphs.
+        aux["loss"] = loss
+        for key in aux:
+            aux[key] = aux[key].mean()
+            self.log(f"val/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
 
         return {
-            "loss": loss,
             "sigma": sigma,
             **aux,
         }

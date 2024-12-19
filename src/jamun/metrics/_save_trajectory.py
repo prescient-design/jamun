@@ -9,7 +9,7 @@ import mdtraj as md
 import wandb
 import matplotlib.pyplot as plt
 
-from jamun import utils_md
+from jamun import utils
 from jamun.data import MDtrajDataset
 from jamun.metrics import TrajectoryMetric
 
@@ -55,7 +55,7 @@ class SaveTrajectory(TrajectoryMetric):
     def on_sample_start(self):
         # Save the true trajectory as a PDB and DCD file.
         true_trajectory = self.dataset.trajectory
-        utils_md.save_pdb(true_trajectory, self.filename_true(0, "pdb"))
+        utils.save_pdb(true_trajectory, self.filename_true(0, "pdb"))
         true_trajectory.save_dcd(self.filename_true(0, "dcd"))
 
     def on_sample_end(self):
@@ -81,11 +81,11 @@ class SaveTrajectory(TrajectoryMetric):
         # Save the predict sample trajectory as a PDB and DCD file.
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
-            utils_md.save_pdb(pred_trajectory, self.filename_pred(trajectory_index, "pdb"))
+            utils.save_pdb(pred_trajectory, self.filename_pred(trajectory_index, "pdb"))
             pred_trajectory.save_dcd(self.filename_pred(trajectory_index, "dcd"))
 
         pred_trajectory_joined = self.joined_sample_trajectory()
-        utils_md.save_pdb(pred_trajectory_joined, self.filename_pred("joined", "pdb"))
+        utils.save_pdb(pred_trajectory_joined, self.filename_pred("joined", "pdb"))
         pred_trajectory_joined.save_dcd(self.filename_pred("joined", "dcd"))
 
         return {}

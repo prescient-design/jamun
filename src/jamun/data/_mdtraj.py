@@ -1,68 +1,15 @@
+from typing import Callable, Dict, Optional, Sequence
 import functools
 import logging
-import os
-from typing import Callable, Dict, Optional, Sequence
 
 import lightning.pytorch as pl
 import mdtraj as md
 import torch
-import torch.utils
 import torch.utils.data
 import torch_geometric
-import tqdm
 import numpy as np
 
-from jamun import utils_md, utils_residue
-
-ATOM_SYMBOLS = ["C", "O", "N", "F", "S"]
-ATOM_TYPES = ["C", "O", "N", "S", "CA", "CB"]
-RESIDUES = [
-    "ALA",
-    "ARG",
-    "ASN",
-    "ASP",
-    "CYS",
-    "GLU",
-    "GLN",
-    "GLY",
-    "HIS",
-    "ILE",
-    "LEU",
-    "LYS",
-    "MET",
-    "PHE",
-    "PRO",
-    "SER",
-    "THR",
-    "TRP",
-    "TYR",
-    "VAL",
-    "ACE",
-    "NME",
-]
-
-
-def encode_element(atom_symbol: str) -> int:
-    """Encode atom symbol as an integer."""
-    if atom_symbol in ATOM_SYMBOLS:
-        return ATOM_SYMBOLS.index(atom_symbol)
-    else:
-        return len(ATOM_SYMBOLS)
-
-
-def encode_atom(atom_type: str) -> int:
-    """Encode atom type as an integer."""
-    if atom_type in ATOM_TYPES:
-        return ATOM_TYPES.index(atom_type)
-    else:
-        return len(ATOM_TYPES)
-
-
-def encode_residue(residue_name: str) -> int:
-    if residue_name in RESIDUES:
-        return RESIDUES.index(residue_name)
-    else:
-        return len(RESIDUES)
+from jamun import utils
 
 
 class MDtrajDataset(torch.utils.data.Dataset):
@@ -85,7 +32,6 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.transform = transform
         self.loss_weight = loss_weight
         self.all_files = []
-        self.residue_information_transform = utils_residue.AddResidueInformation()
 
         if start_frame is None:
             start_frame = 0
@@ -115,19 +61,25 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.top_withH = self.traj.topology.subset(self.traj.topology.select("protein"))
         self.traj = self.traj.atom_slice(self.traj.topology.select("protein and not type H"))
 
-        node_features = [
-            [encode_element(x.element.symbol), encode_residue(x.residue.name), x.residue.index, encode_atom(x.name)]
-            for x in self.top.atoms
-        ]
-        x = torch.tensor(node_features, dtype=torch.int32)
+        # Encode the atom types, residue codes, and residue sequence indices.
+        atom_type_index = torch.tensor([utils.encode_atom_type(x.element.symbol) for x in self.top.atoms], dtype=torch.int32)
+        residue_code_index = torch.tensor([utils.encode_residue(x.residue.name) for x in self.top.atoms], dtype=torch.int32)
+        residue_sequence_index = torch.tensor([x.residue.index for x in self.top.atoms], dtype=torch.int32)
+        atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in self.top.atoms], dtype=torch.int32)
+
         bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in self.top.bonds], dtype=torch.long).T
         positions = torch.tensor(self.traj.xyz[0][self.traj.top.select("protein and not type H")], dtype=torch.float)
         loss_weight = torch.tensor([self.loss_weight], dtype=torch.float)
 
         # Create the graph.
         # Positions will be updated in __getitem__.
-        self.graph = torch_geometric.data.Data(
-            x=x,
+        self.graph = utils.DataWithResidueInformation(
+            atom_type_index=atom_type_index,
+            residue_code_index=residue_code_index,
+            residue_sequence_index=residue_sequence_index,
+            atom_code_index=atom_code_index,
+            residue_index=residue_sequence_index,
+            num_residues=residue_sequence_index.max().item() + 1,
             edge_index=bonds,
             pos=positions,
         )
@@ -135,7 +87,6 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.atom_names = [x.name for x in self.top.atoms]
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = loss_weight
-        self.graph = self.residue_information_transform(self.graph)
 
         py_logger.info(
             f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
@@ -161,7 +112,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
                         "%8.3f" % (positions[2] * 10),
                         1,
                         0,
-                        ATOM_SYMBOLS[self.graph.x[j][0]],
+                        utils.ResidueMetadata.ATOM_TYPES[self.graph.atom_type_index[j].item()],
                     )
                 )
 
@@ -206,6 +157,8 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
 
 class MDtrajDataModule(pl.LightningDataModule):
+    """PyTorch Lightning data module for MDtraj datasets."""
+
     def __init__(
         self,
         datasets: Dict[str, Sequence[MDtrajDataset]],

@@ -11,7 +11,7 @@ from lightning.fabric.strategies import Strategy
 import torch_geometric.data
 from tqdm.auto import tqdm
 
-from jamun import utils_md
+from jamun import utils
 
 
 class Sampler:
@@ -66,7 +66,7 @@ class Sampler:
         model.eval()
 
         init_graphs = init_graphs.to(self.fabric.device)
-        model_wrapped = utils_md.ModelSamplingWrapper(
+        model_wrapped = utils.ModelSamplingWrapper(
             model=model,
             init_graphs=init_graphs,
             sigma=batch_sampler.sigma,

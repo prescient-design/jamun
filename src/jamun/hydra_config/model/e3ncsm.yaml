@@ -4,16 +4,6 @@ defaults:
   - lr_scheduler_config: null
   - _self_
 
-arch:
-  hidden_layer_factory:
-    conv:
-      use_torch_compile: true
-      torch_compile_kwargs:
-        fullgraph: true
-        dynamic: true
-        options:
-          trace.enabled: false
-          trace.fx_graph: false
           
 max_radius: 1.0
 average_squared_distance: null

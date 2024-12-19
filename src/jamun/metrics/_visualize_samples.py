@@ -7,7 +7,7 @@ import logging
 import mdtraj as md
 import wandb
 
-from jamun import utils_md
+from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 
@@ -31,7 +31,7 @@ class MDSampleVisualizer(TrajectoryMetric):
 
     def plot(self, traj: md.Trajectory, label: str):
         # Convert the trajectories to RDKit mols.
-        all_mols = utils_md.to_rdkit_mols(traj)
+        all_mols = utils.to_rdkit_mols(traj)
 
         # Warn if there are not enough samples to plot.
         if len(all_mols) < self.num_samples_to_plot:
@@ -44,7 +44,7 @@ class MDSampleVisualizer(TrajectoryMetric):
             mols[row] = all_mols[row * self.num_rows : (row + 1) * self.num_rows]
 
         # Plot with py3Dmol.
-        view = utils_md.plot_molecules_with_py3Dmol(mols, show_keys=False)
+        view = utils.plot_molecules_with_py3Dmol(mols, show_keys=False)
 
         # Log the HTML file to Weights & Biases.
         temp_html = tempfile.NamedTemporaryFile(suffix=".html").name

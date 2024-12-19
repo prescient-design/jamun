@@ -4,7 +4,7 @@ import torch_geometric
 import e3nn
 
 
-from jamun import utils_residue
+from jamun import utils
 
 
 class CoarseGrainedBeadEmbedding(nn.Module):
@@ -56,7 +56,7 @@ class AtomEmbeddingWithResidueInformation(nn.Module):
             f"{atom_type_embedding_dim}x0e + {atom_type_embedding_dim}x0o + {residue_code_embedding_dim}x0e + {residue_index_embedding_dim}x0e"
         )
 
-    def forward(self, data: utils_residue.DataWithResidueInformation) -> torch.Tensor:
+    def forward(self, data: utils.DataWithResidueInformation) -> torch.Tensor:
         features = []
         atom_type_embedded = self.atom_type_embedding(data.atom_type_index)
         features.append(atom_type_embedded)

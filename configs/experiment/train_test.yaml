@@ -1,9 +1,9 @@
- # @package _global_
+# @package _global_
 
 defaults:
   - override /data: md.yaml
   - override /model: e3ncsm.yaml
-  - override /model/arch: e3conv.yaml
+  - override /model/arch: ophiuchus.yaml
   - override /callbacks:
     - default.yaml
     - model_checkpoint.yaml
@@ -14,9 +14,6 @@ model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
-  arch:
-    n_layers: 4
-    use_residue_sequence_index: false
   max_radius: 1.0
   optim:
     lr: 0.002
@@ -32,28 +29,31 @@ data:
     batch_size: 32
     datasets:
       train:
-        _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-        traj_pattern: "^(..)-traj-arrays.npz"
-        pdb_pattern: "^(..)-traj-state0.pdb"
-        subsample: 10
-        max_datasets: 1
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          xtcfiles:
+            - EI-traj-arrays.npz
+          pdbfile: EI-traj-state0.pdb
+          subsample: 0
+          label: GLU_ILE
 
       val:
-        _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/timewarp/2AA-1-large/val/"
-        traj_pattern: "^(..)-traj-arrays.npz"
-        pdb_pattern: "^(..)-traj-state0.pdb"
-        subsample: 100
-        max_datasets: 1
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/val/"
+          xtcfiles:
+            - KL-traj-arrays.npz
+          pdbfile: KL-traj-state0.pdb
+          subsample: 0
+          label: LYS_LEU
 
       test:
-        _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/timewarp/2AA-1-large/test/"
-        traj_pattern: "^(..)-traj-arrays.npz"
-        pdb_pattern: "^(..)-traj-state0.pdb"
-        subsample: 100
-        max_datasets: 1
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/test/"
+          xtcfiles:
+            - CK-traj-arrays.npz
+          pdbfile: CK-traj-state0.pdb
+          subsample: 0
+          label: CYS_LYS
 
 trainer:
   val_check_interval: 0.5

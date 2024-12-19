@@ -6,14 +6,14 @@ import logging
 import mdtraj as md
 import wandb
 
-from jamun import utils_md
+from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 
 def _save_pdb_to_wandb(trajectory: md.Trajectory, label: str):
     """Save a PDB of the trajectory as a wandb artifact."""
     temp_pdb = tempfile.NamedTemporaryFile(suffix=".pdb").name
-    utils_md.save_pdb(trajectory, temp_pdb)
+    utils.save_pdb(trajectory, temp_pdb)
 
     # Replace slashes in the label to avoid issues with wandb.
     label = label.replace("/", "_").replace("=", "-")
@@ -25,7 +25,7 @@ def _save_pdb_to_wandb(trajectory: md.Trajectory, label: str):
 
 def _log_trajectory_animation_to_wandb(trajectory: md.Trajectory, label: str):
     """Save an animation of the trajectory as a wandb artifact."""
-    view = utils_md.animate_trajectory_with_py3Dmol(trajectory)
+    view = utils.animate_trajectory_with_py3Dmol(trajectory)
     temp_html = tempfile.NamedTemporaryFile(suffix=".temp_html").name
     view.write_html(temp_html)
     with open(temp_html) as f:

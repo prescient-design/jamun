@@ -8,7 +8,7 @@ import numpy as np
 import mdtraj as md
 import pandas as pd
 
-from jamun import utils_md
+from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 

@@ -11,9 +11,9 @@ import torch
 import torch_geometric
 import torchmetrics
 
-from jamun import utils_md
+from jamun import utils
 from jamun.data import MDtrajDataset
-from jamun.utils_residue import ResidueMetadata
+from jamun.utils import ResidueMetadata
 
 
 def validate_sample(sample: torch_geometric.data.Batch, dataset: MDtrajDataset) -> None:
@@ -96,14 +96,14 @@ class TrajectoryMetric(torchmetrics.Metric):
         else:
             samples = self.samples
 
-        trajectories = utils_md.coordinates_to_trajectories(samples, self.dataset.structure)
+        trajectories = utils.coordinates_to_trajectories(samples, self.dataset.structure)
         return trajectories
 
     def joined_sample_trajectory(self) -> md.Trajectory:
         """Convert the samples to a single MD trajectory."""
         py_logger = logging.getLogger("jamun")
 
-        trajectories = utils_md.coordinates_to_trajectories(self.samples, self.dataset.structure)
+        trajectories = utils.coordinates_to_trajectories(self.samples, self.dataset.structure)
         py_logger.info(f"{self.dataset.label()}: Joining {len(trajectories)} trajectories into 1.")
 
         joined_trajectory = md.join(trajectories, check_topology=True)

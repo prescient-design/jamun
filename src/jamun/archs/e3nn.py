@@ -27,9 +27,8 @@ class E3NN(torch.nn.Module):
         atom_code_embedding_dim: int,
         residue_code_embedding_dim: int,
         residue_index_embedding_dim: int,
-        use_residue_sequence_index: bool = True,
-        test_equivariance: bool = False,
-        max_radius: float = 1.0,  # deprecated
+        use_residue_sequence_index: bool,
+        test_equivariance: bool = True,
     ):
         super().__init__()
 
@@ -97,7 +96,7 @@ class E3NN(torch.nn.Module):
             def forward_wrapped(pos: torch.Tensor):
                 data_copy = data.clone()
                 data_copy.pos = pos
-                return self.forward(data_copy, c_noise).pos
+                return self.forward(data_copy, c_noise, effective_radial_cutoff).pos
 
             self.test_equivariance = False
             e3nn.util.test.assert_equivariant(
