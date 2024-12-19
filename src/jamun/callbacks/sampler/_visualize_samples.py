@@ -6,7 +6,7 @@ from jamun.data import MDtrajDataset
 from jamun.callbacks.sampler import TrajectoryMetricCallback
 
 
-class MDSampleVisualizerCallback(TrajectoryMetricCallback):
+class SampleVisualizerCallback(TrajectoryMetricCallback):
     """A callback to visualize static samples from MD trajectories."""
 
     def __init__(

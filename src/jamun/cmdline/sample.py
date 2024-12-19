@@ -5,9 +5,6 @@ import sys
 import traceback
 
 import dotenv
-
-dotenv.load_dotenv(".env", verbose=True)
-
 import hydra
 import lightning.pytorch as pl
 import torch
@@ -21,7 +18,19 @@ from jamun.data import MDtrajDataset
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
 
+dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
+
+
+def create_dataset_from_pdb(pdb_path: str) -> Sequence[MDtrajDataset]:
+    """Create a dataset from a PDB file."""
+    dataset = MDtrajDataset(
+        root=".",
+        xtcfiles=[pdb_path],
+        pdbfile=pdb_path,
+        label=pdb_path,
+    )
+    return [dataset]
 
 
 def get_wandb_run_config(wandb_run_path: str) -> Dict[str, Any]:
@@ -135,8 +144,12 @@ def run(cfg):
 
     model = hydra.utils.instantiate(cfg.model)
     batch_sampler = hydra.utils.instantiate(cfg.batch_sampler)
-    init_datasets = hydra.utils.instantiate(cfg.init_datasets)
-
+    
+    if cfg.get("sample_pdb"):
+        init_datasets = create_dataset_from_pdb(cfg.sample_pdb)
+    else:
+        init_datasets = hydra.utils.instantiate(cfg.init_datasets)
+    
     init_graphs = get_initial_graphs(
         init_datasets,
         num_init_samples_per_dataset=cfg.num_init_samples_per_dataset,
@@ -155,8 +168,9 @@ def run(cfg):
         wandb_logger.finalize(status="finished")
 
 
-# see https://github.com/facebookresearch/hydra/issues/2664
-@hydra.main(version_base=None, config_path="../hydra_config", config_name="sample_MD")
+# Needed for submitit error output.
+# See https://github.com/facebookresearch/hydra/issues/2664
+@hydra.main(version_base=None, config_path="../hydra_config", config_name="sample")
 def main(cfg):
     try:
         run(cfg)

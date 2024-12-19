@@ -1,5 +1,5 @@
 sample_visualizer:
-  _target_: jamun.callbacks.sampler.MDSampleVisualizerCallback
+  _target_: jamun.callbacks.sampler.SampleVisualizerCallback
   datasets: ${init_datasets}
   num_samples_to_plot: 16
   subsample: 100

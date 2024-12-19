@@ -4,8 +4,8 @@ defaults:
   - lr_scheduler_config: null
   - _self_
 
-          
-max_radius: 1.0
+
+max_radius: null
 average_squared_distance: null
 add_fixed_noise: false
 add_fixed_ones: false

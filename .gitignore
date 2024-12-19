@@ -5,6 +5,7 @@
 *.out
 *.pdb
 *.ipynb
+*.log
 .env
 .venv
 .ruff_cache

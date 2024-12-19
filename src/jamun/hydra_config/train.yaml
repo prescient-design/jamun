@@ -14,7 +14,6 @@ float32_matmul_precision: "medium"
 
 task_name: "train"
 run_group: "dev"
-
 run_key: ${now:%Y-%m-%d}_${now:%H-%M-%S} # NOTE in DDP this must be set consistently across ranks
 
 python:

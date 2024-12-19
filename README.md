@@ -123,10 +123,22 @@ Alternatively, you can specify the `checkpoint_dir` of the trained model:
 jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
 ```
 
-If you want to sample conformations for a particular protein sequence:
-```bash
+If you want to sample conformations for a particular protein sequence, you need to first generate a `.pdb` file. We provide a script that uses [AmberTools](https://ambermd.org/AmberTools.php), specifically `tleap`.
 
+If you have a `.pdb` file already, then you can skip this step.
+
+### Generate `.pdb` file
+First, install AmberTools23 following [instructions here](https://ambermd.org/GetAmber.php#ambertools):
+```bash
+conda create --name AmberTools23
+conda activate AmberTools23
+conda install -c conda-forge ambertools=23 -y
 ```
+Then, run:
+```bash
+python scripts/prepare_pdb.py [SEQUENCE] --mode [MODE] --outputdir [OUTPUTDIR]
+```
+where `SEQUENCE` is your peptide sequence entered as a string of one-letter codes (eg. AGPF) or a string of hyphenated three letter codes (eg. ALA-GLY-PRO-PHE), `MODE` is either `capped` or `uncapped` to add capping ACE and NME residues, and `OUTPUTDIR` is where your generated `.pdb` file will be saved.
 
 We provide trained weights at ...
 

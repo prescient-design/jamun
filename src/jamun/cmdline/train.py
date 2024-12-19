@@ -1,11 +1,10 @@
 import logging
 import os
 import pathlib
+import sys
+import traceback
 
 import dotenv
-
-dotenv.load_dotenv(".env", verbose=True)
-
 import hydra
 import lightning
 import torch
@@ -19,6 +18,7 @@ from jamun.hydra.utils import format_resolver
 from jamun.utils import dist_log, compute_average_squared_distance_from_data
 
 
+dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
 
 
@@ -33,8 +33,7 @@ def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     return average_squared_distance
 
 
-@hydra.main(version_base=None, config_path="../hydra_config", config_name="train")
-def main(cfg):
+def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
 
     py_logger = logging.getLogger("jamun")
@@ -90,3 +89,14 @@ def main(cfg):
 
     if wandb_logger:
         wandb.finish()
+
+
+# Needed for submitit error output.
+# See https://github.com/facebookresearch/hydra/issues/2664
+@hydra.main(version_base=None, config_path="../hydra_config", config_name="train")
+def main(cfg):
+    try:
+        run(cfg)
+    except Exception:
+        traceback.print_exc(file=sys.stderr)
+        raise

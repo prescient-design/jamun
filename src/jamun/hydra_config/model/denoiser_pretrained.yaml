@@ -1,2 +1,2 @@
 _target_: jamun.model.Denoiser.load_from_checkpoint
-checkpoint_path: ???
+checkpoint_path: null

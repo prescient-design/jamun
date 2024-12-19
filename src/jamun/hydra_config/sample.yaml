@@ -10,14 +10,15 @@ defaults:
 
 float32_matmul_precision: "high"
 
-repeat_init_samples: 1 # enables generating multiple parallel changes per initial sample
+sample_pdb: null
+repeat_init_samples: 1
 num_batches: 1
 continue_chain: true
 
 seed: 42
 task_name: "sample"
 run_group: "dev"
-root_dir: "."
+run_key: ${now:%Y-%m-%d}_${now:%H-%M-%S} # NOTE in DDP this must be set consistently across ranks
 
 sampler:
   _target_: jamun.sampling.Sampler

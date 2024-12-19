@@ -11,7 +11,7 @@ num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
-wandb_train_run_path: null
+wandb_train_run_path: prescient-design/jamun/zm33y5hd
 checkpoint_type: best_so_far
 sigma: 0.04
 m: 1
@@ -30,56 +30,6 @@ init_datasets:
 sampler:
   _target_: jamun.sampling.Sampler
   devices: 1
-
-batch_sampler:
-  sigma: ${sigma}
-  mcmc:
-    delta: ${delta}
-    friction: ${friction}
-    steps: ${num_sampling_steps_per_batch}
-    save_trajectory: true
-    cpu_offload: true
-    verbose: true
-    inverse_temperature: ${inverse_temperature}
-    score_fn_clip: ${score_fn_clip}
-  _target_: jamun.sampling.walkjump.SingleMeasurementSampler
-
-callbacks:
-  ramachandran_plot:
-    _target_: jamun.callbacks.sampler.RamachandranPlotMetricsCallback
-    datasets: ${init_datasets}
-
-  trajectory_visualizer:
-    _target_: jamun.callbacks.sampler.TrajectoryVisualizerCallback
-    datasets: ${init_datasets}
-    num_frames_to_animate: 20
-  
-  sample_visualizer:
-    _target_: jamun.callbacks.sampler.MDSampleVisualizerCallback
-    datasets: ${init_datasets}
-    num_samples_to_plot: 16
-    subsample: 100
-
-  score_distribution:
-    _target_: jamun.callbacks.sampler.ScoreDistributionCallback
-    datasets: ${init_datasets}
-
-  save_trajectory:
-    _target_: jamun.callbacks.sampler.SaveTrajectoryCallback
-    datasets: ${init_datasets}
-    output_dir: ${paths.run_path}/saved/
-  
-  posebusters:
-    _target_: jamun.callbacks.sampler.PoseBustersCallback
-    datasets: ${init_datasets}
-    num_molecules_per_trajectory: 1000
-
-  chemical_validity:
-    _target_: jamun.callbacks.sampler.ChemicalValidityMetricsCallback
-    datasets: ${init_datasets}
-    bond_length_tolerance: 0.2
-    volume_exclusion_tolerance: 0.1
-    num_molecules_per_trajectory: 1000
 
 logger:
   wandb:

@@ -1,6 +1,7 @@
 from typing import Callable, Dict, Optional, Sequence
 import functools
 import logging
+import os
 
 import lightning.pytorch as pl
 import mdtraj as md
@@ -94,7 +95,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.save_modified_pdb()
 
     def save_modified_pdb(self):
-        filename = self.label() + "modified.pdb"
+        os.makedirs("pdbs", exist_ok=True)
+        filename = f"pdbs/{self.label()}-modified.pdb"
+        
         with open(filename, "w") as f:
             f.write("MODEL        0\n")
 

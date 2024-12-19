@@ -4,6 +4,6 @@ defaults:
   - _self_
 
 _target_: jamun.sampling.walkjump.MultiMeasurementOATSampler
-sigma: 1.0
+sigma: ${sigma}
 m: 4
 warm_start: true
