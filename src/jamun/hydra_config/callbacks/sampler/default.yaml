@@ -1,8 +1,9 @@
 defaults:
-  - chemical_validity.yaml
-  - ramachandran.yaml
-  - trajectory_visualizer.yaml
-  - sample_visualizer.yaml
-  - posebusters.yaml
-  - score_distribution.yaml
+  - sampler/chemical_validity.yaml
+  - sampler/ramachandran.yaml
+  - sampler/trajectory_visualizer.yaml
+  - sampler/sample_visualizer.yaml
+  - sampler/posebusters.yaml
+  - sampler/score_distribution.yaml
+  - sampler/save_trajectory.yaml
   - _self_

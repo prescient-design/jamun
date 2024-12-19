@@ -3,6 +3,6 @@ from ._ramachandran import RamachandranPlotMetricsCallback
 from ._chemical_validity import ChemicalValidityMetricsCallback
 from ._trajectory_animation import TrajectoryVisualizerCallback
 from ._visualize_samples import SampleVisualizerCallback
-from ._plot_score_distribution import ScoreDistributionCallback
+from ._score_distribution import ScoreDistributionCallback
 from ._posebusters import PoseBustersCallback
 from ._save_trajectory import SaveTrajectoryCallback

@@ -22,17 +22,6 @@ dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
 
 
-def create_dataset_from_pdb(pdb_path: str) -> Sequence[MDtrajDataset]:
-    """Create a dataset from a PDB file."""
-    dataset = MDtrajDataset(
-        root=".",
-        xtcfiles=[pdb_path],
-        pdbfile=pdb_path,
-        label=pdb_path,
-    )
-    return [dataset]
-
-
 def get_wandb_run_config(wandb_run_path: str) -> Dict[str, Any]:
     """Get the wandb run config."""
     run = wandb.Api().run(wandb_run_path)
@@ -117,13 +106,6 @@ def run(cfg):
     if rank_zero_only.rank == 0 and wandb_logger:
         wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
 
-    callbacks = instantiate_dict_cfg(cfg.get("callbacks"), verbose=(rank_zero_only.rank == 0))
-    sampler = hydra.utils.instantiate(cfg.sampler, callbacks=callbacks, loggers=loggers)
-
-    if seed := cfg.get("seed"):
-        # During sampling, we want ranks to generate different chains.
-        pl.seed_everything(seed + sampler.fabric.global_rank)
-
     # Load the checkpoint either given the wandb run path or the checkpoint path.
     wandb_train_run_path = cfg.get("wandb_train_run_path")
     checkpoint_dir = cfg.get("checkpoint_dir")
@@ -141,20 +123,22 @@ def run(cfg):
     checkpoint_path = load_checkpoint(checkpoint_dir, cfg.checkpoint_type)
     py_logger.info(f"Loading checkpoint_path: {checkpoint_path}")
     cfg.model.checkpoint_path = checkpoint_path
-
     model = hydra.utils.instantiate(cfg.model)
-    batch_sampler = hydra.utils.instantiate(cfg.batch_sampler)
     
-    if cfg.get("sample_pdb"):
-        init_datasets = create_dataset_from_pdb(cfg.sample_pdb)
-    else:
-        init_datasets = hydra.utils.instantiate(cfg.init_datasets)
-    
+    init_datasets = hydra.utils.instantiate(cfg.init_datasets)    
     init_graphs = get_initial_graphs(
         init_datasets,
         num_init_samples_per_dataset=cfg.num_init_samples_per_dataset,
         repeat=cfg.repeat_init_samples,
     )
+
+    callbacks = instantiate_dict_cfg(cfg.get("callbacks"), verbose=(rank_zero_only.rank == 0))
+    sampler = hydra.utils.instantiate(cfg.sampler, callbacks=callbacks, loggers=loggers)
+    batch_sampler = hydra.utils.instantiate(cfg.batch_sampler)
+
+    if seed := cfg.get("seed"):
+        # During sampling, we want ranks to generate different chains.
+        pl.seed_everything(seed + sampler.fabric.global_rank)
 
     sampler.sample(
         model=model,

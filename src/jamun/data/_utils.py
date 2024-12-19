@@ -92,7 +92,7 @@ def parse_datasets_from_directory(
         py_logger.info(f"Creating dataset for {code} with trajectories {traj_files[code]} and PDB {pdb_files[code]}.")
         dataset = MDtrajDataset(
             root,
-            xtcfiles=traj_files[code],
+            trajfiles=traj_files[code],
             pdbfile=pdb_files[code],
             label=code,
             **dataset_kwargs,
@@ -107,3 +107,14 @@ def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> List[MD
     for datasets_list in datasets:
         all_datasets.extend(datasets_list)
     return all_datasets
+
+
+def create_dataset_from_pdb(pdbfile: str) -> Sequence[MDtrajDataset]:
+    """Create a dataset from a PDB file."""
+    dataset = MDtrajDataset(
+        root="",
+        trajfiles=[pdbfile],
+        pdbfile=pdbfile,
+        label=os.path.basename(pdbfile).split(".")[0],
+    )
+    return [dataset]

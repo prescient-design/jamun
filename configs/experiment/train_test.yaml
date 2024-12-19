@@ -31,7 +31,7 @@ data:
       train:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-          xtcfiles:
+          trajfiles:
             - EI-traj-arrays.npz
           pdbfile: EI-traj-state0.pdb
           subsample: 0
@@ -40,7 +40,7 @@ data:
       val:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/val/"
-          xtcfiles:
+          trajfiles:
             - KL-traj-arrays.npz
           pdbfile: KL-traj-state0.pdb
           subsample: 0
@@ -49,7 +49,7 @@ data:
       test:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/test/"
-          xtcfiles:
+          trajfiles:
             - CK-traj-arrays.npz
           pdbfile: CK-traj-state0.pdb
           subsample: 0

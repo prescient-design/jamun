@@ -11,7 +11,8 @@ num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
-wandb_train_run_path: prescient-design/jamun/zm33y5hd
+# wandb_train_run_path: prescient-design/jamun/zm33y5hd
+wandb_train_run_path: prescient-design/jamun/zzt8s3rc
 checkpoint_type: best_so_far
 sigma: 0.04
 m: 1

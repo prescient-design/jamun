@@ -1,17 +1,15 @@
 # @package _global_
 
-defaults:
-  - override /callbacks:
-    - default.yaml
-  - _self_
-
 num_sampling_steps_per_batch: 1000
 num_batches: 100
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
+# wandb_train_run_path: prescient-design/jamun/zzt8s3rc
 wandb_train_run_path: prescient-design/jamun/zzt8s3rc
+
+init_pdb: /homefs/home/daigavaa/jamun/pdbs/capped_ALA_MET_GLU_TYR_ALA.pdb
 checkpoint_type: best_so_far
 sigma: 0.04
 m: 1
@@ -20,12 +18,9 @@ friction: 1.0
 inverse_temperature: 1.0
 score_fn_clip: 100.0
 
-init_datasets:
-  _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/timewarp/2AA-1-large/test/"
-  traj_pattern: "^(..)-traj-arrays.npz"
-  pdb_pattern: "^(..)-traj-state0.pdb"
-  subsample: 1
+init_datasets: 
+  _target_: jamun.data.create_dataset_from_pdb
+  pdbfile: ${init_pdb}
 
 sampler:
   _target_: jamun.sampling.Sampler

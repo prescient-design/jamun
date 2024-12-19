@@ -1,3 +1,0 @@
-viz:
-  _target_: jamun.callbacks.VisualizeDenoise
-  sigma_list: [1.0, 0.5, 0.25, 0.1, 0.05]

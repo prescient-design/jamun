@@ -19,7 +19,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         root: str,
-        xtcfiles: Sequence[str],
+        trajfiles: Sequence[str],
         pdbfile: str,
         label: str,
         num_frames: Optional[int] = None,
@@ -38,16 +38,17 @@ class MDtrajDataset(torch.utils.data.Dataset):
             start_frame = 0
 
         py_logger = logging.getLogger("jamun")
-        if xtcfiles[0].endswith(".npz") or xtcfiles[0].endswith(".npy"):
-            self.traj = md.load(self.root + pdbfile)
-            self.traj.xyz = np.vstack([np.load(self.root + filename)["positions"] for filename in xtcfiles])
+        pdbfile = os.path.join(self.root, pdbfile)
+        if trajfiles[0].endswith(".npz") or trajfiles[0].endswith(".npy"):
+            self.traj = md.load(pdbfile)
+            self.traj.xyz = np.vstack([np.load(os.path.join(self.root, filename))["positions"] for filename in trajfiles])
 
             assert self.traj.xyz.shape[1] == self.traj.n_atoms
             assert self.traj.xyz.shape[2] == 3
 
             self.traj.time = np.arange(self.traj.n_frames)
         else:
-            self.traj = md.load([self.root + x for x in xtcfiles], top=self.root + pdbfile)
+            self.traj = md.load([os.path.join(self.root, filename) for filename in trajfiles], top=pdbfile)
 
         if num_frames == -1 or num_frames is None:
             num_frames = self.traj.n_frames - start_frame
