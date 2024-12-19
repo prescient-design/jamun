@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - model: e3ncsm_pretrained
+  - model: denoiser_pretrained
   - batch_sampler: single_measurement_sampler
   - logger: default
   - paths: default

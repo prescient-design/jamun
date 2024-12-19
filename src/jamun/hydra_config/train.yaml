@@ -1,7 +1,7 @@
 defaults:
   - _self_
   - data: md
-  - model: e3ncsm
+  - model: denoiser
   - trainer: default
   - logger: default
   - callbacks: default

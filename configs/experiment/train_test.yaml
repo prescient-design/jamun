@@ -2,8 +2,7 @@
 
 defaults:
   - override /data: md.yaml
-  - override /model: e3ncsm.yaml
-  - override /model/arch: ophiuchus.yaml
+  - override /model/arch: e3conv.yaml
   - override /callbacks:
     - default.yaml
     - model_checkpoint.yaml

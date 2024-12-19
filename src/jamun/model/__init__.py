@@ -1,1 +1,1 @@
-from .e3ncsm import e3NoiseConditionedScoreModel
+from .denoiser import Denoiser

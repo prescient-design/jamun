@@ -1,4 +1,4 @@
-_target_: jamun.archs.E3NN
+_target_: jamun.model.arch.E3Conv
 _partial_: true
 irreps_out: "1x1e"
 irreps_hidden: "120x0e + 32x1e"

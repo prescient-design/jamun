@@ -10,8 +10,8 @@ from jamun.model.skip_connection import NoiseConditionalSkipConnection
 from jamun.model.noise_conditioning import NoiseConditionalScaling
 
 
-class E3NN(torch.nn.Module):
-    """A simple E(3)-equivariant neural network, similar to NequIP."""
+class E3Conv(torch.nn.Module):
+    """A simple E(3)-equivariant convolutional neural network, similar to NequIP."""
 
     def __init__(
         self,

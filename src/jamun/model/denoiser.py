@@ -13,7 +13,9 @@ from jamun.utils import unsqueeze_trailing
 from jamun.utils import align_A_to_B_batched, mean_center
 
 
-class e3NoiseConditionedScoreModel(pl.LightningModule):
+class Denoiser(pl.LightningModule):
+    """The main denoiser model."""
+
     def __init__(
         self,
         arch: Callable[..., torch.nn.Module],
@@ -23,7 +25,6 @@ class e3NoiseConditionedScoreModel(pl.LightningModule):
         average_squared_distance: float,
         add_fixed_noise: bool,
         add_fixed_ones: bool,
-        save_tensors: bool,
         align_noisy_input_during_training: bool,
         align_noisy_input_during_evaluation: bool,
         mean_center_input: bool,

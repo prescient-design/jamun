@@ -1,2 +1,2 @@
-from .e3nn import E3NN
+from .e3conv import E3Conv
 from .ophiuchus import Ophiuchus

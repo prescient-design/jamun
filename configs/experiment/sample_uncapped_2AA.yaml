@@ -31,10 +31,6 @@ sampler:
   _target_: jamun.sampling.Sampler
   devices: 1
 
-model:
-  _target_: jamun.model.e3NoiseConditionedScoreModel.load_from_checkpoint
-  checkpoint_path: null
-
 batch_sampler:
   sigma: ${sigma}
   mcmc:

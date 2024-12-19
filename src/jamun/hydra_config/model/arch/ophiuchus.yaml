@@ -1,4 +1,4 @@
-_target_: jamun.archs.Ophiuchus
+_target_: jamun.model.arch.Ophiuchus
 _partial_: true
 irreps_out: "1x1e"
 irreps_hidden: "64x0e + 64x1e"
