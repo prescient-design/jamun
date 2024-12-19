@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node 2
 #SBATCH --gpus-per-node 2
 #SBATCH --cpus-per-task 8
-#SBATCH --time 72:00:00
+#SBATCH --time 7-0
 
 # if using mamba or conda, comment the following:
 source .venv/bin/activate
@@ -31,7 +31,7 @@ nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
   jamun_train --config-dir=/homefs/home/daigavaa/jamun/configs \
-    experiment=train_uncapped_4AA.yaml \
+    experiment=train_uncapped_2AA.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
     ++trainer.limit_train_batches=1.0 \

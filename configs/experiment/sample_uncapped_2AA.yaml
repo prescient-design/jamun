@@ -13,9 +13,9 @@ continue_chain: true
 
 wandb_train_run_path: null
 checkpoint_type: best_so_far
-sigma: 0.06
+sigma: 0.04
 m: 1
-delta: 0.06
+delta: 0.04
 friction: 1.0
 inverse_temperature: 1.0
 score_fn_clip: 100.0
