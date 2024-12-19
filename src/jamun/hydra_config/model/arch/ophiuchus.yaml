@@ -8,9 +8,9 @@ mul_factor: 64
 edge_attr_dim: 8
 atom_type_embedding_dim: 1
 atom_code_embedding_dim: 1
-residue_code_embedding_dim: 8
+residue_code_embedding_dim: 32
 residue_index_embedding_dim: 8
-use_residue_sequence_index: False
+use_residue_sequence_index: false
 conv_factory:
   _target_: jamun.e3tools.nn.ConvBlock
   _partial_: true

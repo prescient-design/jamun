@@ -13,10 +13,11 @@ model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
+  arch:
+    n_layers: 1
   max_radius: 1.0
   optim:
     lr: 0.002
-  save_tensors: false
 
 
 callbacks:
