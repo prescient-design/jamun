@@ -32,7 +32,7 @@ We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation
 
 ### Setup with `uv`
 
-Create a virtual enviroment:
+Create a virtual enviroment, and install all dependencies:
 ```bash
 uv sync
 source .venv/bin/activate
