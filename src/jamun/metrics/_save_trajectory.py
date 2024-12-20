@@ -14,8 +14,8 @@ class SaveTrajectory(TrajectoryMetric):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        output_dir = os.path.join("sampler", self.dataset.label())
 
-        output_dir = os.path.join("saved", self.dataset.label())
         py_logger = logging.getLogger("jamun")
         py_logger.info(f"Saving predicted and true samples to {os.path.abspath(output_dir)}.")
 
