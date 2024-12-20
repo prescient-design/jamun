@@ -3,7 +3,6 @@ defaults:
   - sampler/ramachandran.yaml
   - sampler/trajectory_visualizer.yaml
   - sampler/sample_visualizer.yaml
-  - sampler/posebusters.yaml
   - sampler/score_distribution.yaml
   - sampler/save_trajectory.yaml
   - _self_
