@@ -1,16 +1,10 @@
+import os
 from typing import Dict, Union
 
-import logging
-import tempfile
-import os
-
 import numpy as np
-import mdtraj as md
 import wandb
-import matplotlib.pyplot as plt
 
 from jamun import utils
-from jamun.data import MDtrajDataset
 from jamun.metrics import TrajectoryMetric
 
 

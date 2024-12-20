@@ -1,17 +1,17 @@
-from typing import Callable, Optional, Tuple, NamedTuple
+from typing import Callable, NamedTuple, Optional, Tuple
 
 import e3nn
 import e3nn.util.test
 import einops
 import torch
-from torch import nn
 import torch.nn.functional as F
 import torch_geometric
+from torch import nn
 
-from jamun.e3tools.nn import Gate, LayerNorm, MulToAxis, AxisToMul
-from jamun.model.skip_connection import NoiseConditionalSkipConnection
-from jamun.model.noise_conditioning import NoiseConditionalScaling
 from jamun import utils
+from jamun.e3tools.nn import AxisToMul, Gate, MulToAxis
+from jamun.model.noise_conditioning import NoiseConditionalScaling
+from jamun.model.skip_connection import NoiseConditionalSkipConnection
 
 
 def dprint(*args):
@@ -101,7 +101,7 @@ class TestEquivariance(nn.Module):
         if self.test_equivariance:
             def forward_wrapped(x):
                 return self.module(x)
-            
+
             self.test_equivariance = False
             e3nn.util.test.equivariance_error(
                       forward_wrapped,
@@ -163,7 +163,7 @@ class InitialResidueEmbedding(nn.Module):
             f"{residue_pad_length * atom_type_embedding_dim}x0e + "
             f"{residue_code_embedding_dim}x0e"
         )
-        
+
         if use_residue_sequence_index:
             self.residue_index_embedder = torch.nn.Embedding(
                 num_embeddings=max_sequence_length,
@@ -189,7 +189,7 @@ class InitialResidueEmbedding(nn.Module):
         atom_types = []
         for index in residue_data.residue_index:
             assert residue_data.residue_relative_coords.shape[0] == residue_data.atom_code_index.shape[0] == residue_data.atom_type_index.shape[0]
-            
+
             residue_mask = (residue_data.residue_index_atomwise == index)
             num_atoms = (residue_mask).sum()
             mask.append(
@@ -218,7 +218,7 @@ class InitialResidueEmbedding(nn.Module):
         relative_coords = torch.stack(relative_coords)
         atom_codes = torch.stack(atom_codes)
         atom_types = torch.stack(atom_types)
-        
+
         atom_codes_embedded = self.atom_code_embedder(atom_codes)
         atom_codes_embedded *= mask.unsqueeze(-1)
         atom_codes_embedded = atom_codes_embedded.reshape(atom_codes_embedded.shape[0], -1)
@@ -255,7 +255,7 @@ class TensorSquare(nn.Module):
 
     def __init__(self, irreps_in: e3nn.o3.Irreps, mul_factor: int):
         super().__init__()
-        
+
         self.irreps_in = e3nn.o3.Irreps(irreps_in)
         self.mul_to_axis = MulToAxis(
             irreps_in=irreps_in,
@@ -271,7 +271,7 @@ class TensorSquare(nn.Module):
             factor=mul_factor,
         )
         self.irreps_out = self.axis_to_mul.irreps_out
-    
+
     def forward(self, x):
         x = self.mul_to_axis(x)
         x_sq = self.tensor_square(x)
@@ -545,7 +545,7 @@ class Ophiuchus(nn.Module):
         # Convert data to residue-based representation.
         residue_data = to_residue_data(data)
 
-        # Compute residue edges and corresponding attributes.        
+        # Compute residue edges and corresponding attributes.
         residue_edge_index = torch_geometric.nn.radius_graph(
             residue_data.residue_base_coords, effective_radial_cutoff, batch=residue_data.residue_batch
         )

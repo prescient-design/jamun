@@ -6,7 +6,7 @@ from .mdtraj import coordinates_to_trajectories, save_pdb
 from .mean_center import mean_center
 from .plot import animate_trajectory_with_py3Dmol, plot_molecules_with_py3Dmol
 from .rdkit import to_rdkit_mols
-from .residue_metadata import encode_atom_code, encode_atom_type, encode_residue, ResidueMetadata
+from .residue_metadata import ResidueMetadata, encode_atom_code, encode_atom_type, encode_residue
 from .sampling_wrapper import ModelSamplingWrapper
 from .scaled_rmsd import scaled_rmsd
 from .unsqueeze_trailing import unsqueeze_trailing

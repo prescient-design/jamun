@@ -7,6 +7,6 @@ cpu_offload: true
 verbose: true
 inverse_temperature: ${inverse_temperature}
 score_fn_clip: ${score_fn_clip}
-M: 1.0
+M: ${M}
 burn_in_steps: 0
 v_init: "zero"

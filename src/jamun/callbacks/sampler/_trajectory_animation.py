@@ -1,10 +1,9 @@
-from typing import Sequence
 import logging
+from typing import Sequence
 
-
-from jamun.metrics import TrajectoryVisualizer
-from jamun.data import MDtrajDataset
 from jamun.callbacks.sampler import TrajectoryMetricCallback
+from jamun.data import MDtrajDataset
+from jamun.metrics import TrajectoryVisualizer
 
 
 class TrajectoryVisualizerCallback(TrajectoryMetricCallback):

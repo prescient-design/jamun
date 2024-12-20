@@ -1,5 +1,5 @@
 posebusters:
   _target_: jamun.callbacks.sampler.PoseBustersCallback
   datasets: ${init_datasets}
-  num_molecules_per_trajectory: 1000
+  num_molecules_per_trajectory: 100
 

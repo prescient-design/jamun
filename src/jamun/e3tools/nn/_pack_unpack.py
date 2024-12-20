@@ -1,6 +1,7 @@
-from typing import Sequence, Tuple, Iterator
-import torch
+from typing import Iterator, Tuple
+
 import e3nn.o3
+import torch
 
 
 def unpack_irreps(x: torch.Tensor, irreps: e3nn.o3.Irreps) -> Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]]:
@@ -47,7 +48,7 @@ def pack_irreps(unpacked_tuples: Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor
 
 def mul_to_axis(x: torch.Tensor, irreps: e3nn.o3.Irreps, *, factor: int) -> Tuple[torch.Tensor, e3nn.o3.Irreps]:
     """Adds a new axis by factoring out irreps.
-    
+
     If x has shape [..., irreps.dim], the output will have shape [..., factor, irreps.dim // factor].
     """
     x_factored = pack_irreps(factor_tuples(unpack_irreps(x, irreps), factor))
@@ -57,7 +58,7 @@ def mul_to_axis(x: torch.Tensor, irreps: e3nn.o3.Irreps, *, factor: int) -> Tupl
 
 def axis_to_mul(x: torch.Tensor, irreps: e3nn.o3.Irreps) -> Tuple[torch.Tensor, e3nn.o3.Irreps]:
     """Collapses the second-last axis by flattening the irreps.
-    
+
     If x has shape [..., factor, irreps.dim // factor], the output will have shape [..., irreps.dim].
     """
     factor = x.shape[-2]

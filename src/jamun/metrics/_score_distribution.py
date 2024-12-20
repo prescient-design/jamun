@@ -1,11 +1,9 @@
 from typing import Dict
 
-import numpy as np
-import mdtraj as md
-import wandb
 import matplotlib.pyplot as plt
+import numpy as np
+import wandb
 
-from jamun import utils
 from jamun.data import MDtrajDataset
 from jamun.metrics import TrajectoryMetric
 

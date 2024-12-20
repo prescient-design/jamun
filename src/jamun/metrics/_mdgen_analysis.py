@@ -5,16 +5,13 @@ All rights reserved to the original authors.
 import json
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pyemma
-from tqdm import tqdm
-
-import pyemma, tqdm, os, pickle
+import tqdm
 from scipy.spatial.distance import jensenshannon
-from multiprocessing import Pool
-import numpy as np
-import matplotlib.pyplot as plt
-from statsmodels.tsa.stattools import acovf, acf
+from statsmodels.tsa.stattools import acovf
+from tqdm import tqdm
 
 PLOT_COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 

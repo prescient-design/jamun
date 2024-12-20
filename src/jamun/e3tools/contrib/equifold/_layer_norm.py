@@ -1,5 +1,5 @@
-import torch
 import e3nn.o3
+import torch
 from e3nn.util.jit import compile_mode
 
 

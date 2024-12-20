@@ -1,8 +1,8 @@
-from typing import Dict, Optional
+import logging
+import math
 import os
 import tempfile
-import math
-import logging
+from typing import Dict, Optional
 
 import mdtraj as md
 import wandb
@@ -35,8 +35,8 @@ class MDSampleVisualizer(TrajectoryMetric):
 
         # Warn if there are not enough samples to plot.
         if len(all_mols) < self.num_samples_to_plot:
-            logger = logging.getLogger("jamun")
-            logger.warning(f"Only {len(all_mols)} samples available for visualization.")
+            py_logger = logging.getLogger("visualize_samples")
+            py_logger.warning(f"Only {len(all_mols)} samples available for visualization: {traj} after subsampling by {self.subsample}.")
 
         # Create a dictionary of the RDKit mols, indexed by row.
         mols = {}
@@ -56,8 +56,8 @@ class MDSampleVisualizer(TrajectoryMetric):
     def compute(self) -> Dict[str, float]:
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
-            logger = logging.getLogger("jamun")
-            logger.info(
+            py_logger = logging.getLogger("visualize_samples")
+            py_logger.info(
                 f"Visualizing trajectory {trajectory_index} ({pred_trajectory}) for dataset {self.dataset.label()}."
             )
             pred_trajectory_subset = self.align_and_subsample(pred_trajectory)

@@ -1,14 +1,14 @@
-from typing import Callable, Dict, Optional, Sequence
 import functools
 import logging
 import os
+from typing import Callable, Dict, Optional, Sequence
 
 import lightning.pytorch as pl
 import mdtraj as md
+import numpy as np
 import torch
 import torch.utils.data
 import torch_geometric
-import numpy as np
 
 from jamun import utils
 
@@ -53,7 +53,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         if num_frames == -1 or num_frames is None:
             num_frames = self.traj.n_frames - start_frame
 
-        if subsample == None or subsample == 0:
+        if subsample is None or subsample == 0:
             subsample = 1
 
         # Subsample the trajectory.
@@ -98,7 +98,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
     def save_modified_pdb(self):
         os.makedirs("pdbs", exist_ok=True)
         filename = f"pdbs/{self.label()}-modified.pdb"
-        
+
         with open(filename, "w") as f:
             f.write("MODEL        0\n")
 

@@ -1,16 +1,16 @@
-from typing import Dict, List, Optional, Tuple
-import tempfile
 import os
+import tempfile
+from typing import Dict, List, Optional, Tuple
 
-import wandb
 import einops
 import matplotlib.pyplot as plt
 import mdtraj as md
+import py3Dmol
 import torch
 import torch_geometric
 import torchmetrics
+import wandb
 from torchmetrics.utilities import dim_zero_cat
-import py3Dmol
 
 from jamun import utils
 from jamun.data import MDtrajDataset

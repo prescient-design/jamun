@@ -1,8 +1,7 @@
+import e3nn
 import torch
 import torch.nn as nn
 import torch_geometric
-import e3nn
-
 
 from jamun import utils
 

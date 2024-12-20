@@ -1,9 +1,10 @@
-from typing import Optional, List, Sequence
+import collections
 import logging
 import os
 import re
-import collections
+from typing import List, Optional, Sequence
 
+import hydra
 import requests
 import torch
 from tqdm.auto import tqdm
@@ -111,10 +112,15 @@ def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> List[MD
 
 def create_dataset_from_pdb(pdbfile: str) -> Sequence[MDtrajDataset]:
     """Create a dataset from a PDB file."""
+
+    # Note that if pdbfile is an absolute path, the first part of the join will be ignored.
+    root = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(pdbfile))
+    pdbfile = os.path.basename(pdbfile)
+
     dataset = MDtrajDataset(
-        root="",
+        root=root,
         trajfiles=[pdbfile],
         pdbfile=pdbfile,
-        label=os.path.basename(pdbfile).split(".")[0],
+        label=pdbfile.split(".")[0],
     )
     return [dataset]

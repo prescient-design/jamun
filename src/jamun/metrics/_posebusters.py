@@ -1,12 +1,11 @@
-from typing import Dict, List, Tuple, Optional, Sequence
 import logging
+from typing import Dict, Optional
 
-import wandb
-from rdkit import rdBase
-import posebusters
-import numpy as np
 import mdtraj as md
 import pandas as pd
+import posebusters
+import wandb
+from rdkit import rdBase
 
 from jamun import utils
 from jamun.metrics import TrajectoryMetric
@@ -22,8 +21,10 @@ def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.Data
         return None
 
     buster = posebusters.PoseBusters(config="mol")
-    return buster.bust(mols, None, None, full_report=False)
+    results = buster.bust(mols, None, None, full_report=False)
 
+    del blocker
+    return results
 
 class PoseBustersMetrics(TrajectoryMetric):
     """Computes chemical validity metrics using PoseBusters."""
@@ -45,8 +46,8 @@ class PoseBustersMetrics(TrajectoryMetric):
 
         metrics = {}
         if df is None:
-            py_logger = logging.getLogger("jamun")
-            py_logger.info("{self.dataset.label()}PoseBusters found no molecules in the trajectory.")
+            py_logger = logging.getLogger("posebusters")
+            py_logger.info(f"{self.dataset.label()}/PoseBusters found no molecules in the trajectory.")
             return metrics
 
         mean_fail_rates = 1 - df.mean()
@@ -70,7 +71,7 @@ class PoseBustersMetrics(TrajectoryMetric):
             subsampling_factor = max(len(pred_trajectory) // self.num_molecules_per_trajectory, 1)
             df = run_posebusters_on_trajectory(pred_trajectory[::subsampling_factor])
             if df is None:
-                py_logger = logging.getLogger("jamun")
+                py_logger = logging.getLogger("posebusters")
                 py_logger.info("PoseBusters found no molecules in the trajectory.")
             else:
                 mean_fail_rates = 1 - df.mean()

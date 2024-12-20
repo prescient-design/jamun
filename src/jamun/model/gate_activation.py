@@ -1,6 +1,6 @@
+import e3nn
 import torch
 import torch.nn as nn
-import e3nn
 
 
 class GateActivation(nn.Module):

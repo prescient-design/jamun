@@ -1,7 +1,6 @@
-from typing import Dict
 import os
 import tempfile
-import logging
+from typing import Dict
 
 import mdtraj as md
 import wandb

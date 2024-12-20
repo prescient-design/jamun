@@ -7,12 +7,12 @@ repeat_init_samples: 1
 continue_chain: true
 
 # wandb_train_run_path: prescient-design/jamun/zzt8s3rc
-wandb_train_run_path: prescient-design/jamun/zzt8s3rc
+wandb_train_run_path: prescient-design/jamun/ibtxmwcr
 
 init_pdb: /homefs/home/daigavaa/jamun/pdbs/capped_ALA_MET_GLU_TYR_ALA.pdb
 checkpoint_type: best_so_far
 sigma: 0.04
-m: 1
+M: 1.0
 delta: 0.04
 friction: 1.0
 inverse_temperature: 1.0

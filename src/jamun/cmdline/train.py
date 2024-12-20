@@ -15,8 +15,7 @@ from omegaconf import OmegaConf
 import jamun
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
-from jamun.utils import dist_log, compute_average_squared_distance_from_data
-
+from jamun.utils import compute_average_squared_distance_from_data, dist_log
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)

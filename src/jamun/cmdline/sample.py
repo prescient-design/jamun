@@ -1,8 +1,8 @@
-from typing import Sequence, Dict, Any
 import logging
 import os
 import sys
 import traceback
+from typing import Any, Dict, Sequence
 
 import dotenv
 import hydra
@@ -124,8 +124,8 @@ def run(cfg):
     py_logger.info(f"Loading checkpoint_path: {checkpoint_path}")
     cfg.model.checkpoint_path = checkpoint_path
     model = hydra.utils.instantiate(cfg.model)
-    
-    init_datasets = hydra.utils.instantiate(cfg.init_datasets)    
+
+    init_datasets = hydra.utils.instantiate(cfg.init_datasets)
     init_graphs = get_initial_graphs(
         init_datasets,
         num_init_samples_per_dataset=cfg.num_init_samples_per_dataset,

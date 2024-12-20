@@ -1,10 +1,7 @@
-from typing import Dict, List, Sequence
+from typing import List, Sequence
 
 import lightning.pytorch as pl
-import matplotlib.pyplot as plt
-import mdtraj as md
 import torch_geometric.data
-import wandb
 from lightning.pytorch.utilities import rank_zero_only
 
 from jamun.data import MDtrajDataset

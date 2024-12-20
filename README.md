@@ -106,28 +106,22 @@ By default, all run outputs will be saved to `outputs` in the current directory.
 
 ## Inference
 
-To sample conformations from the test set peptides once you have a trained model,
-either specify the `wandb_train_run_path` (obtainable from the Weights and Biases UI for your training run):
+We provide trained weights at ...
+If you want to test out your own trained model, 
+either specify the `wandb_train_run_path` (in the form `entity/project/run_id`, which can be obtained from the Overview tab in the Weights and Biases UI for your training run), or the `checkpoint_dir` of the trained model.
 
-<p align="center">
-  <img src="https://github.com/prescient-design/jamun/blob/main/figures/wandb-run-path.png?raw=true" alt="Run path as indicated on the Weights and Biases 'Overview' page for your training run" width="200"/>
-</p>
-
-and start sampling with:
 ```bash
-jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml wandb_train_run_path=...
+jamun_sample ... ++wandb_train_run_path=[WANDB_TRAIN_RUN_PATH]
+jamun_sample ... ++checkpoint_dir=[CHECKPOINT_DIR]
 ```
 
-Alternatively, you can specify the `checkpoint_dir` of the trained model:
-```bash
-jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
-```
+### Sampling a Peptide Sequence
 
-If you want to sample conformations for a particular protein sequence, you need to first generate a `.pdb` file. We provide a script that uses [AmberTools](https://ambermd.org/AmberTools.php), specifically `tleap`.
+If you want to sample conformations for a particular peptide sequence, you need to first generate a `.pdb` file.
 
-If you have a `.pdb` file already, then you can skip this step.
+We provide a script that uses [AmberTools](https://ambermd.org/AmberTools.php), specifically `tleap`. If you have a `.pdb` file already, then you can skip this step.
 
-### Generate `.pdb` file
+#### Generate `.pdb` file
 First, install AmberTools23 following [instructions here](https://ambermd.org/GetAmber.php#ambertools):
 ```bash
 conda create --name AmberTools23
@@ -138,9 +132,29 @@ Then, run:
 ```bash
 python scripts/prepare_pdb.py [SEQUENCE] --mode [MODE] --outputdir [OUTPUTDIR]
 ```
-where `SEQUENCE` is your peptide sequence entered as a string of one-letter codes (eg. AGPF) or a string of hyphenated three letter codes (eg. ALA-GLY-PRO-PHE), `MODE` is either `capped` or `uncapped` to add capping ACE and NME residues, and `OUTPUTDIR` is where your generated `.pdb` file will be saved.
+where `SEQUENCE` is your peptide sequence entered as a string of one-letter codes (eg. AGPF) or a string of hyphenated three letter codes (eg. ALA-GLY-PRO-PHE), `MODE` is either `capped` or `uncapped` to add capping ACE and NME residues, and `OUTPUTDIR` is where your generated `.pdb` file will be saved (default is current directory).
+The script will print out the path to the generated  `.pdb` file, `INIT_PDB`.
 
-We provide trained weights at ...
+Deactivate the `AmberTools23` conda environment:
+```bash
+conda deactivate
+```
+
+#### Run sampling on `.pdb`
+Run the sampling script, starting from the provided `.pdb` structure:
+```bash
+jamun_sample --config-dir=configs experiment=sample_custom ++init_pdb=[INIT_PDB]
+```
+
+### Sampling Test Peptides from Timewarp
+
+We also provide some configs to sample from the uncapped 2AA and 4AA peptides from the test set in Timewarp.
+
+```bash
+jamun_sample --config-dir=configs experiment=sample_uncapped_2AA.yaml checkpoint_dir=...
+
+jamun_sample --config-dir=configs experiment=sample_uncapped_4AA.yaml checkpoint_dir=...
+```
 
 ## Analysis
 

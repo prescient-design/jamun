@@ -1,6 +1,6 @@
-from typing import Callable, Union, Optional
 import dataclasses
 from dataclasses import dataclass
+from typing import Callable, Optional, Union
 
 import torch
 from torch import Tensor

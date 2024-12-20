@@ -1,9 +1,13 @@
 # @package _global_
 
-defaults:
-  - override /callbacks:
-    - default.yaml
-  - _self_
+init_datasets:
+  _target_: jamun.data.parse_datasets_from_directory
+  root: "${paths.data_path}/timewarp/4AA-large/test/"
+  traj_pattern: "^(....)-traj-arrays.npz"
+  pdb_pattern: "^(....)-traj-state0.pdb"
+  subsample: 1
+  max_datasets: 10
+  max_datasets_offset: 0
 
 num_sampling_steps_per_batch: 1000
 num_batches: 100
@@ -14,20 +18,11 @@ continue_chain: true
 wandb_train_run_path: prescient-design/jamun/6297yugb
 checkpoint_type: best_so_far
 sigma: 0.04
-m: 1
+M: 1.0
 delta: 0.04
 friction: 1.0
 inverse_temperature: 1.0
 score_fn_clip: 100.0
-
-init_datasets:
-  _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/timewarp/4AA-large/test/"
-  traj_pattern: "^(....)-traj-arrays.npz"
-  pdb_pattern: "^(....)-traj-state0.pdb"
-  subsample: 1
-  max_datasets: 10
-  max_datasets_offset: 0
 
 sampler:
   _target_: jamun.sampling.Sampler
