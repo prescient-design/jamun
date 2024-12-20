@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Union
+import logging
 
 import numpy as np
 import wandb
@@ -11,10 +12,15 @@ from jamun.metrics import TrajectoryMetric
 class SaveTrajectory(TrajectoryMetric):
     """A metric that saves the predicted and true samples."""
 
-    def __init__(self, output_dir: str, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.pred_samples_dir = os.path.join(output_dir, self.dataset.label(), "predicted_samples")
-        self.true_samples_dir = os.path.join(output_dir, self.dataset.label(), "true_samples")
+
+        output_dir = os.path.join("saved", self.dataset.label())
+        py_logger = logging.getLogger("jamun")
+        py_logger.info(f"Saving predicted and true samples to {os.path.abspath(output_dir)}.")
+
+        self.pred_samples_dir = os.path.join(output_dir, "predicted_samples")
+        self.true_samples_dir = os.path.join(output_dir, "true_samples")
 
         # Create the output directories.
         self.true_samples_extensions = ["pdb", "dcd"]

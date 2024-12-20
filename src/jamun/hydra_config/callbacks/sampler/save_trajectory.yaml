@@ -1,4 +1,3 @@
 save_trajectory:
   _target_: jamun.callbacks.sampler.SaveTrajectoryCallback
   datasets: ${init_datasets}
-  output_dir: ${paths.run_path}/sampled_trajectories
