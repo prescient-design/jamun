@@ -106,7 +106,8 @@ By default, all run outputs will be saved to `outputs` in the current directory.
 
 ## Inference
 
-We provide trained weights at ...
+We provide trained weights for inference at ...
+
 If you want to test out your own trained model, 
 either specify the `wandb_train_run_path` (in the form `entity/project/run_id`, which can be obtained from the Overview tab in the Weights and Biases UI for your training run), or the `checkpoint_dir` of the trained model.
 
@@ -158,10 +159,12 @@ jamun_sample --config-dir=configs experiment=sample_uncapped_4AA.yaml checkpoint
 
 ## Analysis
 
-We provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
+Our sampling scripts produce visualizations and some simple analysis in the Weights and Biases UI.
+
+For more in-depth exploration, we provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
 This notebook requires the run path from Weights and Biases of your sampling run.
 
-The analysis script has certain dependencies (eg. `pyemma`) which are slightly tricky to install.
+The analysis notebook has certain dependencies (eg. `pyemma`) which are slightly tricky to install.
 We create a new environment to avoid dependency clashes.
 Again, we recommend `uv`, but we also provide instructions for `mamba` or `conda`.
 
