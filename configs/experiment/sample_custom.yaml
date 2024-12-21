@@ -1,7 +1,7 @@
 # @package _global_
 
 num_sampling_steps_per_batch: 1000
-num_batches: 100
+num_batches: 1
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true

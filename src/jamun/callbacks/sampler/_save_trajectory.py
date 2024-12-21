@@ -21,4 +21,3 @@ class SaveTrajectoryCallback(TrajectoryMetricCallback):
         )
         py_logger = logging.getLogger("jamun")
         py_logger.info(f"Initialized SaveTrajectoryCallback with datasets of labels: {list(self.meters.keys())}.")
-        py_logger.info(f"Saving true and predicted samples to {kwargs['output_dir']}.")

@@ -36,7 +36,8 @@ def download_file(url: str, path: str, verbose: bool = False, block_size: Option
 def parse_datasets_from_directory(
     root: str,
     traj_pattern: str,
-    pdb_pattern: str,
+    pdb_pattern: Optional[str] = None,
+    pdb_file: Optional[Sequence[str]] = None,
     max_datasets: Optional[int] = None,
     max_datasets_offset: Optional[int] = None,
     **dataset_kwargs,
@@ -45,13 +46,15 @@ def parse_datasets_from_directory(
     py_logger = logging.getLogger("jamun")
     py_logger.info(f"Creating datasets from {root}.")
 
+    if pdb_file is not None and pdb_pattern is not None:
+        raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
+
     traj_prefix, traj_pattern = os.path.split(traj_pattern)
     traj_pattern_compiled = re.compile(traj_pattern)
     if "*" in traj_prefix or "?" in traj_prefix:
         raise ValueError("traj_prefix should not contain wildcards.")
 
     traj_files = collections.defaultdict(list)
-    pdb_files = {}
     codes = set()
     for entry in os.scandir(os.path.join(root, traj_prefix)):
         match = traj_pattern_compiled.match(entry.name)
@@ -65,20 +68,25 @@ def parse_datasets_from_directory(
     if len(codes) == 0:
         raise ValueError("No codes found in trajectory.")
 
-    pdb_prefix, pdb_pattern = os.path.split(pdb_pattern)
-    pdb_pattern_compiled = re.compile(pdb_pattern)
-    if "*" in pdb_prefix or "?" in pdb_prefix:
-        raise ValueError("pdb_prefix should not contain wildcards.")
+    pdb_files = {}
+    if pdb_pattern is not None:
+        pdb_prefix, pdb_pattern = os.path.split(pdb_pattern)
+        pdb_pattern_compiled = re.compile(pdb_pattern)
+        if "*" in pdb_prefix or "?" in pdb_prefix:
+            raise ValueError("pdb_prefix should not contain wildcards.")
 
-    for entry in os.scandir(os.path.join(root, pdb_prefix)):
-        match = pdb_pattern_compiled.match(entry.name)
-        if not match:
-            continue
+        for entry in os.scandir(os.path.join(root, pdb_prefix)):
+            match = pdb_pattern_compiled.match(entry.name)
+            if not match:
+                continue
 
-        code = match.group(1)
-        if code not in codes:
-            continue
-        pdb_files[code] = os.path.join(pdb_prefix, entry.name)
+            code = match.group(1)
+            if code not in codes:
+                continue
+            pdb_files[code] = os.path.join(pdb_prefix, entry.name)
+    else:
+        for code in codes:
+            pdb_files[code] = pdb_file
 
     # Sort the codes and offset them, if necessary.
     if max_datasets_offset is None:

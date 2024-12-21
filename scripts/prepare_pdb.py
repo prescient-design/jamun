@@ -14,26 +14,44 @@ logging.basicConfig(
 log = logging.getLogger("[prepare_pdb]")
 
 # One to three letter code mapping
-AA_CODES: Dict[str, str] = {
+AA_3CODES: Dict[str, str] = {
     'A': 'ALA', 'R': 'ARG', 'N': 'ASN', 'D': 'ASP', 'C': 'CYS',
     'E': 'GLU', 'Q': 'GLN', 'G': 'GLY', 'H': 'HIS', 'I': 'ILE',
     'L': 'LEU', 'K': 'LYS', 'M': 'MET', 'F': 'PHE', 'P': 'PRO',
     'S': 'SER', 'T': 'THR', 'W': 'TRP', 'Y': 'TYR', 'V': 'VAL'
 }
 
-def convert_aa_code(aa: str) -> str:
+# Three to one letter code mapping
+AA_1CODES = {v: k for k, v in AA_3CODES.items()}
+
+def convert_to_three_letter(aa: str) -> str:
     """Convert one-letter amino acid code to three-letter code."""
     aa = aa.upper()
     if len(aa) == 1:
-        if aa not in AA_CODES:
+        if aa not in AA_3CODES:
             raise ValueError(f"Invalid one-letter amino acid code: {aa}")
-        return AA_CODES[aa]
+        return AA_3CODES[aa]
     elif len(aa) == 3:
-        if aa not in AA_CODES.values():
+        if aa not in AA_3CODES.values():
             raise ValueError(f"Invalid three-letter amino acid code: {aa}")
         return aa
     else:
         raise ValueError(f"Invalid amino acid code length: {aa}")
+
+def convert_to_one_letter(aa: str) -> str:
+    """Convert three-letter amino acid code to one-letter code."""
+    aa = aa.upper()
+    if len(aa) == 1:
+        if aa not in AA_1CODES:
+            raise ValueError(f"Invalid one-letter amino acid code: {aa}")
+        return aa
+    elif len(aa) == 3:
+        if aa not in AA_1CODES:
+            raise ValueError(f"Invalid three-letter amino acid code: {aa}")
+        return AA_1CODES[aa]
+    else:
+        raise ValueError(f"Invalid amino acid code length: {aa}")
+
 
 def parse_sequence(sequence: str) -> List[str]:
     """Parse sequence string into list of three-letter codes.
@@ -47,23 +65,40 @@ def parse_sequence(sequence: str) -> List[str]:
     # Check if it's a hyphen-separated three-letter code sequence
     if '-' in sequence:
         three_letter_codes = sequence.split('-')
-        return [convert_aa_code(code) for code in three_letter_codes]
+        return [convert_to_three_letter(code) for code in three_letter_codes]
 
     # Otherwise, treat as string of one-letter codes
-    return [convert_aa_code(aa) for aa in sequence]
+    return [convert_to_three_letter(aa) for aa in sequence]
 
 def create_sequence(amino_acids: List[str], mode: str) -> str:
     """Create sequence string with optional capping."""
-    sequence = " ".join(amino_acids)
+    if len(amino_acids) < 2:
+        raise ValueError("Sequence must have at least two amino acids")
+
+    amino_acids = amino_acids.copy()
     if mode == "capped":
+        sequence = " ".join(amino_acids)
         return f"{{ ACE {sequence} NME }}"
-    return f"{{ {sequence} }}"
+    
+    if mode == "uncapped":
+        amino_acids[0] = f"N{amino_acids[0]}"
+        amino_acids[-1] = f"C{amino_acids[-1]}"
+
+        sequence = " ".join(amino_acids)
+        return f"{{ {sequence} }}"
+
+    raise ValueError(f"Invalid mode: {mode}")
 
 
 def format_sequence(amino_acids: str, mode: str) -> str:
     """Format sequence string for display."""
+    amino_acids = amino_acids.copy()
     if mode == "capped":
-        amino_acids = ["(ACE)"] + amino_acids + ["(NME)"]
+        amino_acids = ["(ACE)"] + amino_acids + ["(NME)"] 
+    if mode == "uncapped":
+        amino_acids[0] = f"(N){amino_acids[0]}"
+        amino_acids[-1] = f"(C){amino_acids[-1]}"
+
     return " ".join(amino_acids)
 
 
@@ -101,8 +136,8 @@ def run_tleap(input_content: str) -> Tuple[bool, str]:
 
 def create_output_filename(amino_acids: List[str], mode: str, outputdir: str) -> str:
     """Create output filename based on sequence and mode."""
-    sequence_name = "_".join(amino_acids)
-    return os.path.join(outputdir, f"{mode}_{sequence_name}.pdb")
+    sequence_short = "".join([convert_to_one_letter(aa) for aa in amino_acids])
+    return os.path.join(outputdir, f"{mode}_{sequence_short}.pdb")
 
 def main():
     # Set up argument parser

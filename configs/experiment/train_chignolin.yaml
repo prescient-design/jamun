@@ -1,0 +1,54 @@
+# @package _global_
+
+defaults:
+  - override /data: md.yaml
+  - override /model/arch: e3conv.yaml
+  - override /callbacks:
+    - default.yaml
+    - model_checkpoint.yaml
+    - visualize_denoise.yaml
+  - _self_
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  arch:
+    n_layers: 4
+  max_radius: 1.0
+  optim:
+    lr: 0.002
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
+
+data:
+  datamodule:
+    batch_size: 16
+    datasets:
+      train:
+        - _target_: jamun.data.parse_datasets_from_directory
+          root: "${paths.data_path}/fast-folding/processed/chignolin"
+          traj_pattern: "train/^(.*).xtc"
+          pdb_file: "filtered.pdb"
+
+      val:
+        - _target_: jamun.data.parse_datasets_from_directory
+          root: "${paths.data_path}/fast-folding/processed/chignolin"
+          traj_pattern: "val/^(.*).xtc"
+          pdb_file: "filtered.pdb"
+
+      test:
+        - _target_: jamun.data.parse_datasets_from_directory
+          root: "${paths.data_path}/fast-folding/processed/chignolin"
+          traj_pattern: "test/^(.*).xtc"
+          pdb_file: "filtered.pdb"
+
+trainer:
+  val_check_interval: 1.0
+  max_epochs: 100
+
+logger:
+  wandb:
+    group: train_2AA
