@@ -13,6 +13,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
 import jamun
+from jamun.utils import find_checkpoint
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
 from jamun.utils import compute_average_squared_distance_from_data, dist_log
@@ -75,7 +76,18 @@ def run(cfg):
     if rank_zero_only.rank == 0 and wandb_logger:
         wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
 
-    trainer.fit(model, datamodule=datamodule)
+    # Load training checkpoint, if provided.
+    if resume_checkpoint_cfg := cfg.get("resume_from_checkpoint"):
+        # Load the checkpoint either given the wandb run path or the checkpoint path.
+        checkpoint_path = find_checkpoint(
+            wandb_train_run_path=resume_checkpoint_cfg.get("wandb_train_run_path"),
+            checkpoint_dir=resume_checkpoint_cfg.get("checkpoint_dir"),
+            checkpoint_type=resume_checkpoint_cfg["checkpoint_type"],
+        )
+    else:
+        checkpoint_path = None
+
+    trainer.fit(model, datamodule=datamodule, ckpt_path=checkpoint_path)
 
     if wandb_logger and isinstance(trainer.profiler, lightning.pytorch.profilers.PyTorchProfiler):
         profile_art = wandb.Artifact("trace", type="profile")

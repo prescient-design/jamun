@@ -2,66 +2,24 @@ import logging
 import os
 import sys
 import traceback
-from typing import Any, Dict, Sequence
+from typing import Sequence
 
 import dotenv
 import hydra
 import lightning.pytorch as pl
 import torch
 import torch_geometric
-import wandb
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
 import jamun
+from jamun.utils import find_checkpoint
 from jamun.data import MDtrajDataset
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
-
-
-def get_wandb_run_config(wandb_run_path: str) -> Dict[str, Any]:
-    """Get the wandb run config."""
-    run = wandb.Api().run(wandb_run_path)
-    py_logger = logging.getLogger("jamun")
-    py_logger.info(f"Loading checkpoint corresponding to wandb run {run.name} at {run.url}")
-    return run.config["cfg"]
-
-
-def find_checkpoint_directory(wandb_train_run_path: str) -> str:
-    """Find the checkpoint directory based on the wandb run path."""
-    config = get_wandb_run_config(wandb_train_run_path)
-    checkpoint_dir = config["callbacks"]["model_checkpoint"]["dirpath"]
-    return checkpoint_dir
-
-
-def load_checkpoint(checkpoint_dir: str, checkpoint_type: str) -> str:
-    """Load the checkpoint based on the checkpoint type, with a lot of assumptions on checkpoint naming."""
-    if checkpoint_type.endswith(".ckpt"):
-        return os.path.join(checkpoint_dir, checkpoint_type)
-
-    if checkpoint_type == "last":
-        return os.path.join(checkpoint_dir, "last.ckpt")
-
-    if checkpoint_type == "best_so_far":
-        best_epoch = 0
-        checkpoint_path = None
-        for file in os.listdir(checkpoint_dir):
-            if not file.endswith(".ckpt") or not file.startswith("epoch="):
-                continue
-
-            epoch = int(file.split("epoch=")[1].split("-")[0])
-            if epoch >= best_epoch:
-                best_epoch = epoch
-                checkpoint_path = os.path.join(checkpoint_dir, file)
-
-        if checkpoint_path is None:
-            raise ValueError(f"No checkpoint found in the directory {checkpoint_dir}")
-        return checkpoint_path
-
-    raise ValueError(f"Invalid checkpoint type: {checkpoint_type}. Must be one of ['last', 'best', '*.ckpt'].")
 
 
 def get_initial_graphs(
@@ -107,21 +65,13 @@ def run(cfg):
         wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
 
     # Load the checkpoint either given the wandb run path or the checkpoint path.
-    wandb_train_run_path = cfg.get("wandb_train_run_path")
-    checkpoint_dir = cfg.get("checkpoint_dir")
-    if (wandb_train_run_path and checkpoint_dir) or (not wandb_train_run_path and not checkpoint_dir):
-        raise ValueError(
-            "Exactly one of wandb_train_run_path or checkpoint_dir must be provided."
-            f"Obtained: wandb_train_run_path={wandb_train_run_path}, checkpoint_dir={checkpoint_dir}"
-        )
-
-    if wandb_train_run_path:
-        checkpoint_dir = find_checkpoint_directory(wandb_train_run_path)
-        py_logger.info(f"Checkpoint directory found: {checkpoint_dir}")
+    checkpoint_path = find_checkpoint(
+        wandb_train_run_path=cfg.get("wandb_train_run_path"),
+        checkpoint_dir=cfg.get("checkpoint_dir"),
+        checkpoint_type=cfg.get("checkpoint_type"),
+    )
 
     # Overwrite the checkpoint path in the config.
-    checkpoint_path = load_checkpoint(checkpoint_dir, cfg.checkpoint_type)
-    py_logger.info(f"Loading checkpoint_path: {checkpoint_path}")
     cfg.model.checkpoint_path = checkpoint_path
     model = hydra.utils.instantiate(cfg.model)
 

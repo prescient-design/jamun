@@ -25,6 +25,7 @@ export TORCHDYNAMO_VERBOSE=1
 
 # NOTE we generate this in submit script instead of using time based default to ensure consistency across ranks
 RUN_KEY=$(openssl rand -hex 12)
+echo "RUN_KEY = ${RUN_KEY}"
 
 nvidia-smi
 

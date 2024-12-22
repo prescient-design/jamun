@@ -100,9 +100,13 @@ or the uncapped 4AA peptides dataset:
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 ```
 
-We also provide example [SLURM](https://slurm.schedmd.com/documentation.html) launcher scripts for [training](https://github.com/prescient-design/jamun/blob/main/slurm/train.sh) and [sampling](https://github.com/prescient-design/jamun/blob/main/slurm/sample.sh) on SLURM clusters.
-
 By default, all run outputs will be saved to `outputs` in the current directory.
+
+We also provide example [SLURM](https://slurm.schedmd.com/documentation.html) launcher scripts for [training](https://github.com/prescient-design/jamun/blob/main/scripts/slurm/train.sh) and [sampling](https://github.com/prescient-design/jamun/blob/main/scripts/slurm/sample.sh) on SLURM clusters:
+```bash
+sbatch scripts/slurm/train.sh 
+sbatch scripts/slurm/sample.sh 
+```
 
 ## Inference
 

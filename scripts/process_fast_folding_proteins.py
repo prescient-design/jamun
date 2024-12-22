@@ -59,21 +59,25 @@ if __name__ == "__main__":
     if len(set(folders)) != len(folders):
         raise ValueError("Found duplicate folders in the directory.")
 
-    # Randomly shuffle the files and folders
+    # Randomly shuffle the files and folders.
     random.seed(42)
     random.shuffle(files)
 
-    # Now, create the splits based on the folders
+    # Now, create the splits based on the folders.
     for split, split_ratio in SPLITS.items():
         split_dir = os.path.join(args.outputdir, split)
-        os.makedirs(split_dir, exist_ok=False)
+        os.makedirs(split_dir, exist_ok=True)
 
-        # Find the number of files to include in this split
+        # Find the number of files to include in this split.
         num_files = int(len(files) * split_ratio)
         split_files = files[:num_files]
-        print(f"Creating split '{split}' with {num_files} files")
-
-        # Copy the files to the split directory
+        
+        # Save the split files as a text file.
+        with open(os.path.join(split_dir, "files.txt"), "w") as f:
+            for file_path, folder in split_files:
+                f.write(f"{file_path}\n")
+        
+        # Copy the files to the split directory.
         for file_path, folder in split_files:
             output_file = os.path.join(split_dir, f"{folder}.xtc")
             shutil.copy(file_path, output_file)
