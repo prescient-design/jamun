@@ -14,13 +14,10 @@ class SaveTrajectory(TrajectoryMetric):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        output_dir = os.path.join("sampler", self.dataset.label())
+        self.output_dir = os.path.join("sampler", self.dataset.label())
 
-        py_logger = logging.getLogger("jamun")
-        py_logger.info(f"Saving predicted and true samples to {os.path.abspath(output_dir)}.")
-
-        self.pred_samples_dir = os.path.join(output_dir, "predicted_samples")
-        self.true_samples_dir = os.path.join(output_dir, "true_samples")
+        self.pred_samples_dir = os.path.join(self.output_dir, "predicted_samples")
+        self.true_samples_dir = os.path.join(self.output_dir, "true_samples")
 
         # Create the output directories.
         self.true_samples_extensions = ["pdb", "dcd"]
@@ -59,6 +56,9 @@ class SaveTrajectory(TrajectoryMetric):
         true_trajectory.save_dcd(self.filename_true(0, "dcd"))
 
     def on_sample_end(self):
+        py_logger = logging.getLogger("jamun")
+        py_logger.info(f"Saved predicted and true samples to {os.path.abspath(self.output_dir)}.")
+
         # Save the joined samples at the very end of sampling to wandb.
         label = self.dataset.label()
         label = label.replace("/", "_").replace("=", "-")

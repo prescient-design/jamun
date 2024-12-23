@@ -7,9 +7,19 @@ repeat_init_samples: 1
 continue_chain: true
 
 # wandb_train_run_path: prescient-design/jamun/zzt8s3rc
-wandb_train_run_path: prescient-design/jamun/ibtxmwcr
 
-init_pdb: /homefs/home/daigavaa/jamun/pdbs/capped_ALA_MET_GLU_TYR_ALA.pdb
+# Old 4AA
+# wandb_train_run_path: prescient-design/jamun/ibtxmwcr
+
+# New 4AA
+# wandb_train_run_path: prescient-design/jamun/6297yugb
+
+# Finetuned 4AA
+wandb_train_run_path: prescient-design/jamun/x6rwt91k
+
+init_pdb: ???
+label: null
+
 checkpoint_type: best_so_far
 sigma: 0.04
 M: 1.0
@@ -21,6 +31,7 @@ score_fn_clip: 100.0
 init_datasets: 
   _target_: jamun.data.create_dataset_from_pdb
   pdbfile: ${init_pdb}
+  label: ${label}
 
 sampler:
   _target_: jamun.sampling.Sampler

@@ -118,17 +118,20 @@ def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> List[MD
     return all_datasets
 
 
-def create_dataset_from_pdb(pdbfile: str) -> Sequence[MDtrajDataset]:
+def create_dataset_from_pdb(pdbfile: str, label: Optional[str] = None) -> Sequence[MDtrajDataset]:
     """Create a dataset from a PDB file."""
 
     # Note that if pdbfile is an absolute path, the first part of the join will be ignored.
     root = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(pdbfile))
     pdbfile = os.path.basename(pdbfile)
 
+    if label is None:
+        label = pdbfile.split(".")[0]
+
     dataset = MDtrajDataset(
         root=root,
         trajfiles=[pdbfile],
         pdbfile=pdbfile,
-        label=pdbfile.split(".")[0],
+        label=label,
     )
     return [dataset]
