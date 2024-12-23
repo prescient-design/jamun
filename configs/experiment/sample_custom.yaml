@@ -12,11 +12,12 @@ continue_chain: true
 # wandb_train_run_path: prescient-design/jamun/ibtxmwcr
 
 # New 4AA
-# wandb_train_run_path: prescient-design/jamun/6297yugb
+wandb_train_run_path: prescient-design/jamun/6297yugb
 
-# Finetuned 4AA
-wandb_train_run_path: prescient-design/jamun/x6rwt91k
+# Finetuned new 4AA
+# wandb_train_run_path: prescient-design/jamun/x6rwt91k
 
+# init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb 
 init_pdb: ???
 label: null
 
@@ -32,6 +33,10 @@ init_datasets:
   _target_: jamun.data.create_dataset_from_pdb
   pdbfile: ${init_pdb}
   label: ${label}
+
+finetune_on_init:
+  num_steps: 10
+  batch_size: 16
 
 sampler:
   _target_: jamun.sampling.Sampler

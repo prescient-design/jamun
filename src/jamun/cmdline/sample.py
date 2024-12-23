@@ -14,7 +14,7 @@ from omegaconf import OmegaConf
 
 import jamun
 from jamun.utils import find_checkpoint
-from jamun.data import MDtrajDataset
+from jamun.data import MDtrajDataset, MDtrajDataModule
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
 
@@ -58,10 +58,8 @@ def run(cfg):
         if isinstance(logger, pl.loggers.WandbLogger):
             wandb_logger = logger
 
-    if wandb_logger and rank_zero_only.rank == 0:
-        py_logger.info(f"{wandb_logger.experiment.name=}")
-
     if rank_zero_only.rank == 0 and wandb_logger:
+        py_logger.info(f"{wandb_logger.experiment.name=}")
         wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
 
     # Load the checkpoint either given the wandb run path or the checkpoint path.
@@ -89,6 +87,25 @@ def run(cfg):
     if seed := cfg.get("seed"):
         # During sampling, we want ranks to generate different chains.
         pl.seed_everything(seed + sampler.fabric.global_rank)
+
+    # Run test-time adapation, if specified.
+    if finetuning_cfg := cfg.get("finetune_on_init"):
+        num_finetuning_steps = finetuning_cfg.get("num_steps")
+        py_logger.info(f"Finetuning for {num_finetuning_steps} steps.")
+        
+        # Check that model parameters changed.
+        param_sum = sum(p.sum() for p in model.parameters())
+        
+        # Train the model for a fixed number of steps.
+        trainer = pl.Trainer(logger=loggers, max_steps=num_finetuning_steps, min_steps=num_finetuning_steps, log_every_n_steps=1, check_val_every_n_epoch=1)
+        trainer.fit(model, datamodule=MDtrajDataModule(
+            datasets={"train": init_datasets, "val": init_datasets},
+            batch_size=finetuning_cfg.batch_size,
+        ))
+
+        # Check that model parameters changed.
+        new_param_sum = sum(p.sum() for p in model.parameters())
+        py_logger.info(f"Model parameters changed: {param_sum} -> {new_param_sum}")
 
     sampler.sample(
         model=model,

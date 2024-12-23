@@ -197,15 +197,13 @@ class MDtrajDataModule(pl.LightningDataModule):
     def __init__(
         self,
         datasets: Dict[str, Sequence[MDtrajDataset]],
-        seed: int = 42,
-        batch_size: int = 32,
+        batch_size: int,
         num_workers: int = 2,
     ):
         super().__init__()
 
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.seed = seed
 
         self.datasets = datasets
         self.concatenated_datasets = {}

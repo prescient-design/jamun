@@ -57,7 +57,7 @@ class ModelSamplingWrapper:
         py_logger = logging.getLogger("jamun")
         for key, value in samples.items():
             if value.ndim not in [2, 3]:
-                py_logger.info(f"Skipping unbatching of key {key} with shape {value.shape} as it is not 2D or 3D.")
+                # py_logger.info(f"Skipping unbatching of key {key} with shape {value.shape} as it is not 2D or 3D.")
                 continue
 
             if value.ndim == 3:
