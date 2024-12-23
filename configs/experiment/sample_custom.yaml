@@ -17,7 +17,7 @@ wandb_train_run_path: prescient-design/jamun/6297yugb
 # Finetuned new 4AA
 # wandb_train_run_path: prescient-design/jamun/x6rwt91k
 
-# init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb 
+# init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
 init_pdb: ???
 label: null
 
@@ -35,7 +35,7 @@ init_datasets:
   label: ${label}
 
 finetune_on_init:
-  num_steps: 10
+  num_steps: 20
   batch_size: 16
 
 sampler:
