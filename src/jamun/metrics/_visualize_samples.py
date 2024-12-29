@@ -11,7 +11,7 @@ from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 
-class MDSampleVisualizer(TrajectoryMetric):
+class SampleVisualizer(TrajectoryMetric):
     """A metric to visualize static MD samples."""
 
     def __init__(self, num_samples_to_plot: int, subsample: Optional[int] = None, *args, **kwargs):
@@ -35,8 +35,7 @@ class MDSampleVisualizer(TrajectoryMetric):
 
         # Warn if there are not enough samples to plot.
         if len(all_mols) < self.num_samples_to_plot:
-            py_logger = logging.getLogger("visualize_samples")
-            py_logger.warning(f"Only {len(all_mols)} samples available for visualization: {traj} after subsampling by {self.subsample}.")
+            utils.dist_log(f"Only {len(all_mols)} samples available for visualization: {traj} after subsampling by {self.subsample}.")
 
         # Create a dictionary of the RDKit mols, indexed by row.
         mols = {}
@@ -56,8 +55,7 @@ class MDSampleVisualizer(TrajectoryMetric):
     def compute(self) -> Dict[str, float]:
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
-            py_logger = logging.getLogger("visualize_samples")
-            py_logger.info(
+            utils.dist_log(
                 f"Visualizing trajectory {trajectory_index} ({pred_trajectory}) for dataset {self.dataset.label()}."
             )
             pred_trajectory_subset = self.align_and_subsample(pred_trajectory)

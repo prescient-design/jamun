@@ -1,6 +1,5 @@
 import os
 from typing import Dict, Union
-import logging
 
 import numpy as np
 import wandb
@@ -61,9 +60,6 @@ class SaveTrajectory(TrajectoryMetric):
         true_trajectory.save_dcd(self.filename_true(0, "dcd"))
 
     def on_sample_end(self):
-        py_logger = logging.getLogger("jamun")
-        py_logger.info(f"Saved predicted and true samples to {os.path.abspath(self.output_dir)}.")
-
         if rank_zero_only.rank != 0:
             return
 

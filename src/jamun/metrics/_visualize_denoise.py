@@ -41,7 +41,7 @@ def plot_ramachandran_grid(trajs: Dict[str, md.Trajectory], dataset_label: str):
     return fig, axes
 
 
-class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
+class VisualizeDenoiseMetrics(torchmetrics.Metric):
     """Plots and computes metrics for samples from a single dataset."""
 
     def __init__(self, dataset: MDtrajDataset, sigma_list: List[float]):

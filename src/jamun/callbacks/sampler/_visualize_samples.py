@@ -3,7 +3,7 @@ from typing import Sequence
 
 from jamun.callbacks.sampler import TrajectoryMetricCallback
 from jamun.data import MDtrajDataset
-from jamun.metrics import MDSampleVisualizer
+from jamun.metrics import SampleVisualizer
 
 
 class SampleVisualizerCallback(TrajectoryMetricCallback):
@@ -17,7 +17,7 @@ class SampleVisualizerCallback(TrajectoryMetricCallback):
     ):
         super().__init__(
             datasets=datasets,
-            metric_fn=lambda dataset: MDSampleVisualizer(*args, dataset=dataset, **kwargs),
+            metric_fn=lambda dataset: SampleVisualizer(*args, dataset=dataset, **kwargs),
         )
         py_logger = logging.getLogger("jamun")
-        py_logger.info(f"Initialized MDSampleVisualizerCallback with datasets of labels: {list(self.meters.keys())}.")
+        py_logger.info(f"Initialized SampleVisualizerCallback with datasets of labels: {list(self.meters.keys())}.")

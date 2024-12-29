@@ -5,5 +5,5 @@ from ._ramachandran import RamachandranPlotMetrics
 from ._save_trajectory import SaveTrajectory
 from ._score_distribution import ScoreDistributionMetrics
 from ._trajectory_animation import TrajectoryVisualizer
-from ._visualize_denoise import MDVisualizeDenoiseMetrics
-from ._visualize_samples import MDSampleVisualizer
+from ._visualize_denoise import VisualizeDenoiseMetrics
+from ._visualize_samples import SampleVisualizer

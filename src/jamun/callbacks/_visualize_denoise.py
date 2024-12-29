@@ -5,10 +5,10 @@ import torch_geometric.data
 from lightning.pytorch.utilities import rank_zero_only
 
 from jamun.data import MDtrajDataset
-from jamun.metrics import MDVisualizeDenoiseMetrics
+from jamun.metrics import VisualizeDenoiseMetrics
 
 
-class MDVisualizeDenoise(pl.Callback):
+class VisualizeDenoise(pl.Callback):
     """Callback to denoise and visualize MDTraj datasets during training."""
 
     def __init__(
@@ -20,7 +20,7 @@ class MDVisualizeDenoise(pl.Callback):
         super().__init__()
         self.sigma_list = sigma_list
         self.visualizers = {
-            dataset.label(): MDVisualizeDenoiseMetrics(
+            dataset.label(): VisualizeDenoiseMetrics(
                 dataset=dataset,
                 sigma_list=sigma_list,
             )
