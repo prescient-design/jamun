@@ -3,7 +3,9 @@ from typing import Dict, List, Sequence, Tuple
 import mdtraj as md
 import numpy as np
 import wandb
+from lightning.pytorch.utilities import rank_zero_only
 
+from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 # Van der Waals radii in nm.
@@ -147,16 +149,17 @@ class ChemicalValidityMetrics(TrajectoryMetric):
         avg_volume_exclusion_issues_table = wandb.Table(
             data=[[val] for val in avg_volume_exclusion_issues], columns=["avg_volume_exclusion_issues"]
         )
-        wandb.log(
-            {
-                f"{self.dataset.label()}/volume_exclusion_issues/true_traj": wandb.plot.histogram(
-                    avg_volume_exclusion_issues_table,
-                    "avg_volume_exclusion_issues",
-                    title="Average number of volume exclusion issues (true trajectory)",
-                )
-            }
-        )
         metrics[f"{self.dataset.label()}/mean_volume_exclusion_issues/true_traj"] = np.mean(avg_volume_exclusion_issues)
+        if rank_zero_only.rank == 0:
+            utils.wandb_dist_log(
+                {
+                    f"{self.dataset.label()}/volume_exclusion_issues/true_traj": wandb.plot.histogram(
+                        avg_volume_exclusion_issues_table,
+                        "avg_volume_exclusion_issues",
+                        title="Average number of volume exclusion issues (true trajectory)",
+                    )
+                }
+            )
 
         # Check for invalid bonds in the true trajectory.
         avg_bond_length_issues = check_bond_lengths(
@@ -166,16 +169,18 @@ class ChemicalValidityMetrics(TrajectoryMetric):
         avg_bond_length_issues_table = wandb.Table(
             data=[[val] for val in avg_bond_length_issues], columns=["avg_bond_length_issues"]
         )
-        wandb.log(
-            {
-                f"{self.dataset.label()}/bond_length_issues/true_traj": wandb.plot.histogram(
-                    avg_bond_length_issues_table,
-                    "avg_bond_length_issues",
-                    title="Average number of bond length issues (true trajectory)",
-                )
-            }
-        )
         metrics[f"{self.dataset.label()}/mean_bond_length_issues/true_traj"] = np.mean(avg_bond_length_issues)
+        
+        if rank_zero_only.rank == 0:
+            utils.wandb_dist_log(
+                {
+                    f"{self.dataset.label()}/bond_length_issues/true_traj": wandb.plot.histogram(
+                        avg_bond_length_issues_table,
+                        "avg_bond_length_issues",
+                        title="Average number of bond length issues (true trajectory)",
+                    )
+                }
+            )
         return metrics
 
     def compute(self) -> Dict[str, float]:
@@ -194,18 +199,19 @@ class ChemicalValidityMetrics(TrajectoryMetric):
             avg_volume_exclusion_issues_table = wandb.Table(
                 data=[[val] for val in avg_volume_exclusion_issues], columns=["avg_volume_exclusion_issues"]
             )
-            wandb.log(
-                {
-                    f"{self.dataset.label()}/volume_exclusion_issues/pred_traj_{trajectory_index}": wandb.plot.histogram(
-                        avg_volume_exclusion_issues_table,
-                        "avg_volume_exclusion_issues",
-                        title=f"Average number of volume exclusion issues (predicted trajectory {trajectory_index})",
-                    )
-                }
-            )
             metrics[f"{self.dataset.label()}/mean_volume_exclusion_issues/pred_traj_{trajectory_index}"] = np.mean(
                 avg_volume_exclusion_issues
             )
+            if rank_zero_only.rank == 0:
+                utils.wandb_dist_log(
+                    {
+                        f"{self.dataset.label()}/volume_exclusion_issues/pred_traj_{trajectory_index}": wandb.plot.histogram(
+                            avg_volume_exclusion_issues_table,
+                            "avg_volume_exclusion_issues",
+                            title=f"Average number of volume exclusion issues (predicted trajectory {trajectory_index})",
+                        )
+                    }
+                )
 
             # Check for invalid bonds.
             avg_bond_length_issues = check_bond_lengths(
@@ -215,16 +221,17 @@ class ChemicalValidityMetrics(TrajectoryMetric):
             avg_bond_length_issues_table = wandb.Table(
                 data=[[val] for val in avg_bond_length_issues], columns=["avg_bond_length_issues"]
             )
-            wandb.log(
-                {
-                    f"{self.dataset.label()}/bond_length_issues/pred_traj_{trajectory_index}": wandb.plot.histogram(
-                        avg_bond_length_issues_table,
-                        "avg_bond_length_issues",
-                        title=f"Average number of bond length issues (predicted trajectory {trajectory_index})",
-                    )
-                }
-            )
             metrics[f"{self.dataset.label()}/mean_bond_length_issues/pred_traj_{trajectory_index}"] = np.mean(
                 avg_bond_length_issues
             )
+            if rank_zero_only.rank == 0:
+                utils.wandb_dist_log(
+                    {
+                        f"{self.dataset.label()}/bond_length_issues/pred_traj_{trajectory_index}": wandb.plot.histogram(
+                            avg_bond_length_issues_table,
+                            "avg_bond_length_issues",
+                            title=f"Average number of bond length issues (predicted trajectory {trajectory_index})",
+                        )
+                    }
+                )
         return metrics

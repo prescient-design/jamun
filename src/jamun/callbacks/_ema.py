@@ -119,7 +119,7 @@ class EMA(Callback):
             ext = checkpoint_callback.FILE_EXTENSION
             if ckpt_path.endswith(f"-EMA{ext}"):
                 rank_zero_info(
-                    "loading EMA based weights. "
+                    "Loading EMA based weights. "
                     "The callback will treat the loaded EMA weights as the main weights"
                     " and create a new EMA copy when training."
                 )

@@ -4,12 +4,15 @@ from typing import Dict, List, Optional, Tuple
 
 import matplotlib.cm
 import matplotlib.pyplot as plt
+from matplotlib import animation, colors
 import mdtraj as md
 import numpy as np
 import ot
 import wandb
-from matplotlib import animation, colors
+from lightning.pytorch.utilities import rank_zero_only
 
+
+from jamun import utils
 from jamun.metrics import TrajectoryMetric
 
 
@@ -221,16 +224,17 @@ def _log_js_divergence_vs_num_samples(
         data=compute_JS_divergence_vs_num_samples(trajectory, ref_trajectory),
         columns=["Number of Samples", "JS Divergence"],
     )
-    wandb.log(
-        {
-            label: wandb.plot.line(
-                table,
-                "Number of Samples",
-                "JS Divergence",
-                title=title,
-            )
-        }
-    )
+    if rank_zero_only.rank == 0:
+        utils.wandb_dist_log(
+            {
+                label: wandb.plot.line(
+                    table,
+                    "Number of Samples",
+                    "JS Divergence",
+                    title=title,
+                )
+            }
+        )
 
 
 def _log_ws_distance_vs_num_samples(trajectory: md.Trajectory, ref_trajectory: md.Trajectory, label: str, title: str):
@@ -240,16 +244,17 @@ def _log_ws_distance_vs_num_samples(trajectory: md.Trajectory, ref_trajectory: m
         columns=["Number of Samples", "Sliced Wasserstein Distance"],
     )
 
-    wandb.log(
-        {
-            label: wandb.plot.line(
-                table,
-                "Number of Samples",
-                "Sliced Wasserstein Distance",
-                title=title,
-            )
-        }
-    )
+    if rank_zero_only.rank == 0:
+        utils.wandb_dist_log(
+            {
+                label: wandb.plot.line(
+                    table,
+                    "Number of Samples",
+                    "Sliced Wasserstein Distance",
+                    title=title,
+                )
+            }
+        )
 
 
 class RamachandranPlotMetrics(TrajectoryMetric):
@@ -269,10 +274,10 @@ class RamachandranPlotMetrics(TrajectoryMetric):
         py_logger.info(f"{self.dataset.label()}: Loaded true trajectory {true_trajectory}.")
         for dihedral_index in range(num_dihedrals(true_trajectory)):
             fig, _ = plot_ramachandran(true_trajectory, dihedral_index=dihedral_index)
-            wandb.log(
+            utils.wandb_dist_log(
                 {f"{self.dataset.label()}/ramachandran_static/dihedral_{dihedral_index}/true_traj": wandb.Image(fig)}
             )
-            wandb.log(
+            utils.wandb_dist_log(
                 {f"{self.dataset.label()}/ramachandran_static/true_traj/dihedral_{dihedral_index}": wandb.Image(fig)}
             )
             plt.close(fig)
@@ -313,14 +318,14 @@ class RamachandranPlotMetrics(TrajectoryMetric):
             # Compute the Ramachandran plot.
             for dihedral_index in range(num_dihedrals(pred_trajectory)):
                 fig, _ = plot_ramachandran(pred_trajectory, dihedral_index=dihedral_index)
-                wandb.log(
+                utils.wandb_dist_log(
                     {
                         f"{self.dataset.label()}/ramachandran_static/dihedral_{dihedral_index}/pred_traj_{trajectory_index}": wandb.Image(
                             fig
                         )
                     }
                 )
-                wandb.log(
+                utils.wandb_dist_log(
                     {
                         f"{self.dataset.label()}/ramachandran_static/pred_traj_{trajectory_index}/dihedral_{dihedral_index}": wandb.Image(
                             fig
@@ -340,7 +345,7 @@ class RamachandranPlotMetrics(TrajectoryMetric):
                     )
                     with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_mp4:
                         anim.save(temp_mp4.name, writer="ffmpeg")
-                        wandb.log(
+                        utils.wandb_dist_log(
                             {
                                 f"{self.dataset.label()}/ramachandran_animation/dihedral_{dihedral_index}/pred_traj_{trajectory_index}": wandb.Video(
                                     temp_mp4.name

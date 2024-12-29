@@ -43,9 +43,6 @@ def parse_datasets_from_directory(
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
-    py_logger = logging.getLogger("jamun")
-    py_logger.info(f"Creating datasets from {root}.")
-
     if pdb_file is not None and pdb_pattern is not None:
         raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
 
@@ -66,7 +63,7 @@ def parse_datasets_from_directory(
         traj_files[code].append(os.path.join(traj_prefix, entry.name))
 
     if len(codes) == 0:
-        raise ValueError("No codes found in trajectory.")
+        raise ValueError("No codes found in directory.")
 
     pdb_files = {}
     if pdb_pattern is not None:
@@ -98,7 +95,6 @@ def parse_datasets_from_directory(
         if max_datasets is not None and index >= max_datasets:
             break
 
-        py_logger.info(f"Creating dataset for {code} with trajectories {traj_files[code]} and PDB {pdb_files[code]}.")
         dataset = MDtrajDataset(
             root,
             trajfiles=traj_files[code],

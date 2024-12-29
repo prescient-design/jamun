@@ -4,6 +4,7 @@ from typing import Dict
 
 import mdtraj as md
 import wandb
+from lightning.pytorch.utilities import rank_zero_only
 
 from jamun import utils
 from jamun.metrics import TrajectoryMetric
@@ -11,6 +12,9 @@ from jamun.metrics import TrajectoryMetric
 
 def _save_pdb_to_wandb(trajectory: md.Trajectory, label: str):
     """Save a PDB of the trajectory as a wandb artifact."""
+    if rank_zero_only.rank != 0:
+        return
+
     temp_pdb = tempfile.NamedTemporaryFile(suffix=".pdb").name
     utils.save_pdb(trajectory, temp_pdb)
 
@@ -24,11 +28,14 @@ def _save_pdb_to_wandb(trajectory: md.Trajectory, label: str):
 
 def _log_trajectory_animation_to_wandb(trajectory: md.Trajectory, label: str):
     """Save an animation of the trajectory as a wandb artifact."""
+    if rank_zero_only.rank != 0:
+        return
+
     view = utils.animate_trajectory_with_py3Dmol(trajectory)
     temp_html = tempfile.NamedTemporaryFile(suffix=".temp_html").name
     view.write_html(temp_html)
     with open(temp_html) as f:
-        wandb.run.log({label: wandb.Html(f)})
+        wandb.log({label: wandb.Html(f)})
     os.remove(temp_html)
 
 
@@ -43,7 +50,7 @@ class TrajectoryVisualizer(TrajectoryMetric):
         true_trajectory = self.dataset.trajectory
         true_trajectory_subset = true_trajectory[: self.num_frames_to_animate]
 
-        _save_pdb_to_wandb(true_trajectory_subset, label=f"{self.dataset.label()}/animated_trajectory_pdb/true_traj")
+        # _save_pdb_to_wandb(true_trajectory_subset, label=f"{self.dataset.label()}/animated_trajectory_pdb/true_traj")
         _log_trajectory_animation_to_wandb(
             true_trajectory_subset, label=f"{self.dataset.label()}/trajectory_animation/true_traj"
         )

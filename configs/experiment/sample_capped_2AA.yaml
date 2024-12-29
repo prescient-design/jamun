@@ -3,9 +3,9 @@
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/timewarp/2AA-1-large/test/"
-  traj_pattern: "^(.*)-traj-arrays.npz"
-  pdb_pattern: "^(.*)-traj-state0.pdb"
+  root: "${paths.data_path}/capped_diamines/timewarp_splits/test"
+  traj_pattern: "^(.*).xtc"
+  pdb_pattern: "^(.*).pdb"
   subsample: 1
   max_datasets: 5
 

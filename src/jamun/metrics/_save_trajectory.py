@@ -4,6 +4,7 @@ import logging
 
 import numpy as np
 import wandb
+from lightning.pytorch.utilities import rank_zero_only
 
 from jamun import utils
 from jamun.metrics import TrajectoryMetric
@@ -12,24 +13,23 @@ from jamun.metrics import TrajectoryMetric
 class SaveTrajectory(TrajectoryMetric):
     """A metric that saves the predicted and true samples."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, save_true_trajectory: bool = False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.output_dir = os.path.join("sampler", self.dataset.label())
-
-        py_logger = logging.getLogger("jamun")
-        py_logger.info(f"Initialized SaveTrajectory with output directory: {os.path.abspath(self.output_dir)}.")
-
         self.pred_samples_dir = os.path.join(self.output_dir, "predicted_samples")
         self.true_samples_dir = os.path.join(self.output_dir, "true_samples")
 
         # Create the output directories.
-        self.true_samples_extensions = ["pdb", "dcd"]
-        for ext in self.true_samples_extensions:
-            os.makedirs(os.path.join(self.true_samples_dir, ext), exist_ok=True)
+        self.save_true_trajectory = save_true_trajectory
+        if self.save_true_trajectory:
+            self.true_samples_extensions = ["pdb", "dcd"]
+            for ext in self.true_samples_extensions:
+                os.makedirs(os.path.join(self.true_samples_dir, ext), exist_ok=True)
 
         self.pred_samples_extensions = ["npy", "pdb", "dcd"]
         for ext in self.pred_samples_extensions:
             os.makedirs(os.path.join(self.pred_samples_dir, ext), exist_ok=True)
+
 
     def filename_pred(self, trajectory_index: Union[int, str], extension: str) -> str:
         """Returns the filename for the predicted samples."""
@@ -53,7 +53,9 @@ class SaveTrajectory(TrajectoryMetric):
         return filenames[extension]
 
     def on_sample_start(self):
-        # Save the true trajectory as a PDB and DCD file.
+        if not self.save_true_trajectory:
+            return
+
         true_trajectory = self.dataset.trajectory
         utils.save_pdb(true_trajectory, self.filename_true(0, "pdb"))
         true_trajectory.save_dcd(self.filename_true(0, "dcd"))
@@ -61,6 +63,9 @@ class SaveTrajectory(TrajectoryMetric):
     def on_sample_end(self):
         py_logger = logging.getLogger("jamun")
         py_logger.info(f"Saved predicted and true samples to {os.path.abspath(self.output_dir)}.")
+
+        if rank_zero_only.rank != 0:
+            return
 
         # Save the joined samples at the very end of sampling to wandb.
         label = self.dataset.label()

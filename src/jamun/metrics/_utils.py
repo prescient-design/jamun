@@ -6,6 +6,8 @@ import mdtraj as md
 import torch
 import torch_geometric
 import torchmetrics
+from torchmetrics.utilities import dim_zero_cat
+
 
 from jamun import utils
 from jamun.data import MDtrajDataset
@@ -46,7 +48,8 @@ class TrajectoryMetric(torchmetrics.Metric):
 
     def on_after_sample_batch(self) -> None:
         """Called after a batch of samples has been processed."""
-        self.num_chains_seen = len(self.samples)
+        num_chains_seen = len(self.sample_tensors(new=False))
+        self.num_chains_seen = torch.as_tensor(num_chains_seen, device=self.device)
 
     def on_sample_end(self):
         """Called at the end of sampling."""
@@ -54,16 +57,17 @@ class TrajectoryMetric(torchmetrics.Metric):
 
     def update(self, sample: torch_geometric.data.Batch) -> None:
         """Update the metric with a new sample."""
-        # py_logger = logging.getLogger("jamun")
-        # py_logger.info(f"Dataset {self.dataset.label()}: Obtained samples of shape {sample[self.sample_key].shape}.")
+        # Transfer to device.
+        sample = sample.to(self.device)
+
         validate_sample(sample, self.dataset)
         samples = sample[self.sample_key]
 
         # Reshape samples to be of shape (1, num_atoms, num_frames, 3).
         if samples.ndim != 3:
             raise ValueError(f"Invalid sample shape: {samples.shape}, expected (num_atoms, num_frames, 3).")
-
         samples = samples[None, ...]
+
         if len(self.samples) == 0:
             self.samples = samples.clone()
         else:
@@ -71,27 +75,30 @@ class TrajectoryMetric(torchmetrics.Metric):
 
         # self.samples has shape (batch_size, num_atoms, num_frames, 3).
         assert self.samples.ndim == 4
-        # py_logger.info(f"Dataset {self.dataset.label()}: Current samples shape: {self.samples.shape}.")
 
     def sample_tensors(self, *, new: bool) -> torch.Tensor:
         """Return the samples as a torch.Tensor."""
+        samples = self.samples
+
+        # In distributed mode, self.samples has shape (num_devices, batch_size, num_atoms, num_frames, 3).
+        if samples.ndim == 5:
+            samples = einops.rearrange(
+                samples, "num_devices batch_size num_atoms num_frames coords -> (batch_size num_devices) num_atoms num_frames coords" 
+            )
+    
         if new:
-            return self.samples[self.num_chains_seen :]
-        return self.samples
+            return samples[self.num_chains_seen :]
+        return samples
 
     def joined_sample_tensor(self) -> torch.Tensor:
         """Return the samples as a torch.Tensor, concatenated across all batches."""
         return einops.rearrange(
-            self.samples, "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords"
+            self.sample_tensors(new=False), "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords"
         )
 
     def sample_trajectories(self, *, new: bool) -> List[md.Trajectory]:
         """Convert the samples to MD trajectories."""
-        if new:
-            samples = self.samples[self.num_chains_seen :]
-        else:
-            samples = self.samples
-
+        samples = self.sample_tensors(new=new)
         trajectories = utils.coordinates_to_trajectories(samples, self.dataset.structure)
         return trajectories
 
@@ -99,7 +106,7 @@ class TrajectoryMetric(torchmetrics.Metric):
         """Convert the samples to a single MD trajectory."""
         py_logger = logging.getLogger("jamun")
 
-        trajectories = utils.coordinates_to_trajectories(self.samples, self.dataset.structure)
+        trajectories = utils.coordinates_to_trajectories(self.sample_tensors(new=False), self.dataset.structure)
         py_logger.info(f"{self.dataset.label()}: Joining {len(trajectories)} trajectories into 1.")
 
         joined_trajectory = md.join(trajectories, check_topology=True)

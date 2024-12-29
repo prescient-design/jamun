@@ -142,17 +142,17 @@ class MDVisualizeDenoiseMetrics(torchmetrics.Metric):
             temp_html = tempfile.NamedTemporaryFile(suffix=".html").name
             views[sigma].write_html(temp_html)
             with open(temp_html) as f:
-                wandb.run.log({f"{self.dataset.label()}/visualize_denoise/3D_view/sigma={sigma}": wandb.Html(f)})
+                utils.wandb_dist_log({f"{self.dataset.label()}/visualize_denoise/3D_view/sigma={sigma}": wandb.Html(f)})
             os.remove(temp_html)
 
         for sigma, fig in figs.items():
-            wandb.log(
+            utils.wandb_dist_log(
                 {f"{self.dataset.label()}/visualize_denoise/ramachandran_plots_static/sigma={sigma}": wandb.Image(fig)}
             )
             plt.close(fig)
 
         if scaled_rmsd_per_sigma is not None:
             for sigma, scaled_rmsd in scaled_rmsd_per_sigma.items():
-                wandb.log({f"{self.dataset.label()}/scaled_rmsd_per_dataset/sigma={sigma}": scaled_rmsd})
+                utils.wandb_dist_log({f"{self.dataset.label()}/scaled_rmsd_per_dataset/sigma={sigma}": scaled_rmsd})
 
         return figs, views

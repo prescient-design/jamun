@@ -50,7 +50,7 @@ class MDSampleVisualizer(TrajectoryMetric):
         temp_html = tempfile.NamedTemporaryFile(suffix=".html").name
         view.write_html(temp_html)
         with open(temp_html) as f:
-            wandb.run.log({f"{self.dataset.label()}/visualize_samples/3D_view/{label}": wandb.Html(f)})
+            utils.wandb_dist_log({f"{self.dataset.label()}/visualize_samples/3D_view/{label}": wandb.Html(f)})
         os.remove(temp_html)
 
     def compute(self) -> Dict[str, float]:

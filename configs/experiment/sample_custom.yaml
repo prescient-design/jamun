@@ -35,7 +35,7 @@ init_datasets:
   label: ${label}
 
 finetune_on_init:
-  num_steps: 20
+  num_steps: ???
   batch_size: 16
 
 sampler:

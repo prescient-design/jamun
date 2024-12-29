@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 import traceback
@@ -13,7 +12,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
 import jamun
-from jamun.utils import find_checkpoint
+from jamun.utils import find_checkpoint, dist_log
 from jamun.data import MDtrajDataset, MDtrajDataModule
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
@@ -39,18 +38,14 @@ def get_initial_graphs(
 def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
 
-    py_logger = logging.getLogger("jamun")
-
-    if rank_zero_only.rank == 0:
-        py_logger.info(f"{OmegaConf.to_yaml(log_cfg)}")
-        py_logger.info(f"{os.getcwd()=}")
-        py_logger.info(f"{torch.__config__.parallel_info()}")
-        py_logger.info(f"{os.sched_getaffinity(0)=}")
+    dist_log(f"{OmegaConf.to_yaml(log_cfg)}")
+    dist_log(f"{os.getcwd()=}")
+    dist_log(f"{torch.__config__.parallel_info()}")
+    dist_log(f"{os.sched_getaffinity(0)=}")
 
     if matmul_prec := cfg.get("float32_matmul_precision"):
         torch.set_float32_matmul_precision(matmul_prec)
-        if rank_zero_only.rank == 0:
-            py_logger.info(f"setting float_32_matmul_precision to {matmul_prec}")
+        dist_log(f"setting float_32_matmul_precision to {matmul_prec}")
 
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
     wandb_logger = None
@@ -59,7 +54,7 @@ def run(cfg):
             wandb_logger = logger
 
     if rank_zero_only.rank == 0 and wandb_logger:
-        py_logger.info(f"{wandb_logger.experiment.name=}")
+        dist_log(f"{wandb_logger.experiment.name=}")
         wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
 
     # Load the checkpoint either given the wandb run path or the checkpoint path.
@@ -91,7 +86,7 @@ def run(cfg):
     # Run test-time adapation, if specified.
     if finetuning_cfg := cfg.get("finetune_on_init"):
         num_finetuning_steps = finetuning_cfg.get("num_steps")
-        py_logger.info(f"Finetuning for {num_finetuning_steps} steps.")
+        dist_log(f"Finetuning for {num_finetuning_steps} steps.")
         
         # Check that model parameters changed.
         param_sum = sum(p.sum() for p in model.parameters())
@@ -105,7 +100,7 @@ def run(cfg):
 
         # Check that model parameters changed.
         new_param_sum = sum(p.sum() for p in model.parameters())
-        py_logger.info(f"Model parameters changed: {param_sum} -> {new_param_sum}")
+        dist_log(f"Model parameters changed: {param_sum} -> {new_param_sum}")
 
     sampler.sample(
         model=model,

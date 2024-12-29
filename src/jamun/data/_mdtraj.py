@@ -121,6 +121,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = loss_weight
 
+        py_logger.info(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
         py_logger.info(
             f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
         )

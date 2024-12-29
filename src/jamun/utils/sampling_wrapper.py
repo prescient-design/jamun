@@ -42,6 +42,7 @@ class ModelSamplingWrapper:
 
         input_graphs = self.init_graphs.clone()
         input_graphs.pos = positions
+        
         # Save for debugging.
         self.input_graphs = input_graphs
         return input_graphs.to(positions.device)
@@ -51,12 +52,13 @@ class ModelSamplingWrapper:
         if "batch" not in self.init_graphs:
             raise ValueError("The initial graph does not have a batch attribute.")
 
+        # Copy off the input graphs, to update attributes later.
         output_graphs = self.init_graphs.clone()
         output_graphs = torch_geometric.data.Batch.to_data_list(output_graphs)
 
-        py_logger = logging.getLogger("jamun")
         for key, value in samples.items():
             if value.ndim not in [2, 3]:
+                # py_logger = logging.getLogger("jamun")
                 # py_logger.info(f"Skipping unbatching of key {key} with shape {value.shape} as it is not 2D or 3D.")
                 continue
 

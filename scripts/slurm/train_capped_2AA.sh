@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node 2
 #SBATCH --gpus-per-node 2
 #SBATCH --cpus-per-task 8
-#SBATCH --time 72:00:00
+#SBATCH --time 7-0
 
 # if using mamba or conda, comment the following:
 source .venv/bin/activate
@@ -13,10 +13,11 @@ source .venv/bin/activate
 # eval "$(mamba shell.bash hook)"
 # mamba activate jamun-env
 
+
 set -eux
 
 echo "SLURM_JOB_ID = ${SLURM_JOB_ID}"
-echo "hostname = $(hostname)"
+hostname
 
 export HYDRA_FULL_ERROR=1
 export TORCH_COMPILE_DEBUG=1
@@ -30,9 +31,10 @@ echo "RUN_KEY = ${RUN_KEY}"
 nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
-    jamun_sample --config-dir=/homefs/home/daigavaa/jamun/configs \
-        experiment=sample_uncapped_2AA.yaml \
-        ++sampler.devices=$SLURM_GPUS_PER_NODE \
-        ++sampler.num_nodes=$SLURM_JOB_NUM_NODES \
-        ++logger.wandb.tags=["'${SLURM_JOB_ID}'","sample"] \
-        ++run_key=$RUN_KEY
+  jamun_train --config-dir=/homefs/home/daigavaa/jamun/configs \
+    experiment=train_capped_2AA.yaml \
+    ++trainer.devices=$SLURM_GPUS_PER_NODE \
+    ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
+    ++trainer.limit_train_batches=1.0 \
+    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","train"] \
+    ++run_key=$RUN_KEY

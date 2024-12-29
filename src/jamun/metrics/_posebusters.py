@@ -51,7 +51,7 @@ class PoseBustersMetrics(TrajectoryMetric):
             return metrics
 
         mean_fail_rates = 1 - df.mean()
-        wandb.log(
+        utils.wandb_dist_log(
             {
                 f"{self.dataset.label()}/posebusters/mean_fail_rates/true_traj": wandb.Table(
                     data=[mean_fail_rates.values], columns=list(mean_fail_rates.index)
@@ -75,7 +75,7 @@ class PoseBustersMetrics(TrajectoryMetric):
                 py_logger.info("PoseBusters found no molecules in the trajectory.")
             else:
                 mean_fail_rates = 1 - df.mean()
-                wandb.log(
+                utils.wandb_dist_log(
                     {
                         f"{self.dataset.label()}/posebusters/mean_fail_rates/pred_traj_{trajectory_index}": wandb.Table(
                             data=[mean_fail_rates.values], columns=list(mean_fail_rates.index)

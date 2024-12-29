@@ -6,6 +6,12 @@
 *.pdb
 *.ipynb
 *.log
+*.npy
+*.npz
+*.pkl
+*.txt
+*.pdf
+*.xtc
 .env
 .venv
 .ruff_cache

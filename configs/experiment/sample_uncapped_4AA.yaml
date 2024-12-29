@@ -3,8 +3,8 @@
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
   root: "${paths.data_path}/timewarp/4AA-large/test/"
-  traj_pattern: "^(....)-traj-arrays.npz"
-  pdb_pattern: "^(....)-traj-state0.pdb"
+  traj_pattern: "^(.*)-traj-arrays.npz"
+  pdb_pattern: "^(.*)-traj-state0.pdb"
   subsample: 1
   max_datasets: 10
   max_datasets_offset: 0
@@ -30,4 +30,4 @@ sampler:
 
 logger:
   wandb:
-    group: sample_4AA
+    group: sample_uncapped_4AA

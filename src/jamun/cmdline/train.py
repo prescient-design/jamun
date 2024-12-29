@@ -13,7 +13,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
 import jamun
-from jamun.utils import find_checkpoint
+from jamun.utils import find_checkpoint, dist_log
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
 from jamun.utils import compute_average_squared_distance_from_data, dist_log
@@ -36,19 +36,15 @@ def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
 def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
 
-    py_logger = logging.getLogger("jamun")
-
-    if rank_zero_only.rank == 0:
-        py_logger.info(f"{OmegaConf.to_yaml(log_cfg)}")
-        py_logger.info(f"{os.getcwd()=}")
-        py_logger.info(f"{torch.__config__.parallel_info()}")
-
+    dist_log(f"{OmegaConf.to_yaml(log_cfg)}")
+    dist_log(f"{os.getcwd()=}")
+    dist_log(f"{torch.__config__.parallel_info()}")
     dist_log(f"{os.sched_getaffinity(0)=}")
 
     # Compute data normalization.
     if cfg.get("compute_average_squared_distance_from_data"):
         average_squared_distance = compute_average_squared_distance_from_config(cfg)
-        py_logger.info(
+        dist_log(
             f"Overwriting average_squared_distance in config from {cfg.model.average_squared_distance} to {average_squared_distance}."
         )
         cfg.model.average_squared_distance = average_squared_distance
@@ -56,7 +52,7 @@ def run(cfg):
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     model = hydra.utils.instantiate(cfg.model)
     if matmul_prec := cfg.get("float32_matmul_precision"):
-        py_logger.info(f"setting float_32_matmul_precision to {matmul_prec}")
+        dist_log(f"setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
 
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
@@ -66,7 +62,7 @@ def run(cfg):
             wandb_logger = logger
 
     if wandb_logger:
-        py_logger.info(f"{wandb_logger.experiment.name=}")
+        dist_log(f"{wandb_logger.experiment.name=}")
 
     callbacks = instantiate_dict_cfg(cfg.get("callbacks"), verbose=(rank_zero_only.rank == 0))
 
@@ -96,7 +92,7 @@ def run(cfg):
         profile_art.save()
 
     if rank_zero_only.rank == 0:
-        py_logger.info(f"{torch.cuda.max_memory_allocated()=:0.2e}")
+        dist_log(f"{torch.cuda.max_memory_allocated()=:0.2e}")
 
     if wandb_logger:
         wandb.finish()

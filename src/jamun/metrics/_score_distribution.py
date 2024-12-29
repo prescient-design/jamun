@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import wandb
 
+from jamun import utils
 from jamun.data import MDtrajDataset
 from jamun.metrics import TrajectoryMetric
 
@@ -46,7 +47,7 @@ class ScoreDistributionMetrics(TrajectoryMetric):
             plt.ylabel("Score Norms")
             plt.title(f"Score norms across frames for trajectory {trajectory_index}")
             plt.legend()
-            wandb.log(
+            utils.wandb_dist_log(
                 {
                     f"{self.dataset.label()}/score_distribution/pred_traj_{trajectory_index}": wandb.Image(plt),
                 }
