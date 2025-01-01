@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import matplotlib.cm
 import matplotlib.pyplot as plt
 from matplotlib import animation, colors
+from scipy.spatial import distance
 import mdtraj as md
 import numpy as np
 import ot
@@ -128,7 +129,7 @@ def plot_ramachandran_animation(
     return anim
 
 
-def compute_ramachandran_histogram(trajectory: md.Trajectory, bins: int = 100):
+def compute_ramachandran_histogram(trajectory: md.Trajectory, bins: int):
     """Computes the Ramachandran histogram from a trajectory."""
     phi_angles, psi_angles = get_ramachandran_angles(trajectory)
     hist, _, _ = np.histogram2d(
@@ -138,33 +139,18 @@ def compute_ramachandran_histogram(trajectory: md.Trajectory, bins: int = 100):
     return hist
 
 
-def compute_JS_divergence_of_ramachandran(trajectory: md.Trajectory, ref_trajectory: md.Trajectory) -> np.ndarray:
+def compute_JS_divergence_of_ramachandran(trajectory: md.Trajectory, ref_trajectory: md.Trajectory, bins: int = 100) -> float:
     """Computes the Jensen-Shannon divergence between the Ramachandran histograms from two trajectories."""
 
-    def compute_kl_divergence(p: np.ndarray, q: np.ndarray) -> np.ndarray:
-        """Computes the KL divergence between two distributions."""
-        both_pq_zero = np.logical_and(p == 0, q == 0)
-        p = p[~both_pq_zero]
-        q = q[~both_pq_zero]
-        p_log_p = p * np.log(np.where(p == 0, 1, p))
-        p_log_q = p * np.log(q)
-        return np.sum(p_log_p - p_log_q)
-
-    # Compute the histograms.
-    hist = compute_ramachandran_histogram(trajectory)
-    ref_hist = compute_ramachandran_histogram(ref_trajectory)
-
-    # Compute the Jensen-Shannon divergence.
-    hist = hist.flatten()
-    ref_hist = ref_hist.flatten()
-    mix = 0.5 * (hist + ref_hist)
-    js_div = 0.5 * (compute_kl_divergence(hist, mix) + compute_kl_divergence(ref_hist, mix))
-    return js_div
+    hist = compute_ramachandran_histogram(trajectory, bins)
+    ref_hist = compute_ramachandran_histogram(ref_trajectory, bins)
+    
+    return distance.jensenshannon(hist.flatten(), ref_hist.flatten()) ** 2
 
 
 def compute_sliced_Wasserstein_distance_of_ramachandran(
     trajectory: md.Trajectory, ref_trajectory: md.Trajectory, n_projections: int = 20
-) -> np.ndarray:
+) -> float:
     """Computes the sliced Wasserstein distance between the Ramachandran plots from two trajectories."""
 
     def compute_descriptors(phi_angles: np.ndarray, psi_angles: np.ndarray) -> np.ndarray:

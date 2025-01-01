@@ -1,14 +1,16 @@
+from typing import List, Tuple
+import logging
 import os
 import re
 
 import mdtraj as md
 import numpy as np
 import pdbfixer
-from mdtraj.reporters import XTCReporter
 
-from openmm import CustomExternalForce, MonteCarloBarostat, PeriodicTorsionForce, Platform
-from openmm.app import PME, CheckpointReporter, HBonds, Modeller, PDBFile, Simulation, StateDataReporter
+from openmm import CustomExternalForce, MonteCarloBarostat, PeriodicTorsionForce, Platform, NoseHooverIntegrator, LangevinMiddleIntegrator
+from openmm.app import PME, CheckpointReporter, HBonds, Modeller, PDBFile, Simulation, StateDataReporter, Topology, ForceField
 from openmm.unit import (
+    Quantity,
     angstroms,
     bar,
     kelvin,
@@ -18,13 +20,16 @@ from openmm.unit import (
     nanometers,
     picoseconds,
 )
+Positions = Quantity[Any]
+
+py_logger = logging.getLogger("openmm_utils")
 
 
-################################# File Management ###################################
-def check_file(fname):
+
+def check_file(fname: str) -> str:
     """
     Checks the existence of a file in the given pathway and gives a newfile name
-    filename format  - <string_indentifier>_<int_identifier>.<extension>
+    Filename format: <string_indentifier>_<int_identifier>.<extension>
     """
     if os.path.isfile(fname):
         ident = fname.split(".")[0].split("_")
@@ -33,10 +38,10 @@ def check_file(fname):
     return fname
 
 
-def check_dir(fname):
+def check_dir(fname: str) -> str:
     """
     Checks the existence of a file in the given pathway and gives a newfile name
-    filename format  - <string_indentifier>_<int_identifier>.<extension>
+    Filename format: <string_indentifier>_<int_identifier>.<extension>
     """
     if os.path.isdir(fname):
         ident = fname.split("_")
@@ -46,39 +51,32 @@ def check_dir(fname):
     return fname
 
 
-############################ Structure Editing Functions ############################
-
-
-def fix_pdb(pdb_file: str):
+def fix_pdb(pdb_file: str) -> Tuple[Positions, Topology]:
     """
-    fixes the raw pdb from colabfold using pdbfixer.
+    Fixes the raw .pdb from colabfold using pdbfixer.
     This needs to be performed to cleanup the pdb and to start simulation
-    Fixes performed: missing residues, missing atoms and missing Terminals
     """
-    raw_pdb = pdb_file
-    # fixer instance
-    fixer = pdbfixer.PDBFixer(raw_pdb)
-
-    # finding and adding missing residues including terminals
-    fixer.findNonstandardResidues()
+    py_logger.info("Fixing the .pdb file.")
+    fixer = pdbfixer.PDBFixer(pdb_file)
+    fixer.findNontstandardResidues()
     fixer.replaceNonstandardResidues()
     fixer.findMissingResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms(seed=0)
-    outfile = check_file("fixed_0.pdb")
-    PDBFile.writeFile(fixer.topology, fixer.positions, open(outfile, "w"), keepIds=True)
+    outfile = check_file(f"fixed_{pdb_file}")
+    with open(outfile, "w") as f:
+        PDBFile.writeFile(fixer.topology, fixer.positions, f, keepIds=True)
     return fixer.positions, fixer.topology
 
 
-def add_hydrogen(
-    positions,
-    topology,
-    forcefield,
-    write_file=True,
-):
-    """
-    Adds missing hydrogen to the pdb for a particular forcefield
-    """
+def add_hydrogens(
+    positions: Positions,
+    topology: Topology,
+    forcefield: ForceField,
+    write_file: bool = True,
+) -> Tuple[Positions, Topology]:
+    """Adds missing hydrogen to the pdb for a particular forcefield."""
+    py_logger.info("Adding hydrogens to the system.")
     modeller = Modeller(topology, positions)
     modeller.addHydrogens(forcefield)
     if write_file:
@@ -87,40 +85,38 @@ def add_hydrogen(
     return modeller.positions, modeller.topology
 
 
-def solvate_me(
-    positions,
-    topology,
-    forcefield,
-    write_file=True,
-    padding=1,
-    water_model="tip3p",
-    positiveIon="Na+",
-    negativeIion="Cl-",
-):
-    """
-    Creates a box of solvent with 1 nm padding and neutral charge
-    """
+def solvate(
+    positions: Positions,
+    topology: Topology,
+    forcefield: ForceField,
+    padding_nm: int,
+    water_model: str,
+    positive_ion: str,
+    negative_ion: str,
+    write_file: bool = True,
+) -> Tuple[Positions, Topology]:
+    """Creates a box of solvent with padding and neutral charges."""
+    py_logger.info("Solvating the system.")
     modeller = Modeller(topology, positions)
     modeller.addSolvent(
         forcefield,
-        padding=padding * nanometers,
+        padding=padding_nm * nanometers,
         model=water_model,
         neutralize=True,
-        positiveIon=positiveIon,
-        negativeIon=negativeIion,
+        positiveIon=positive_ion,
+        negativeIon=negative_ion,
     )
     if write_file:
-        solvfile = check_file("solvated_0.pdb")
-        PDBFile.writeFile(modeller.topology, modeller.positions, open(solvfile, "w"))
+        solv_file = check_file("solvated_0.pdb")
+        with open(solv_file, "w") as f:
+            PDBFile.writeFile(modeller.topology, modeller.positions, f)
     return modeller.positions, modeller.topology
 
 
-############################ Perform Dynamics using openMM ############################
-
-# Will be added into a class soon!
-
-
-def get_system_with_Langevin_integrator(topology, forcefield, temp=300, dt=0.002, state=False):
+def get_system_with_Langevin_integrator(
+    topology: Topology, forcefield: ForceField, temp_K: float, dt_ps: float, state: Optional[str] = None
+) -> Simulation:
+    """Creates a system with Langevin integrator for NVT ensemble."""
     system = forcefield.createSystem(
         topology,
         nonbondedMethod=PME,
@@ -128,17 +124,17 @@ def get_system_with_Langevin_integrator(topology, forcefield, temp=300, dt=0.002
         switchDistance=0.8 * nanometer,
         constraints=HBonds,
     )
-    integrator = LangevinMiddleIntegrator(temp * kelvin, 1 / picoseconds, dt * picoseconds)
-    # platform = Platform.getPlatformByName('CUDA');
-    # print(platform)
-    properties = {"Precision": "double"}  # change if required after setting up openmm
+    integrator = LangevinMiddleIntegrator(temp_K * kelvin, 1 / picoseconds, dt_ps * picoseconds)
     simulation = Simulation(topology, system, integrator)
-    if state:
+    if state is not None:
         simulation.loadState(state)
     return simulation
 
 
-def get_system_with_NoseHoover_integrator(positions, topology, forcefield, temp=300, dt=0.002):
+def get_system_with_NoseHoover_integrator(
+    topology: Topology, forcefield: ForceField, temp_K: float, dt_ps: float
+) -> Simulation:
+    """Creates a system with Nose-Hoover integrator for NVT ensemble."""
     system = forcefield.createSystem(
         topology,
         nonbondedMethod=PME,
@@ -146,20 +142,16 @@ def get_system_with_NoseHoover_integrator(positions, topology, forcefield, temp=
         switchDistance=0.8 * nanometer,
         constraints=HBonds,
     )
-    integrator = NoseHooverIntegrator(temp * kelvin, 1 / picoseconds, dt * picoseconds)
+    integrator = NoseHooverIntegrator(temp_K * kelvin, 1 / picoseconds, dt_ps * picoseconds)
     platform = Platform.getPlatformByName("CUDA")
-    properties = {"Precision": "double"}  # change if required after setting up openmm
     simulation = Simulation(topology, system, integrator, platform)
-
     return simulation
 
 
-def add_position_restraints(positions, topology, simulation, k=1000):
-    """
-
-    Adds an harmonic potential to the heavy atoms of the system(proteins) with an user defined force constant 'k'
-
-    """
+def add_position_restraints(
+    positions: Positions, topology: Topology, simulation: Simulation, k: float = 1000
+) -> Simulation:
+    """Adds an harmonic potential to the heavy atoms of the system with a force constant 'k' in units of kJ/(mol * A^2)."""
 
     AA = [
         "ALA",
@@ -183,7 +175,7 @@ def add_position_restraints(positions, topology, simulation, k=1000):
         "TRP",
         "TYR",
     ]
-    force = CustomExternalForce("k*periodicdistance(x, y, z, x0, y0, z0)^2")  # Harmonic potential for position restrain
+    force = CustomExternalForce("k*periodicdistance(x, y, z, x0, y0, z0)^2")
     force.addGlobalParameter("k", k * kilocalories_per_mole / angstroms**2)
     force.addPerParticleParameter("x0")
     force.addPerParticleParameter("y0")
@@ -191,233 +183,176 @@ def add_position_restraints(positions, topology, simulation, k=1000):
 
     index = 0
     for i, res in enumerate(topology.residues()):
-        if res.name in AA:  # Required to select only the protein atoms
+        # Required to select only the protein atoms
+        if res.name in AA:
             for at in res.atoms():
-                if not re.search(r"H", at.name):  # All heavy Atoms -(exculdes Hydrogens)
+                # All heavy atoms excluding hydrogens.
+                if not re.search(r"H", at.name): 
                     force.addParticle(index, positions[index].value_in_unit(nanometers))
                 index += 1
 
-    posres_sys = simulation.context.getSystem()  # A gets System for a simulation instance
-    posres_sys.addForce(force)  # Modifies system with custom Force
-    simulation.context.reinitialize()  # initializes the simulation instance with the modified system
+    posres_sys = simulation.context.getSystem()
+    posres_sys.addForce(force)
+    simulation.context.reinitialize()
 
     return simulation
 
 
-def add_dihedral_restraints(diheds, simulation, k=1):
+def add_dihedral_restraints(
+    dihedrals: np.ndarray, simulation: Simulation, k: float = 1
+) -> Simulation:
+    """Adds a periodic torsion potential to the dihedral angles of the system with a force constant 'k' in units of kJ/mol."""
     phase = [-1.1053785, -0.7255615]
     force = PeriodicTorsionForce()
     for i in [0, 1]:
-        for dihed in diheds[i]:
+        for dihed in dihedrals[i]:
             force.addTorsion(dihed[0], dihed[1], dihed[2], dihed[3], 1, phase[i], k)
 
-    posres_sys = simulation.context.getSystem()  # A gets System for a simulation instance
-    posres_sys.addForce(force)  # Modifies system with custom Force
-    simulation.context.reinitialize()  # initializes the simulation instance with the modified system
-
+    posres_sys = simulation.context.getSystem()
+    posres_sys.addForce(force)
+    simulation.context.reinitialize()
     return simulation
 
 
-def minimize_energy(positions, simulation, tolerance=10, n_iter=1500, write_file=True):
-    """
-    Energy minimization step for simulation object
-    """
+def minimize_energy(
+        positions: np.ndarray,
+        simulation: Simulation,
+        tolerance_kJ_per_mol_per_nm: float = 10,
+        n_iter: int = 1500,
+        write_file: bool = True) -> Tuple[Positions, Simulation]:
+    """Energy minimization steps to relax the system."""
+    py_logger.info("Minimizing the energy of the system.")
     simulation.context.setPositions(positions)
-    simulation.minimizeEnergy(tolerance=tolerance * kilojoules_per_mole / nanometer, maxIterations=n_iter)
-    minim_positions = simulation.context.getState(getPositions=True).getPositions()
+    simulation.minimizeEnergy(tolerance=tolerance_kJ_per_mol_per_nm * kilojoules_per_mole / nanometer, maxIterations=n_iter)
+    minimized_positions = simulation.context.getState(getPositions=True).getPositions()
     if write_file:
-        minimfile = check_file("minim_0.pdb")
+        minim_file = check_file("minim_0.pdb")
         pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
-        PDBFile.writeFile(simulation.topology, pdb_positions, open(minimfile, "w"))
-    return minim_positions, simulation
+        with open(minim_file, "w") as f:
+            PDBFile.writeFile(simulation.topology, pdb_positions, f)
+    return minimized_positions, simulation
 
 
-# class md_wrapper():
-#    def __init__(positions,simulation,nsteps,ens='NVT',run_type='equil',temp=300,pressure=1,metadparams=False,\
-# diheds=False,save_chkpt_file=True,outfreq=500,write_xtc=True,velocities=None,cont=False,restart=False,printdists=False,biasparams=False):
-
-
-def run_MD(
-    positions,
-    simulation,
-    nsteps,
-    ens="NVT",
-    run_type="equil",
-    temp=300,
-    pressure=1,
-    diheds=False,
-    save_chkpt_file=True,
-    outfreq=500,
-    write_xtc=True,
-    velocities=None,
-    cont=False,
-    restart=False,
-):
+def run_simulation(
+    simulation: Simulation,
+    positions: Positions,
+    num_steps: int,
+    name: str,
+    ensemble: str,
+    temp_K: Optional[float] = None,
+    pressure_bar: Optional[float] = None,
+    save_checkpoint_file: bool = True,
+    output_frequency: int = 500,
+    write_xtc: bool = True,
+    velocities: Optional[Velocities] = None,
+    restart_from_checkpoint: bool = False,
+    checkpoint_file: str = "chkptfile.chk",
+) -> Tuple[Positions, Velocities, Simulation]:
     """
-    Function to run simulation for a particular ensemble. The function can also incorporate plumed file.
-    There is a restart option to start a simulation from checkpoint file
-    There is also a continue option if multiple simulation is required to be run in a single script
-
-    positions, simulation and nsteps are required parameters
-
+    Run molecular dynamics simulation with flexible configuration options.
+    
+    Args:
+        simulation: OpenMM Simulation object
+        positions: Initial positions with units
+        num_steps: Number of simulation steps
+        name: Base name for output files
+        ensemble: "NVT" or "NPT"
+        temp_K: Temperature in Kelvin
+        pressure_bar: Pressure in bar
+        save_checkpoint_file: Whether to save checkpoint files
+        output_frequency: Frequency of output writing
+        write_xtc: Whether to write XTC trajectory
+        velocities: Optional initial velocities
+        restart_from_checkpoint: Whether to restart from a checkpoint
+        checkpoint_file: Name of checkpoint file to read/write
+    
+    Returns:
+        Tuple of (final positions, final velocities, simulation)
     """
+    # Setup ensemble forces.
+    if ensemble == "NPT":
+        py_logger.info("Setting up NPT ensemble with pressure barostat.")
+        simulation.context.getSystem().addForce(
+            MonteCarloBarostat(pressure_bar * bar, temp_K * kelvin)
+        )
+    elif ensemble == "NVT":
+        if pressure_bar is not None:
+            py_logger.info("Ignoring pressure barostat for NVT ensemble.")
+    else:
+        raise ValueError(f"Invalid ensemble type: {ensemble}")
 
-    ## Add forces according to the ensemble or plumed file
-
-    if ens == "NPT":
-        simulation.context.getSystem().addForce(MonteCarloBarostat(pressure * bar, temp * kelvin))  # Pressure coupling
-
+    # Set initial conditions.
     simulation.context.setPositions(positions)
-    if cont:
+    if velocities is not None:
         simulation.context.setVelocities(velocities)
+    
+    if restart_from_checkpoint:
+        simulation.loadCheckpoint(checkpoint_file)
 
-    ## If restarting from checkpoint file and saving the same
-
-    if restart:
-        simulation.loadCheckpoint("chkptfile.chk")
-    if save_chkpt_file:
-        chkpt_freq = 0.05 * nsteps
-        chkfile = check_file(f"{run_type}_0.chk")
-        simulation.reporters.append(CheckpointReporter(chkfile, chkpt_freq))
-
-    ## Append reporters for the simulation output and output files
-
-    outfile = check_file(f"{run_type}_0.pdb")
-    logfile = check_file(f"{run_type}_0.txt")  # output files
-    xmlfile = check_file(f"{run_type}_0.state")
-
+    # Setup reporters.
     simulation.reporters = []
-    outlog = open(logfile, "w")
-    simulation.reporters.append(
-        StateDataReporter(
-            outlog,
-            outfreq * 2,
-            step=True,
-            potentialEnergy=True,
-            kineticEnergy=True,
-            separator="\t|\t",
-            progress=True,
-            speed=True,
-            totalSteps=nsteps,
+    
+    # Checkpoint reporter.
+    if save_checkpoint_file:
+        chkpt_freq = int(0.05 * num_steps)
+        simulation.reporters.append(
+            CheckpointReporter(checkpoint_file, chkpt_freq)
         )
-    )
 
-    if write_xtc:  # default is True
-        outfname = check_file(f"{run_type}_0.xtc")
-        topology = md.Topology.from_openmm(simulation.topology)
-        XTC_information = "protein"
-        python_expression = topology.select_expression(XTC_information)
-        req_indices = np.array(eval(python_expression))
-        simulation.reporters.append(XTCReporter(outfname, outfreq, atomSubset=req_indices))
-
-    ## RUN the simulation
-
-    simulation.step(nsteps)
-
-    ## Output PDB and simulation state
-
-    pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
-    PDBFile.writeFile(simulation.topology, pdb_positions, open(outfile, "w"))
-    simulation.saveState(xmlfile)
-
-    ## Get the positions and velocities that could be used to continue the simulation
-
-    positions = simulation.context.getState(
-        getPositions=True
-    ).getPositions()  # Note PBC condition note enforced -depends on long simulations
-    velocities = simulation.context.getState(getVelocities=True).getVelocities()
-
-    ## Remove the forces added to the simulation by plumed and monte carlo -- better solution will be updated (required for multiple runs in a single script)
-
-    if ens == "NPT":
-        simulation.context.getSystem().removeForce(simulation.context.getSystem().getNumForces() - 1)
-
-    return positions, velocities, simulation
-
-
-def run_restart(
-    simulation,
-    positions,
-    velocities,
-    nsteps,
-    name,
-    ens="NVT",
-    temp=300,
-    pressure=1,
-    save_chkpt_file=True,
-    outfreq=500,
-    write_xtc=True,
-):
-    """
-    Function to run simulation for a particular ensemble. The function can also incorporate plumed file.
-    There is a restart option to start a simulation from checkpoint file
-    There is also a continue option if multiple simulation is required to be run in a single script
-
-    positions, simulation and nsteps are required parameters
-
-    """
-
-    ## Add forces according to the ensemble or plumed file
-
-    if ens == "NPT":
-        simulation.context.getSystem().addForce(MonteCarloBarostat(pressure * bar, temp * kelvin))  # Pressure coupling
-
-    simulation.context.setPositions(positions)
-
-    simulation.context.setVelocities(velocities)
-    if save_chkpt_file:
-        chkpt_freq = 0.05 * nsteps
-        simulation.reporters.append(CheckpointReporter("chkptfile.chk", chkpt_freq))
-
-    ## Append reporters for the simulation output and output files
-
-    outfile = "%s.pdb" % name
-    logfile = "%s.txt" % name  # output files
-    xmlfile = "%s.state" % name
-
-    simulation.reporters = []
-    outlog = open(logfile, "a")
-    simulation.reporters.append(
-        StateDataReporter(
-            outlog,
-            outfreq * 2,
-            step=True,
-            potentialEnergy=True,
-            kineticEnergy=True,
-            separator="\t|\t",
-            progress=True,
-            speed=True,
-            totalSteps=nsteps,
+    # State reporter for logging.
+    logfile = f"{name}.txt"
+    with open(logfile, "a" if restart_from_checkpoint else "w") as outlog:
+        simulation.reporters.append(
+            StateDataReporter(
+                outlog,
+                output_frequency * 2,
+                step=True,
+                potentialEnergy=True,
+                kineticEnergy=True,
+                separator="\t|\t",
+                progress=True,
+                speed=True,
+                totalSteps=num_steps,
+            )
         )
-    )
 
-    if write_xtc:  # default is True
-        outfname = "%s.xtc" % name
+    # XTC reporter.
+    if write_xtc:
+        outfname = f"{name}.xtc"
         topology = md.Topology.from_openmm(simulation.topology)
-        XTC_information = "protein"
-        python_expression = topology.select_expression(XTC_information)
+        python_expression = topology.select_expression("protein")
         req_indices = np.array(eval(python_expression))
-        simulation.reporters.append(XTCReporter(outfname, outfreq, atomSubset=req_indices))
+        simulation.reporters.append(
+            md.reporters.XTCReporter(outfname, output_frequency, atomSubset=req_indices)
+        )
 
-    ## RUN the simulation
-    simulation.step(nsteps)
+    # Run simulation.
+    simulation.step(num_steps)
+    py_logger.info("Simulation completed.")
 
-    ## Output PDB and simulation state
-
-    pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
+    # Save final state.
+    pdb_positions = simulation.context.getState(
+        getPositions=True, 
+        enforcePeriodicBox=True
+    ).getPositions()
+    
+    outfile = f"{name}.pdb"
     PDBFile.writeFile(simulation.topology, pdb_positions, open(outfile, "w"))
-    simulation.saveState(xmlfile)
+    simulation.saveState(f"{name}.state")
 
-    ## Get the positions and velocities that could be used to continue the simulation
-
-    positions = simulation.context.getState(
+    # Get final positions and velocities.
+    final_positions = simulation.context.getState(
         getPositions=True
-    ).getPositions()  # Note PBC condition note enforced -depends on long simulations
-    velocities = simulation.context.getState(getVelocities=True).getVelocities()
+    ).getPositions()
+    
+    final_velocities = simulation.context.getState(
+        getVelocities=True
+    ).getVelocities()
 
-    ## Remove the forces added to the simulation by plumed and monte carlo -- better solution will be updated (required for multiple runs in a single script)
+    # Cleanup NPT forces.
+    if ensemble == "NPT":
+        simulation.context.getSystem().removeForce(
+            simulation.context.getSystem().getNumForces() - 1
+        )
 
-    if ens == "NPT":
-        simulation.context.getSystem().removeForce(simulation.context.getSystem().getNumForces() - 1)
-
-    return positions, velocities, simulation
+    return final_positions, final_velocities, simulation

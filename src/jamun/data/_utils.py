@@ -40,6 +40,7 @@ def parse_datasets_from_directory(
     pdb_file: Optional[Sequence[str]] = None,
     max_datasets: Optional[int] = None,
     max_datasets_offset: Optional[int] = None,
+    filter_codes: Optional[Sequence[str]] = None,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
@@ -85,16 +86,19 @@ def parse_datasets_from_directory(
         for code in codes:
             pdb_files[code] = pdb_file
 
+    # Filter out codes.
+    if filter_codes is not None:
+        codes = [code for code in codes if code in set(filter_codes)]
+
     # Sort the codes and offset them, if necessary.
-    if max_datasets_offset is None:
-        max_datasets_offset = 0
-    codes = list(sorted(codes))[max_datasets_offset:]
+    codes = list(sorted(codes))
+    if max_datasets_offset is not None:
+        codes = codes[max_datasets_offset:]
+    if max_datasets is not None:
+        codes = codes[:max_datasets]
 
     datasets = []
-    for index, code in enumerate(codes):
-        if max_datasets is not None and index >= max_datasets:
-            break
-
+    for code in tqdm(codes):
         dataset = MDtrajDataset(
             root,
             trajfiles=traj_files[code],

@@ -59,6 +59,9 @@ class SaveTrajectory(TrajectoryMetric):
         utils.save_pdb(true_trajectory, self.filename_true(0, "pdb"))
         true_trajectory.save_dcd(self.filename_true(0, "dcd"))
 
+        # Save topology.
+        utils.save_pdb(true_trajectory[0], os.path.join(self.output_dir, "topology.pdb"))
+
     def on_sample_end(self):
         if rank_zero_only.rank != 0:
             return

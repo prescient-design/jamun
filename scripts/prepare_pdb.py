@@ -13,44 +13,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("[prepare_pdb]")
 
-# One to three letter code mapping
-AA_3CODES: Dict[str, str] = {
-    'A': 'ALA', 'R': 'ARG', 'N': 'ASN', 'D': 'ASP', 'C': 'CYS',
-    'E': 'GLU', 'Q': 'GLN', 'G': 'GLY', 'H': 'HIS', 'I': 'ILE',
-    'L': 'LEU', 'K': 'LYS', 'M': 'MET', 'F': 'PHE', 'P': 'PRO',
-    'S': 'SER', 'T': 'THR', 'W': 'TRP', 'Y': 'TYR', 'V': 'VAL'
-}
-
-# Three to one letter code mapping
-AA_1CODES = {v: k for k, v in AA_3CODES.items()}
-
-def convert_to_three_letter(aa: str) -> str:
-    """Convert one-letter amino acid code to three-letter code."""
-    aa = aa.upper()
-    if len(aa) == 1:
-        if aa not in AA_3CODES:
-            raise ValueError(f"Invalid one-letter amino acid code: {aa}")
-        return AA_3CODES[aa]
-    elif len(aa) == 3:
-        if aa not in AA_3CODES.values():
-            raise ValueError(f"Invalid three-letter amino acid code: {aa}")
-        return aa
-    else:
-        raise ValueError(f"Invalid amino acid code length: {aa}")
-
-def convert_to_one_letter(aa: str) -> str:
-    """Convert three-letter amino acid code to one-letter code."""
-    aa = aa.upper()
-    if len(aa) == 1:
-        if aa not in AA_1CODES:
-            raise ValueError(f"Invalid one-letter amino acid code: {aa}")
-        return aa
-    elif len(aa) == 3:
-        if aa not in AA_1CODES:
-            raise ValueError(f"Invalid three-letter amino acid code: {aa}")
-        return AA_1CODES[aa]
-    else:
-        raise ValueError(f"Invalid amino acid code length: {aa}")
+from jamun.utils import convert_to_three_letter_code, convert_to_one_letter_code
 
 
 def parse_sequence(sequence: str) -> List[str]:
@@ -65,10 +28,11 @@ def parse_sequence(sequence: str) -> List[str]:
     # Check if it's a hyphen-separated three-letter code sequence
     if '-' in sequence:
         three_letter_codes = sequence.split('-')
-        return [convert_to_three_letter(code) for code in three_letter_codes]
+        return [convert_to_three_letter_code(code) for code in three_letter_codes]
 
     # Otherwise, treat as string of one-letter codes
-    return [convert_to_three_letter(aa) for aa in sequence]
+    return [convert_to_one_letter_code(aa) for aa in sequence]
+
 
 def create_sequence(amino_acids: List[str], mode: str) -> str:
     """Create sequence string with optional capping."""

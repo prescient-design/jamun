@@ -68,8 +68,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
         if start_frame is None:
             start_frame = 0
 
-        py_logger = logging.getLogger("jamun")
         pdbfile = os.path.join(self.root, pdbfile)
+        trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
+
         if trajfiles[0].endswith(".npz") or trajfiles[0].endswith(".npy"):
             self.traj = md.load(pdbfile)
             self.traj.xyz = np.vstack([np.load(os.path.join(self.root, filename))["positions"] for filename in trajfiles])
@@ -79,7 +80,13 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
             self.traj.time = np.arange(self.traj.n_frames)
         else:
-            self.traj = md.load([os.path.join(self.root, filename) for filename in trajfiles], top=pdbfile)
+            # start time
+            # import time
+            # start = time.time()
+            self.traj = md.load(trajfiles, top=pdbfile)
+            # end time
+            # end = time.time()
+            # print(f"Time taken to load the trajectory {trajfiles}: {end - start}")
 
         if num_frames == -1 or num_frames is None:
             num_frames = self.traj.n_frames - start_frame
@@ -90,9 +97,12 @@ class MDtrajDataset(torch.utils.data.Dataset):
         # Subsample the trajectory.
         self.traj = self.traj[start_frame : start_frame + num_frames : subsample]
 
-        self.top = self.traj.topology.subset(self.traj.topology.select("protein and not type H"))
+        # Select all heavy atoms in the protein.
+        # This also removes all waters.
+        select = self.traj.topology.select("protein and not type H")
+        self.top = self.traj.topology.subset(select)
         self.top_withH = self.traj.topology.subset(self.traj.topology.select("protein"))
-        self.traj = self.traj.atom_slice(self.traj.topology.select("protein and not type H"))
+        self.traj = self.traj.atom_slice(select)
 
         # Encode the atom types, residue codes, and residue sequence indices.
         atom_type_index = torch.tensor([utils.encode_atom_type(x.element.symbol) for x in self.top.atoms], dtype=torch.int32)
@@ -101,7 +111,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in self.top.atoms], dtype=torch.int32)
 
         bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in self.top.bonds], dtype=torch.long).T
-        positions = torch.tensor(self.traj.xyz[0][self.traj.top.select("protein and not type H")], dtype=torch.float)
+        positions = torch.tensor(self.traj.xyz[0], dtype=torch.float)
         loss_weight = torch.tensor([self.loss_weight], dtype=torch.float)
 
         # Create the graph.
@@ -121,57 +131,16 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = loss_weight
 
-        py_logger.info(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
-        py_logger.info(
+        utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
+        utils.dist_log(
             f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
         )
-        self.save_modified_pdb()
+        # self.save_topology_pdb()
 
-    def save_modified_pdb(self):
-        os.makedirs("pdbs", exist_ok=True)
-        filename = f"pdbs/{self.label()}-modified.pdb"
-
-        with open(filename, "w") as f:
-            f.write("MODEL        0\n")
-
-            for j, positions in enumerate(self.graph.pos):
-                f.write(
-                    "ATOM  %5d %-4s %3s %1s%4d    %s%s%s  1.00 %5s      %-4s%2s  \n"
-                    % (
-                        j + 1,
-                        self.top.atom(j).name,
-                        self.top.atom(j).residue.name,
-                        self.top.atom(j).residue.chain.index + 1,
-                        self.top.atom(j).residue.index + 1,
-                        "%8.3f" % (positions[0] * 10),
-                        "%8.3f" % (positions[1] * 10),
-                        "%8.3f" % (positions[2] * 10),
-                        1,
-                        0,
-                        utils.ResidueMetadata.ATOM_TYPES[self.graph.atom_type_index[j].item()],
-                    )
-                )
-
-            f.write(
-                "TER   %5d      %3s %s%4d\n"
-                % (
-                    j + 2,
-                    self.top.atom(j).residue.name,
-                    self.top.atom(j).residue.chain.index,
-                    self.top.atom(j).residue.index + 1,
-                )
-            )
-
-            bonds = [[i + 1] for i in range(self.top.n_atoms)]
-            for bond in self.graph.edge_index.T:
-                bonds[bond[0]].append(bond[1] + 1)
-                bonds[bond[1]].append(bond[0] + 1)
-            for bond in bonds:
-                s = "".join(["%5d" % atom for atom in bond])
-                f.write("CONECT%s\n" % s)
-
-            f.write("ENDMDL\n")
-            f.write("END\n")
+    def save_topology_pdb(self):
+        os.makedirs("dataset_pdbs", exist_ok=True)
+        filename = f"dataset_pdbs/{self.label()}.pdb"
+        utils.save_pdb(self.traj[0], filename)
 
     def __getitem__(self, idx):
         graph = self.graph.clone()
@@ -219,7 +188,7 @@ class MDtrajDataModule(pl.LightningDataModule):
                 continue
 
             self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
-            py_logger.info(
+            utils.dist_log(
                 f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
             )
 

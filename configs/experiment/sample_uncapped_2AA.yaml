@@ -1,5 +1,9 @@
 # @package _global_
 
+defaults:
+  - override /callbacks:
+    - sampler/save_trajectory.yaml
+  - _self_
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
@@ -7,6 +11,7 @@ init_datasets:
   traj_pattern: "^(.*)-traj-arrays.npz"
   pdb_pattern: "^(.*)-traj-state0.pdb"
   subsample: 1
+  max_datasets: 10
 
 
 num_sampling_steps_per_batch: 10000
