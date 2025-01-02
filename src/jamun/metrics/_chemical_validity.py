@@ -170,7 +170,7 @@ class ChemicalValidityMetrics(TrajectoryMetric):
             data=[[val] for val in avg_bond_length_issues], columns=["avg_bond_length_issues"]
         )
         metrics[f"{self.dataset.label()}/mean_bond_length_issues/true_traj"] = np.mean(avg_bond_length_issues)
-        
+
         if rank_zero_only.rank == 0:
             utils.wandb_dist_log(
                 {

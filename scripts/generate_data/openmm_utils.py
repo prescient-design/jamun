@@ -1,14 +1,30 @@
-from typing import Tuple, List, Optional
 import logging
 import os
 import re
+from typing import List, Optional, Tuple
 
 import mdtraj as md
 import numpy as np
 import pdbfixer
-
-from openmm import CustomExternalForce, MonteCarloBarostat, PeriodicTorsionForce, NoseHooverIntegrator, LangevinMiddleIntegrator, Vec3
-from openmm.app import PME, CheckpointReporter, HBonds, Modeller, PDBFile, Simulation, StateDataReporter, Topology, ForceField
+from openmm import (
+    CustomExternalForce,
+    LangevinMiddleIntegrator,
+    MonteCarloBarostat,
+    NoseHooverIntegrator,
+    PeriodicTorsionForce,
+    Vec3,
+)
+from openmm.app import (
+    PME,
+    CheckpointReporter,
+    ForceField,
+    HBonds,
+    Modeller,
+    PDBFile,
+    Simulation,
+    StateDataReporter,
+    Topology,
+)
 from openmm.unit import (
     angstroms,
     bar,
@@ -19,6 +35,7 @@ from openmm.unit import (
     nanometers,
     picoseconds,
 )
+
 Positions = List[Tuple[Vec3, ...]]
 Velocities = List[Tuple[Vec3, ...]]
 
@@ -32,7 +49,7 @@ py_logger = logging.getLogger("openmm_utils")
 
 def filename_with_prefix(prefix: str, extension: str) -> str:
     """
-    Generates a filename with a prefix and an integer identifier.    
+    Generates a filename with a prefix and an integer identifier.
     Filename format: <string_indentifier>_<int_identifier>.<extension>
     """
     try:
@@ -69,7 +86,7 @@ def fix_pdb(
     fixer.findMissingResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms(seed=0)
-    
+
     if save_file:
         output_file = filename_with_prefix(output_file_prefix, extension="pdb")
         with open(output_file, "w") as f:
@@ -89,7 +106,7 @@ def add_hydrogens(
     py_logger.info("Adding hydrogens to the system.")
     modeller = Modeller(topology, positions)
     modeller.addHydrogens(forcefield)
-    
+
     if save_file:
         output_file = filename_with_prefix(output_file_prefix, extension="pdb")
         with open(output_file, "w") as f:
@@ -121,7 +138,7 @@ def solvate(
         positiveIon=positive_ion,
         negativeIon=negative_ion,
     )
-    
+
     if save_file:
         output_file = filename_with_prefix(output_file_prefix, extension="pdb")
         with open(output_file, "w") as f:
@@ -204,7 +221,7 @@ def add_position_restraints(
         if res.name in AA:
             for at in res.atoms():
                 # All heavy atoms excluding hydrogens.
-                if not re.search(r"H", at.name): 
+                if not re.search(r"H", at.name):
                     force.addParticle(index, positions[index].value_in_unit(nanometers))
                 index += 1
 
@@ -252,7 +269,7 @@ def minimize_energy(
             PDBFile.writeFile(simulation.topology, pdb_positions, f)
 
         py_logger.info(f"Minimized PDB file saved at: {os.path.abspath(output_file)}")
-   
+
     return minimized_positions, simulation
 
 
@@ -277,7 +294,7 @@ def run_simulation(
 ) -> Tuple[Positions, Velocities, Simulation]:
     """
     Run molecular dynamics simulation with flexible configuration options.
-    
+
     Args:
         simulation: OpenMM Simulation object
         positions: Initial positions with units
@@ -292,7 +309,7 @@ def run_simulation(
         velocities: Optional initial velocities
         restart_from_checkpoint: Whether to restart from a checkpoint
         checkpoint_file: Name of checkpoint file to read/write
-    
+
     Returns:
         Tuple of (final positions, final velocities, simulation)
     """
@@ -303,7 +320,7 @@ def run_simulation(
             MonteCarloBarostat(pressure_bar * bar, temp_K * kelvin)
         )
     elif ensemble == "NVT":
-        py_logger.info(f"Setting up NVT ensemble.")
+        py_logger.info("Setting up NVT ensemble.")
         if pressure_bar is not None:
             py_logger.info("Ignoring pressure barostat for NVT ensemble.")
     else:
@@ -313,13 +330,13 @@ def run_simulation(
     simulation.context.setPositions(positions)
     if velocities is not None:
         simulation.context.setVelocities(velocities)
-    
+
     if restart_from_checkpoint:
         simulation.loadCheckpoint(checkpoint_file)
 
     # Setup reporters.
     simulation.reporters = []
-    
+
     # Checkpoint reporter.
     if save_checkpoint_file:
         if checkpoint_file is None:
@@ -365,10 +382,10 @@ def run_simulation(
 
     # Save final state.
     pdb_positions = simulation.context.getState(
-        getPositions=True, 
+        getPositions=True,
         enforcePeriodicBox=True
     ).getPositions()
-    
+
     if save_pdb:
         if pdb_output_file is None:
             pdb_output_file = filename_with_prefix(output_file_prefix, extension="pdb")
@@ -387,7 +404,7 @@ def run_simulation(
     final_positions = simulation.context.getState(
         getPositions=True
     ).getPositions()
-    
+
     final_velocities = simulation.context.getState(
         getVelocities=True
     ).getVelocities()

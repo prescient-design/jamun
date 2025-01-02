@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+
 class ResidueMetadata:
     """Metadata for residues and atoms."""
 

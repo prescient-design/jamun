@@ -4,14 +4,13 @@ from typing import Dict, List, Optional, Tuple
 
 import matplotlib.cm
 import matplotlib.pyplot as plt
-from matplotlib import animation, colors
-from scipy.spatial import distance
 import mdtraj as md
 import numpy as np
 import ot
 import wandb
 from lightning.pytorch.utilities import rank_zero_only
-
+from matplotlib import animation, colors
+from scipy.spatial import distance
 
 from jamun import utils
 from jamun.metrics import TrajectoryMetric
@@ -144,7 +143,7 @@ def compute_JS_divergence_of_ramachandran(trajectory: md.Trajectory, ref_traject
 
     hist = compute_ramachandran_histogram(trajectory, bins)
     ref_hist = compute_ramachandran_histogram(ref_trajectory, bins)
-    
+
     return distance.jensenshannon(hist.flatten(), ref_hist.flatten()) ** 2
 
 

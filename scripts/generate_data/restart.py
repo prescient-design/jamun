@@ -4,19 +4,8 @@ import time
 
 import mdtraj as md
 import openmm_utils as op  # openmm functions
-
-from openmm import CustomExternalForce, MonteCarloBarostat, PeriodicTorsionForce, Platform, XmlSerializer
-from openmm.app import PME, CheckpointReporter, HBonds, Modeller, PDBFile, Simulation, StateDataReporter, ForceField
-from openmm.unit import (
-    angstroms,
-    bar,
-    kelvin,
-    kilocalories_per_mole,
-    kilojoules_per_mole,
-    nanometer,
-    nanometers,
-    picoseconds,
-)
+from openmm import XmlSerializer
+from openmm.app import ForceField, PDBFile
 
 protein = sys.argv[1]
 name = sys.argv[2]

@@ -1,6 +1,6 @@
-from typing import Dict, Any
-import os
 import logging
+import os
+from typing import Any, Dict
 
 import wandb
 

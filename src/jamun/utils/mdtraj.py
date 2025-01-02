@@ -1,8 +1,8 @@
 from typing import List, Union
 
-import numpy as np
 import einops
 import mdtraj as md
+import numpy as np
 import torch
 
 

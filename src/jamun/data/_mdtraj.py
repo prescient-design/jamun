@@ -1,5 +1,4 @@
 import functools
-import logging
 import os
 import threading
 from typing import Callable, Dict, Optional, Sequence
@@ -19,7 +18,7 @@ def singleton(cls):
 
     _instances = {}
     _lock = threading.Lock()
-    
+
     def get_instance(*args, **kwargs):
         # Convert args and kwargs to hashable types.
         for i, arg in enumerate(args):
@@ -32,14 +31,14 @@ def singleton(cls):
                 kwargs[key] = tuple(value)
             if isinstance(value, dict):
                 kwargs[key] = frozenset(value.items())
-        
+
         obj_key = (args, frozenset(kwargs.items()))
         if obj_key not in _instances:
             with _lock:
                 if obj_key not in _instances:
                     _instances[obj_key] = cls(*args, **kwargs)
         return _instances[obj_key]
-    
+
     return get_instance
 
 
@@ -182,7 +181,6 @@ class MDtrajDataModule(pl.LightningDataModule):
         pass
 
     def setup(self, stage: str):
-        py_logger = logging.getLogger("jamun")
         for split, datasets in self.datasets.items():
             if datasets is None:
                 continue

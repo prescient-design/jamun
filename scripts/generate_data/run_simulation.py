@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
-from typing import Optional
-
-import tempfile
+import argparse
 import logging
 import os
-import argparse
+import tempfile
 from dataclasses import dataclass
-from typing import Tuple
-from openmm.app import ForceField, Simulation, Topology
+from typing import Optional, Tuple
 
 import openmm_utils as op
+from openmm.app import ForceField, Simulation, Topology
 
 logging.basicConfig(
     format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
@@ -106,7 +104,7 @@ Examples:
     # Forcefield options
     ff_group = parser.add_argument_group('Forcefield Options')
     ff_group.add_argument(
-        "--forcefield", nargs=2, 
+        "--forcefield", nargs=2,
         default=SimulationConfig.forcefield,
         metavar=('FF1', 'FF2'),
         help="Forcefield XML files (default: %(default)s)"
@@ -164,7 +162,7 @@ def setup_system(
     config: SimulationConfig
 ) -> Tuple[op.Positions, Topology, Simulation]:
     """Set up the initial system."""
-    
+
     # Create a temporary directory for output files, if not provided.
     output_dir = config.output_dir
     if output_dir is None:
@@ -191,7 +189,7 @@ def setup_system(
         output_file_prefix=f"{output_file_prefix}_hydrogenated",
         save_file=config.save_intermediate_files
     )
-    
+
     # Solvate system
     positions, topology = op.solvate(
         positions, topology, ff,
@@ -202,14 +200,14 @@ def setup_system(
         output_file_prefix=f"{output_file_prefix}_solvated",
         save_file=config.save_intermediate_files
     )
-    
+
     # Create and setup simulation
     simulation = op.get_system_with_Langevin_integrator(
         topology, ff,
         config.temp_K,
         dt_ps=config.dt_ps
     )
-    
+
     return positions, topology, simulation
 
 
@@ -229,7 +227,7 @@ def run_full_simulation(
 
     # Get a prefix for output files.
     output_file_prefix = get_output_file_prefix(config.init_pdb)
-    
+
     # Minimize energy.
     positions, simulation = op.minimize_energy(positions, simulation, num_steps=config.energy_minimization_steps, output_file_prefix=f"{output_file_prefix}_minimized", save_file=config.save_intermediate_files)
 

@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, List
 
 import einops
@@ -42,7 +41,7 @@ class ModelSamplingWrapper:
 
         input_graphs = self.init_graphs.clone()
         input_graphs.pos = positions
-        
+
         # Save for debugging.
         self.input_graphs = input_graphs
         return input_graphs.to(positions.device)

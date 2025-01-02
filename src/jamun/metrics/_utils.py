@@ -6,8 +6,6 @@ import mdtraj as md
 import torch
 import torch_geometric
 import torchmetrics
-from torchmetrics.utilities import dim_zero_cat
-
 
 from jamun import utils
 from jamun.data import MDtrajDataset
@@ -83,9 +81,9 @@ class TrajectoryMetric(torchmetrics.Metric):
         # In distributed mode, self.samples has shape (num_devices, batch_size, num_atoms, num_frames, 3).
         if samples.ndim == 5:
             samples = einops.rearrange(
-                samples, "num_devices batch_size num_atoms num_frames coords -> (batch_size num_devices) num_atoms num_frames coords" 
+                samples, "num_devices batch_size num_atoms num_frames coords -> (batch_size num_devices) num_atoms num_frames coords"
             )
-    
+
         if new:
             return samples[self.num_chains_seen :]
         return samples

@@ -12,10 +12,10 @@ from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
 import jamun
-from jamun.utils import find_checkpoint, dist_log
-from jamun.data import MDtrajDataset, MDtrajDataModule
+from jamun.data import MDtrajDataModule, MDtrajDataset
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
+from jamun.utils import dist_log, find_checkpoint
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
@@ -87,10 +87,10 @@ def run(cfg):
     if finetuning_cfg := cfg.get("finetune_on_init"):
         num_finetuning_steps = finetuning_cfg.get("num_steps")
         dist_log(f"Finetuning for {num_finetuning_steps} steps.")
-        
+
         # Check that model parameters changed.
         param_sum = sum(p.sum() for p in model.parameters())
-        
+
         # Train the model for a fixed number of steps.
         trainer = pl.Trainer(logger=loggers, max_steps=num_finetuning_steps, min_steps=num_finetuning_steps, log_every_n_steps=1, check_val_every_n_epoch=1)
         trainer.fit(model, datamodule=MDtrajDataModule(

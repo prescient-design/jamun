@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import os
 import subprocess
-from typing import Dict, Tuple, List
 import tempfile
-import logging
+from typing import List, Tuple
 
-from jamun.utils import convert_to_three_letter_code, convert_to_one_letter_code
+from jamun.utils import convert_to_one_letter_code, convert_to_three_letter_code
 
 logging.basicConfig(
     format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
@@ -22,13 +22,13 @@ py_logger = logging.getLogger("prepare_pdb")
 
 def parse_sequence(sequence: str) -> List[str]:
     """Parse sequence string into list of three-letter codes.
-    
+
     Accepts:
     - String of one-letter codes (e.g., "AGPF")
     - Hyphen-separated three-letter codes (e.g., "ALA-GLY-PRO-PHE")
     """
     sequence = sequence.upper()
-    
+
     # Check if it's a hyphen-separated three-letter code sequence
     if '-' in sequence:
         sequence = sequence.split('-')
@@ -45,7 +45,7 @@ def create_sequence(amino_acids: List[str], mode: str) -> str:
     if mode == "capped":
         sequence = " ".join(amino_acids)
         return f"{{ ACE {sequence} NME }}"
-    
+
     if mode == "uncapped":
         amino_acids[0] = f"N{amino_acids[0]}"
         amino_acids[-1] = f"C{amino_acids[-1]}"
@@ -60,7 +60,7 @@ def format_sequence(amino_acids: str, mode: str) -> str:
     """Format sequence string for display."""
     amino_acids = amino_acids.copy()
     if mode == "capped":
-        amino_acids = ["(ACE)"] + amino_acids + ["(NME)"] 
+        amino_acids = ["(ACE)"] + amino_acids + ["(NME)"]
     if mode == "uncapped":
         amino_acids[0] = f"(N){amino_acids[0]}"
         amino_acids[-1] = f"(C){amino_acids[-1]}"
@@ -78,7 +78,7 @@ quit
 
 def run_tleap(input_content: str) -> Tuple[bool, str]:
     """Run tleap with given input content."""
-   
+
     # Write tleap input file.
     _, input_file = tempfile.mkstemp(suffix='.in', prefix='tleap_', text=True)
     with open(input_file, 'w') as f:
@@ -88,8 +88,8 @@ def run_tleap(input_content: str) -> Tuple[bool, str]:
 
     try:
         # Run tleap command
-        result = subprocess.run(['tleap', '-f', input_file], 
-                             capture_output=True, 
+        subprocess.run(['tleap', '-f', input_file],
+                             capture_output=True,
                              text=True,
                              check=True)
         success = True
