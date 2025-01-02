@@ -1,14 +1,11 @@
-import os
-import wandb
-import numpy as np
 import pickle
 import sys
+
 import mdtraj as md
+import numpy as np
+import wandb
+
 from jamun import utils_md
-import jamun.metrics._ramachandran as ramachandran
-import matplotlib.pyplot as plt
-import pickle
-import einops
 
 amino_acid_dict={"A": "ALA",  # Alanine\n",
     "R": "ARG",  # Arginine\n",
@@ -119,13 +116,13 @@ def get_traj_from_md(protein):
     return (phi,psi),t
 
 def get_traj_from_wandb(protein,datatype,sigma=None):
-    
+
     protein_name=amino_acid_dict[protein[0]]+"_"+amino_acid_dict[protein[1]]
     if datatype=="tbg" or datatype=="timewarp" or datatype=="uncapped":
         run_dict_sampling=pickle.load(open("run_dict_sampling_tbg.pkl","rb"))
     elif datatype=="md" or datatype=="capped" or datatype=="ours":
         run_dict_sampling=pickle.load(open("run_dict_sampling.pkl","rb"))
-        
+
     runs=run_dict_sampling[protein_name]
 
     if sigma:
@@ -134,7 +131,7 @@ def get_traj_from_wandb(protein,datatype,sigma=None):
         runs_by_sigma=[]
         for key in runs.keys():
             runs_by_sigma+=runs[key]
-    
+
     print("runs_by_sigma",runs_by_sigma)
     predicted_trajectories = {}
     for run_by_sig in runs_by_sigma:
@@ -144,12 +141,12 @@ def get_traj_from_wandb(protein,datatype,sigma=None):
 
         artifacts = run.logged_artifacts()
 
-        
+
         structures = {}
         for artifact in artifacts:
             if artifact.type != "animated_trajectory_pdb":
                 continue
-            
+
             if "true_traj" not in artifact.name:
                 continue
 
@@ -170,11 +167,11 @@ def get_traj_from_wandb(protein,datatype,sigma=None):
 
             name, version = artifact.name.split(":")
             name = name.replace("_predicted_samples", "")
-            
+
             if name==protein_name:
                 if int(version[1:])>maxversion:
                     maxversion=int(version[1:])
-    
+
 
         for artifact in artifacts:
             if artifact.type != "predicted_samples":
@@ -182,7 +179,7 @@ def get_traj_from_wandb(protein,datatype,sigma=None):
 
             name, version = artifact.name.split(":")
             name = name.replace("_predicted_samples", "")
-                    
+
             if name==protein_name:
                 if int(version[1:])==maxversion:
 
@@ -190,10 +187,10 @@ def get_traj_from_wandb(protein,datatype,sigma=None):
 
                     predicted_samples = np.load(f"{artifact_dir}/predicted_samples.npy")
 
-                    predicted_traj = utils_md.coordinates_to_trajectories(predicted_samples, structures[name])  
-                    predicted_traj = md.join(predicted_traj, check_topology=True)  
-                
-                
+                    predicted_traj = utils_md.coordinates_to_trajectories(predicted_samples, structures[name])
+                    predicted_traj = md.join(predicted_traj, check_topology=True)
+
+
         if predicted_traj is None:
             print("no predicted traj", run_by_sig["run_id"])
             continue
@@ -202,14 +199,14 @@ def get_traj_from_wandb(protein,datatype,sigma=None):
 
         except:
             print("no time", run_by_sig["run_id"])
-            continue    
+            continue
 
 
         phi,psi=md.compute_phi(predicted_traj)[1],md.compute_psi(predicted_traj)[1]
 
         predicted_trajectories[run_by_sig["run_id"]] = (phi,psi,time)
 
-    return predicted_trajectories    
+    return predicted_trajectories
 
 
 
@@ -222,7 +219,7 @@ def JS(protein):
         full_md_traj=chunk
         break
     phis,psis=md.compute_phi(full_md_traj)[1],md.compute_psi(full_md_traj)[1]
-    
+
 
     ref_hist,edges=np.histogramdd(np.hstack((phis,psis)),bins=[bins,bins,bins,bins])
     ref_hist=ref_hist/np.sum(ref_hist)
@@ -259,7 +256,7 @@ def JS(protein):
         md_hist,edges=np.histogramdd(np.hstack((phis[:i*stride],psis[:i*stride])),bins=[bins,bins,bins,bins])
         md_hist=md_hist/np.sum(md_hist)
         js_md_converged[i-1]=compute_JS_divergence_of_ramachandran(md_hist,ref_hist)
-    
+
     np.save("js_md_converged_%s"%protein,js_md_converged)
 
 
@@ -267,4 +264,3 @@ if __name__=="__main__":
     name=sys.argv[1]
 
     JS(name)
-    

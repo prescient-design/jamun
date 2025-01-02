@@ -1,7 +1,7 @@
 import logging
 from typing import Sequence
 
-from jamun.callbacks.sampler import TrajectoryMetricCallback
+from jamun.callbacks.sampler._utils import TrajectoryMetricCallback
 from jamun.data import MDtrajDataset
 from jamun.metrics import PoseBustersMetrics
 

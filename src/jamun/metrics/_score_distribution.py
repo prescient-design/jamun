@@ -6,7 +6,7 @@ import wandb
 
 from jamun import utils
 from jamun.data import MDtrajDataset
-from jamun.metrics import TrajectoryMetric
+from jamun.metrics._utils import TrajectoryMetric
 
 
 class ScoreDistributionMetrics(TrajectoryMetric):

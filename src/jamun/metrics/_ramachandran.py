@@ -13,7 +13,7 @@ from matplotlib import animation, colors
 from scipy.spatial import distance
 
 from jamun import utils
-from jamun.metrics import TrajectoryMetric
+from jamun.metrics._utils import TrajectoryMetric
 
 
 def num_dihedrals(trajectory: md.Trajectory) -> int:

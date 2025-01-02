@@ -7,7 +7,7 @@ import wandb
 from lightning.pytorch.utilities import rank_zero_only
 
 from jamun import utils
-from jamun.metrics import TrajectoryMetric
+from jamun.metrics._utils import TrajectoryMetric
 
 
 def _save_pdb_to_wandb(trajectory: md.Trajectory, label: str):

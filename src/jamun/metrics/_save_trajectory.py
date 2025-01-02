@@ -6,7 +6,7 @@ import wandb
 from lightning.pytorch.utilities import rank_zero_only
 
 from jamun import utils
-from jamun.metrics import TrajectoryMetric
+from jamun.metrics._utils import TrajectoryMetric
 
 
 class SaveTrajectory(TrajectoryMetric):

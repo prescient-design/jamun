@@ -7,7 +7,7 @@ import mdtraj as md
 import wandb
 
 from jamun import utils
-from jamun.metrics import TrajectoryMetric
+from jamun.metrics._utils import TrajectoryMetric
 
 
 class SampleVisualizer(TrajectoryMetric):

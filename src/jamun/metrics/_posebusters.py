@@ -8,7 +8,7 @@ import wandb
 from rdkit import rdBase
 
 from jamun import utils
-from jamun.metrics import TrajectoryMetric
+from jamun.metrics._utils import TrajectoryMetric
 
 
 def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.DataFrame]:
