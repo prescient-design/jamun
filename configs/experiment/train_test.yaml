@@ -34,7 +34,7 @@ data:
           trajfiles:
             - EI-traj-arrays.npz
           pdbfile: EI-traj-state0.pdb
-          subsample: 0
+          subsample: 100
           label: GLU_ILE
 
       val:
@@ -43,7 +43,7 @@ data:
           trajfiles:
             - KL-traj-arrays.npz
           pdbfile: KL-traj-state0.pdb
-          subsample: 0
+          subsample: 100
           label: LYS_LEU
 
       test:
@@ -52,7 +52,7 @@ data:
           trajfiles:
             - CK-traj-arrays.npz
           pdbfile: CK-traj-state0.pdb
-          subsample: 0
+          subsample: 100
           label: CYS_LYS
 
 trainer:

@@ -11,7 +11,8 @@ init_datasets:
   traj_pattern: "^(.*)-traj-arrays.npz"
   pdb_pattern: "^(.*)-traj-state0.pdb"
   subsample: 1
-  max_datasets: 10
+  max_datasets: 1
+  max_datasets_offset: 70
 
 
 num_sampling_steps_per_batch: 10000

@@ -17,7 +17,7 @@ source .venv/bin/activate
 set -eux
 
 echo "SLURM_JOB_ID = ${SLURM_JOB_ID}"
-hostname
+echo "hostname = $(hostname)"
 
 export HYDRA_FULL_ERROR=1
 export TORCH_COMPILE_DEBUG=1
