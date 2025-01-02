@@ -1,11 +1,18 @@
 import os
 from typing import Dict, Optional, Sequence, Tuple
+import logging
 
 import mdtraj as md
 import pyemma
 
 from jamun.data import parse_datasets_from_directory
 from jamun.utils import convert_to_one_letter_code, convert_to_three_letter_code, get_wandb_run_config
+
+logging.basicConfig(
+    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
+    level=logging.INFO
+)
+py_logger = logging.getLogger("analysis")
 
 
 def find_project_root() -> str:
@@ -14,6 +21,7 @@ def find_project_root() -> str:
     while not os.path.exists(os.path.join(current_dir, "pyproject.toml")):
         current_dir = os.path.dirname(current_dir)
     return current_dir
+
 
 def get_peptides_in_run(wandb_sample_run_path: str) -> Tuple[Sequence[str], str]:
     """Returns the list of peptides sampled in a run and the output directory where they are stored."""
@@ -51,8 +59,18 @@ def get_JAMUN_trajectory_files(wandb_sample_run_paths: Sequence[str]) -> Dict[st
 
             files[peptide] = {
                 "dcd": f"{output_dir}/sampler/{peptide}/predicted_samples/dcd/joined.dcd",
-                "pdb": f"{output_dir}/pdbs/{peptide}-modified.pdb",
+                "pdb": f"{output_dir}/sampler/{peptide}/topology.pdb",
             }
+
+            if not os.path.exists(files[peptide]["dcd"]):
+                raise ValueError(f"DCD file {files[peptide]['dcd']} not found.")
+
+            if not os.path.exists(files[peptide]["pdb"]):
+                py_logger.warning(f"PDB file {files[peptide]['pdb']} not found. Checking for backup PDB file.")
+                
+                files[peptide]["pdb"] = f"{output_dir}/pdbs/{peptide}-modified.pdb"
+                if not os.path.exists(files[peptide]["pdb"]):
+                    raise ValueError(f"PDB file {files[peptide]['pdb']} not found.")
 
     return files
 
