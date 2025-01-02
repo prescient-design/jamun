@@ -65,6 +65,7 @@ def get_JAMUN_trajectories(wandb_sample_run_paths: Sequence[str]) -> Dict[str, m
         trajs[peptide] = md.load_dcd(peptide_files["dcd"], top=peptide_files["pdb"])
     return trajs
 
+
 def get_Timewarp_trajectories(data_path: str, peptide_type: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to the Timewarp MDTraj trajectory."""
     if peptide_type == "2AA":
