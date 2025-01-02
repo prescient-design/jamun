@@ -30,7 +30,7 @@ cd jamun
 We recommend creating a [`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) or [`conda`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) environment.
 This is because certain dependencies are tricky to install directly.
 ```bash
-conda create --name jamun python=3.10 -y
+conda create --name jamun python=3.11 -y
 conda activate jamun
 conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
 ```
