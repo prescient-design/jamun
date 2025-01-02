@@ -27,37 +27,20 @@ Navigate to the cloned repository:
 cd jamun
 ```
 
-We recommend using [`uv`](https://docs.astral.sh/uv/getting-started/installation/). Alternatively, you can install
-[`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) or [`conda`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install).
-
-### Setup with `uv`
-
-Create a virtual enviroment, and install all dependencies:
+We recommend creating a [`mamba`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) or [`conda`](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install) environment.
+This is because certain dependencies are tricky to install directly.
 ```bash
-uv sync
-source .venv/bin/activate
-```
-
-### Setup with `mamba` or `conda`
-
-Additional dependencies:
-```bash
-conda create --name jamun-extras python=3.10 -y
-conda activate jamun-extras
+conda create --name jamun python=3.10 -y
+conda activate jamun
 conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
 ```
 
-Create an environment:
+The remaining dependencies can be installed via `pip` or [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (recommended).
 ```bash
-mamba create -n jamun-env python=3.11 -y
-mamba activate jamun-env
+uv pip install -r env/requirements.txt
+uv pip install -e .[dev]
 ```
 
-Then, install all dependencies:
-```bash
-pip install -r env/requirements.txt
-pip install -e .[dev]
-```
 
 ## Data
 
@@ -135,23 +118,12 @@ We provide a script that uses [AmberTools](https://ambermd.org/AmberTools.php), 
 
 #### Generate `.pdb` file
 
-First, install AmberTools23 following [instructions here](https://ambermd.org/GetAmber.php#ambertools):
-```bash
-conda create --name AmberTools23
-conda activate AmberTools23
-conda install -c conda-forge ambertools=23 -y
-```
-Then, run:
+Run:
 ```bash
 python scripts/prepare_pdb.py [SEQUENCE] --mode [MODE] --outputdir [OUTPUTDIR]
 ```
 where `SEQUENCE` is your peptide sequence entered as a string of one-letter codes (eg. AGPF) or a string of hyphenated three letter codes (eg. ALA-GLY-PRO-PHE), `MODE` is either `capped` or `uncapped` to add capping ACE and NME residues, and `OUTPUTDIR` is where your generated `.pdb` file will be saved (default is current directory).
 The script will print out the path to the generated  `.pdb` file, `INIT_PDB`.
-
-Deactivate the `AmberTools23` conda environment:
-```bash
-conda deactivate
-```
 
 #### Run sampling on `.pdb`
 Run the sampling script, starting from the provided `.pdb` structure:
@@ -174,31 +146,18 @@ jamun_sample --config-dir=configs experiment=sample_uncapped_4AA.yaml checkpoint
 Our sampling scripts produce visualizations and some simple analysis in the Weights and Biases UI.
 
 For more in-depth exploration, we provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
-This notebook requires the run path from Weights and Biases of your sampling run.
+This notebook requires the run paths from Weights and Biases of your sampling runs.
 
-The analysis notebook has certain dependencies (eg. `pyemma`) which are slightly tricky to install.
-We create a new environment to avoid dependency clashes.
-Again, we recommend `uv`, but we also provide instructions for `mamba` or `conda`.
+## Data Generation
 
-### Setup with `uv`
+We also provide scripts for generating the MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with the NVT and NPT ensembles.
 
 ```bash
-uv venv .venv-analysis --python 3.11
-source .venv-analysis/bin/activate
-
-uv run --no-project -m pip install wheel pyemma
-uv pip install -r env/requirements-analysis.txt
+python scripts/generate_data/run_simulation.py [INIT_PDB]
 ```
 
-### Setup with `mamba` or `conda`
-
-```bash
-mamba create -n jamun-analysis python=3.11 -y
-mamba activate jamun-analysis
-
-mamba install pyemma ipykernel -y
-pip install -r env/requirements-analysis.txt
-```
+The defaults correspond to our setup for the capped diamines.
+Please run this script with the `-h` flag to see all simulation parameters.
 
 ## Citation
 

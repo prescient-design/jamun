@@ -26,16 +26,10 @@ class SimulationConfig:
     pressure_bar: float = 1.0
     position_restraint_k: float = 10.0  # kJ/(mol.A^2)
     energy_minimization_steps: int = 1500
-    # nvt_restraint_steps: int = 150_000
-    # npt_restraint_steps: int = 150_000
-    # nvt_equil_steps: int = 250_000
-    # npt_equil_steps: int = 10_000_000
-
-    nvt_restraint_steps: int = 15_000
-    npt_restraint_steps: int = 15_000
-    nvt_equil_steps: int = 25_000
-    npt_equil_steps: int = 20_000
-
+    nvt_restraint_steps: int = 150_000
+    npt_restraint_steps: int = 150_000
+    nvt_equil_steps: int = 250_000
+    npt_equil_steps: int = 10_000_000
     forcefield: tuple[str, str] = ("amber99sbildn.xml", "tip3p.xml")
     padding_nm: float = 1.0
     water_model: str = "tip3p"
