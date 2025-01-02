@@ -40,6 +40,13 @@ source .venv/bin/activate
 
 ### Setup with `mamba` or `conda`
 
+Additional dependencies:
+```bash
+conda create --name jamun-extras python=3.10 -y
+conda activate jamun-extras
+conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
+```
+
 Create an environment:
 ```bash
 mamba create -n jamun-env python=3.11 -y
@@ -127,6 +134,7 @@ If you want to sample conformations for a particular peptide sequence, you need 
 We provide a script that uses [AmberTools](https://ambermd.org/AmberTools.php), specifically `tleap`. If you have a `.pdb` file already, then you can skip this step.
 
 #### Generate `.pdb` file
+
 First, install AmberTools23 following [instructions here](https://ambermd.org/GetAmber.php#ambertools):
 ```bash
 conda create --name AmberTools23

@@ -4,16 +4,20 @@ import argparse
 import os
 import subprocess
 from typing import Dict, Tuple, List
-
+import tempfile
 import logging
-logging.basicConfig(
-    format='%(asctime)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    level=logging.INFO
-)
-log = logging.getLogger("[prepare_pdb]")
 
 from jamun.utils import convert_to_three_letter_code, convert_to_one_letter_code
+
+logging.basicConfig(
+    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
+    level=logging.INFO
+)
+logging.basicConfig(
+    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
+    level=logging.INFO
+)
+py_logger = logging.getLogger("prepare_pdb")
 
 
 def parse_sequence(sequence: str) -> List[str]:
@@ -27,11 +31,9 @@ def parse_sequence(sequence: str) -> List[str]:
     
     # Check if it's a hyphen-separated three-letter code sequence
     if '-' in sequence:
-        three_letter_codes = sequence.split('-')
-        return [convert_to_three_letter_code(code) for code in three_letter_codes]
+        sequence = sequence.split('-')
 
-    # Otherwise, treat as string of one-letter codes
-    return [convert_to_one_letter_code(aa) for aa in sequence]
+    return [convert_to_three_letter_code(aa) for aa in sequence]
 
 
 def create_sequence(amino_acids: List[str], mode: str) -> str:
@@ -76,13 +78,17 @@ quit
 
 def run_tleap(input_content: str) -> Tuple[bool, str]:
     """Run tleap with given input content."""
-    # Write tleap input file
-    with open('tleap.in', 'w') as f:
+   
+    # Write tleap input file.
+    _, input_file = tempfile.mkstemp(suffix='.in', prefix='tleap_', text=True)
+    with open(input_file, 'w') as f:
         f.write(input_content)
+
+    py_logger.info("Running tleap with input: \n" + input_content)
 
     try:
         # Run tleap command
-        result = subprocess.run(['tleap', '-f', 'tleap.in'], 
+        result = subprocess.run(['tleap', '-f', input_file], 
                              capture_output=True, 
                              text=True,
                              check=True)
@@ -93,14 +99,14 @@ def run_tleap(input_content: str) -> Tuple[bool, str]:
         message = f"tleap error: {e.stderr}"
     finally:
         # Clean up input file
-        if os.path.exists('tleap.in'):
-            os.remove('tleap.in')
+        if os.path.exists(input_file):
+            os.remove(input_file)
 
     return success, message
 
 def create_output_filename(amino_acids: List[str], mode: str, outputdir: str) -> str:
     """Create output filename based on sequence and mode."""
-    sequence_short = "".join([convert_to_one_letter(aa) for aa in amino_acids])
+    sequence_short = "".join([convert_to_one_letter_code(aa) for aa in amino_acids])
     return os.path.join(outputdir, f"{mode}_{sequence_short}.pdb")
 
 def main():
@@ -110,7 +116,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Sequence format examples:
-  AGPF              (one-letter codes)
+  AGPF             (one-letter codes)
   ALA-GLY-PRO-PHE  (three-letter codes with hyphens)
         """)
     parser.add_argument('sequence',
@@ -129,10 +135,10 @@ Sequence format examples:
 
         # Validate output directory
         if not os.path.isdir(args.outputdir):
-            log.info(f"Output directory does not exist: {args.outputdir}. Creating...")
+            py_logger.info(f"Output directory does not exist: {args.outputdir}. Creating...")
             os.makedirs(args.outputdir)
 
-        log.info(f"Output directory: {os.path.abspath(args.outputdir)}")
+        py_logger.info(f"Output directory: {os.path.abspath(args.outputdir)}")
 
         if not os.access(args.outputdir, os.W_OK):
             raise ValueError(f"Output directory is not writable: {args.outputdir}")
@@ -148,14 +154,14 @@ Sequence format examples:
         success, message = run_tleap(tleap_input)
 
         if success:
-            log.info(f"Generated {args.mode} peptide sequence: {format_sequence(amino_acids, args.mode)}")
-            log.info(f"Output saved to: {os.path.abspath(output_file)}")
+            py_logger.info(f"Generated {args.mode} peptide sequence: {format_sequence(amino_acids, args.mode)}")
+            py_logger.info(f"Output saved to: {os.path.abspath(output_file)}")
         else:
-            log.info(f"Error: {message}")
+            py_logger.info(f"Error: {message}")
             exit(1)
 
     except Exception as e:
-        log.info(f"Unexpected error: {str(e)}")
+        py_logger.info(f"Unexpected error: {str(e)}")
         exit(1)
 
 if __name__ == "__main__":

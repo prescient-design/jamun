@@ -1,9 +1,17 @@
 from typing import List, Tuple
+import logging
 import os
 import argparse
 import sys
 import shutil
 import random
+
+
+logging.basicConfig(
+    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
+    level=logging.INFO
+)
+py_logger = logging.getLogger("process_fast_folding_proteins")
 
 
 SPLITS = {
@@ -46,7 +54,7 @@ if __name__ == "__main__":
     
     # Check if directory exists
     if not os.path.isdir(args.inputdir):
-        print(f"Error: Directory '{args.inputdir}' does not exist", file=sys.stderr)
+        py_logger.info(f"Error: Directory '{args.inputdir}' does not exist", file=sys.stderr)
         sys.exit(1)
     
     files = find_xtc_files(args.inputdir)
@@ -81,4 +89,4 @@ if __name__ == "__main__":
         for file_path, folder in split_files:
             output_file = os.path.join(split_dir, f"{folder}.xtc")
             shutil.copy(file_path, output_file)
-            print(f"Saved {file_path} as {output_file}")
+            py_logger.info(f"Saved {file_path} as {output_file}")

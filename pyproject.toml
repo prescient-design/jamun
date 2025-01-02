@@ -9,9 +9,6 @@ requires-python = ">=3.10"
 dependencies = {file = ["requirements.in"]}
 readme = {file = "README.md"}
 
-[tool.setuptools.dynamic.optional-dependencies]
-dev = {file = ["requirements-dev.in"]}
-analysis = {file = ["requirements-analysis.in"]}
 
 [project.scripts]
 jamun_train = "jamun.cmdline.train:main"
@@ -56,7 +53,7 @@ ignore = [
 
 [tool.uv]
 no-build-package = ["mdtraj"]
-cache-keys = [{file = "requirements.in"}, {file = "requirements-dev.in"}, {file = "requirements-analysis.in"}]
+cache-keys = [{file = "requirements.in"}]
 constraint-dependencies = ["torch==2.5.1"]
 
 # see https://github.com/astral-sh/uv/issues/9079

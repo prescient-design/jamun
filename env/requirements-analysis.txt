@@ -37,6 +37,8 @@ dill==0.3.9
     #   pathos
 docker-pycreds==0.4.0
     # via wandb
+exceptiongroup==1.2.2
+    # via ipython
 executing==2.1.0
     # via stack-data
 fonttools==4.55.3
@@ -87,7 +89,6 @@ netcdf4==1.7.2
 numpy==1.23.4
     # via
     #   -c env/constraints-analysis.txt
-    #   -c (workspace)
     #   ase
     #   cftime
     #   contourpy

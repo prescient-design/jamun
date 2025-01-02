@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Tuple, List, Optional
 import logging
 import os
 import re
@@ -7,10 +7,9 @@ import mdtraj as md
 import numpy as np
 import pdbfixer
 
-from openmm import CustomExternalForce, MonteCarloBarostat, PeriodicTorsionForce, Platform, NoseHooverIntegrator, LangevinMiddleIntegrator
+from openmm import CustomExternalForce, MonteCarloBarostat, PeriodicTorsionForce, NoseHooverIntegrator, LangevinMiddleIntegrator, Vec3
 from openmm.app import PME, CheckpointReporter, HBonds, Modeller, PDBFile, Simulation, StateDataReporter, Topology, ForceField
 from openmm.unit import (
-    Quantity,
     angstroms,
     bar,
     kelvin,
@@ -20,52 +19,62 @@ from openmm.unit import (
     nanometers,
     picoseconds,
 )
-Positions = Quantity[Any]
+Positions = List[Tuple[Vec3, ...]]
+Velocities = List[Tuple[Vec3, ...]]
 
+logging.basicConfig(
+    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
+    level=logging.INFO
+)
 py_logger = logging.getLogger("openmm_utils")
 
 
 
-def check_file(fname: str) -> str:
+def filename_with_prefix(prefix: str, extension: str) -> str:
     """
-    Checks the existence of a file in the given pathway and gives a newfile name
+    Generates a filename with a prefix and an integer identifier.    
     Filename format: <string_indentifier>_<int_identifier>.<extension>
     """
-    if os.path.isfile(fname):
-        ident = fname.split(".")[0].split("_")
-        fname = f'{ident[0]}_{int(ident[1])+1}.{fname.split(".")[1]}'
-        fname = check_file(fname)
-    return fname
+    try:
+        dir, prefix = prefix.rsplit("/", 1)
+        os.makedirs(dir, exist_ok=True)
+    except ValueError:
+        dir = "."
+
+    # Find last file with the same prefix and increment the integer identifier.
+    files = [f for f in os.listdir(dir) if f.startswith(prefix) and f.endswith(extension)]
+    max_id = -1
+    for filename in files:
+        search = re.search(rf"{prefix}_(\d+)", filename)
+        if search is None:
+            continue
+        file_id = int(search.group(1))
+        max_id = max(max_id, file_id)
+
+    next_id = max_id + 1
+    filename = f"{prefix}_{next_id}.{extension}"
+    return os.path.join(dir, filename)
 
 
-def check_dir(fname: str) -> str:
-    """
-    Checks the existence of a file in the given pathway and gives a newfile name
-    Filename format: <string_indentifier>_<int_identifier>.<extension>
-    """
-    if os.path.isdir(fname):
-        ident = fname.split("_")
-        ident[-1] = str(int(int(ident[-1]) + 1))
-        fname = "_".join(ident)
-        fname = check_dir(fname)
-    return fname
-
-
-def fix_pdb(pdb_file: str) -> Tuple[Positions, Topology]:
-    """
-    Fixes the raw .pdb from colabfold using pdbfixer.
-    This needs to be performed to cleanup the pdb and to start simulation
-    """
-    py_logger.info("Fixing the .pdb file.")
+def fix_pdb(
+    pdb_file: str,
+    output_file_prefix: str = "fixed",
+    save_file: bool = True,
+    ) -> Tuple[Positions, Topology]:
+    """Fixes the raw .pdb from colabfold using pdbfixer."""
+    py_logger.info("Fixing the PDB file with pdbfixer.")
     fixer = pdbfixer.PDBFixer(pdb_file)
-    fixer.findNontstandardResidues()
+    fixer.findNonstandardResidues()
     fixer.replaceNonstandardResidues()
     fixer.findMissingResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms(seed=0)
-    outfile = check_file(f"fixed_{pdb_file}")
-    with open(outfile, "w") as f:
-        PDBFile.writeFile(fixer.topology, fixer.positions, f, keepIds=True)
+    
+    if save_file:
+        output_file = filename_with_prefix(output_file_prefix, extension="pdb")
+        with open(output_file, "w") as f:
+            PDBFile.writeFile(fixer.topology, fixer.positions, f, keepIds=True)
+
     return fixer.positions, fixer.topology
 
 
@@ -73,15 +82,20 @@ def add_hydrogens(
     positions: Positions,
     topology: Topology,
     forcefield: ForceField,
-    write_file: bool = True,
+    save_file: bool = True,
+    output_file_prefix: str = "hydrogenated",
 ) -> Tuple[Positions, Topology]:
     """Adds missing hydrogen to the pdb for a particular forcefield."""
     py_logger.info("Adding hydrogens to the system.")
     modeller = Modeller(topology, positions)
     modeller.addHydrogens(forcefield)
-    if write_file:
-        hydfile = check_file("fixedH_0.pdb")
-        PDBFile.writeFile(modeller.topology, modeller.positions, open(hydfile, "w"))
+    
+    if save_file:
+        output_file = filename_with_prefix(output_file_prefix, extension="pdb")
+        with open(output_file, "w") as f:
+            PDBFile.writeFile(modeller.topology, modeller.positions, f)
+        py_logger.info(f"Hydrogenated PDB file saved at: {os.path.abspath(output_file)}")
+
     return modeller.positions, modeller.topology
 
 
@@ -93,7 +107,8 @@ def solvate(
     water_model: str,
     positive_ion: str,
     negative_ion: str,
-    write_file: bool = True,
+    save_file: bool = True,
+    output_file_prefix: str = "solvated",
 ) -> Tuple[Positions, Topology]:
     """Creates a box of solvent with padding and neutral charges."""
     py_logger.info("Solvating the system.")
@@ -106,10 +121,13 @@ def solvate(
         positiveIon=positive_ion,
         negativeIon=negative_ion,
     )
-    if write_file:
-        solv_file = check_file("solvated_0.pdb")
-        with open(solv_file, "w") as f:
+    
+    if save_file:
+        output_file = filename_with_prefix(output_file_prefix, extension="pdb")
+        with open(output_file, "w") as f:
             PDBFile.writeFile(modeller.topology, modeller.positions, f)
+        py_logger.info(f"Solvated PDB file saved at: {os.path.abspath(output_file)}")
+
     return modeller.positions, modeller.topology
 
 
@@ -143,8 +161,7 @@ def get_system_with_NoseHoover_integrator(
         constraints=HBonds,
     )
     integrator = NoseHooverIntegrator(temp_K * kelvin, 1 / picoseconds, dt_ps * picoseconds)
-    platform = Platform.getPlatformByName("CUDA")
-    simulation = Simulation(topology, system, integrator, platform)
+    simulation = Simulation(topology, system, integrator)
     return simulation
 
 
@@ -215,21 +232,27 @@ def add_dihedral_restraints(
 
 
 def minimize_energy(
-        positions: np.ndarray,
+        positions: Positions,
         simulation: Simulation,
         tolerance_kJ_per_mol_per_nm: float = 10,
-        n_iter: int = 1500,
-        write_file: bool = True) -> Tuple[Positions, Simulation]:
+        num_steps: int = 1500,
+        output_file_prefix: str = "minimized",
+        save_file: bool = True) -> Tuple[Positions, Simulation]:
     """Energy minimization steps to relax the system."""
     py_logger.info("Minimizing the energy of the system.")
     simulation.context.setPositions(positions)
-    simulation.minimizeEnergy(tolerance=tolerance_kJ_per_mol_per_nm * kilojoules_per_mole / nanometer, maxIterations=n_iter)
+    simulation.minimizeEnergy(tolerance=tolerance_kJ_per_mol_per_nm * kilojoules_per_mole / nanometer, maxIterations=num_steps)
     minimized_positions = simulation.context.getState(getPositions=True).getPositions()
-    if write_file:
-        minim_file = check_file("minim_0.pdb")
+
+    if save_file:
         pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
-        with open(minim_file, "w") as f:
+
+        output_file = filename_with_prefix(output_file_prefix, extension="pdb")
+        with open(output_file, "w") as f:
             PDBFile.writeFile(simulation.topology, pdb_positions, f)
+
+        py_logger.info(f"Minimized PDB file saved at: {os.path.abspath(output_file)}")
+   
     return minimized_positions, simulation
 
 
@@ -237,16 +260,20 @@ def run_simulation(
     simulation: Simulation,
     positions: Positions,
     num_steps: int,
-    name: str,
+    output_file_prefix: str,
     ensemble: str,
+    output_frequency: int,
     temp_K: Optional[float] = None,
     pressure_bar: Optional[float] = None,
-    save_checkpoint_file: bool = True,
-    output_frequency: int = 500,
-    write_xtc: bool = True,
+    save_intermediate_files: bool = False,
     velocities: Optional[Velocities] = None,
     restart_from_checkpoint: bool = False,
-    checkpoint_file: str = "chkptfile.chk",
+    save_xtc: bool = False,
+    xtc_output_file: Optional[str] = None,
+    save_pdb: bool = False,
+    pdb_output_file: Optional[str] = None,
+    save_checkpoint_file: bool = False,
+    checkpoint_file: Optional[str] = None,
 ) -> Tuple[Positions, Velocities, Simulation]:
     """
     Run molecular dynamics simulation with flexible configuration options.
@@ -260,8 +287,8 @@ def run_simulation(
         temp_K: Temperature in Kelvin
         pressure_bar: Pressure in bar
         save_checkpoint_file: Whether to save checkpoint files
-        output_frequency: Frequency of output writing
-        write_xtc: Whether to write XTC trajectory
+        output_frequency: Frequency of output writing (in steps)
+        save_xtc: Whether to write XTC trajectory
         velocities: Optional initial velocities
         restart_from_checkpoint: Whether to restart from a checkpoint
         checkpoint_file: Name of checkpoint file to read/write
@@ -271,11 +298,12 @@ def run_simulation(
     """
     # Setup ensemble forces.
     if ensemble == "NPT":
-        py_logger.info("Setting up NPT ensemble with pressure barostat.")
+        py_logger.info(f"Setting up NPT ensemble with pressure barostat at {pressure_bar} bar and temperature {temp_K} K.")
         simulation.context.getSystem().addForce(
             MonteCarloBarostat(pressure_bar * bar, temp_K * kelvin)
         )
     elif ensemble == "NVT":
+        py_logger.info(f"Setting up NVT ensemble.")
         if pressure_bar is not None:
             py_logger.info("Ignoring pressure barostat for NVT ensemble.")
     else:
@@ -294,18 +322,22 @@ def run_simulation(
     
     # Checkpoint reporter.
     if save_checkpoint_file:
+        if checkpoint_file is None:
+            checkpoint_file = filename_with_prefix(output_file_prefix, extension="chk")
+
         chkpt_freq = int(0.05 * num_steps)
         simulation.reporters.append(
             CheckpointReporter(checkpoint_file, chkpt_freq)
         )
 
     # State reporter for logging.
-    logfile = f"{name}.txt"
-    with open(logfile, "a" if restart_from_checkpoint else "w") as outlog:
+    if save_intermediate_files:
+        log_file = filename_with_prefix(output_file_prefix, extension="log")
+        mode = "a" if restart_from_checkpoint else "w"
         simulation.reporters.append(
             StateDataReporter(
-                outlog,
-                output_frequency * 2,
+                open(log_file, mode),
+                output_frequency,
                 step=True,
                 potentialEnergy=True,
                 kineticEnergy=True,
@@ -317,13 +349,14 @@ def run_simulation(
         )
 
     # XTC reporter.
-    if write_xtc:
-        outfname = f"{name}.xtc"
+    if save_xtc:
+        if xtc_output_file is None:
+            xtc_output_file = filename_with_prefix(output_file_prefix, extension="xtc")
+
         topology = md.Topology.from_openmm(simulation.topology)
-        python_expression = topology.select_expression("protein")
-        req_indices = np.array(eval(python_expression))
+        protein_indices = topology.select("protein")
         simulation.reporters.append(
-            md.reporters.XTCReporter(outfname, output_frequency, atomSubset=req_indices)
+            md.reporters.XTCReporter(xtc_output_file, output_frequency, atomSubset=protein_indices)
         )
 
     # Run simulation.
@@ -336,9 +369,19 @@ def run_simulation(
         enforcePeriodicBox=True
     ).getPositions()
     
-    outfile = f"{name}.pdb"
-    PDBFile.writeFile(simulation.topology, pdb_positions, open(outfile, "w"))
-    simulation.saveState(f"{name}.state")
+    if save_pdb:
+        if pdb_output_file is None:
+            pdb_output_file = filename_with_prefix(output_file_prefix, extension="pdb")
+        with open(pdb_output_file, "w") as f:
+            PDBFile.writeFile(simulation.topology, pdb_positions, f)
+        py_logger.info(f"PDB file saved at: {os.path.abspath(pdb_output_file)}")
+
+    if save_intermediate_files:
+        output_file = filename_with_prefix(output_file_prefix, extension="state")
+        simulation.saveState(output_file)
+
+    if save_xtc:
+        py_logger.info(f"Trajectory file saved at: {os.path.abspath(xtc_output_file)}")
 
     # Get final positions and velocities.
     final_positions = simulation.context.getState(
