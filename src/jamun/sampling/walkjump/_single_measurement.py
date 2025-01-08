@@ -11,7 +11,7 @@ class SingleMeasurementSampler:
     def __init__(
         self,
         mcmc,
-        sigma: float = 1.0,
+        sigma: float,
         y_init_distribution: Optional[torch.distributions.Distribution] = None,
     ):
         self.mcmc = mcmc
@@ -21,7 +21,7 @@ class SingleMeasurementSampler:
     def walk(
         self,
         model,
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
         y_init: Optional[torch.Tensor] = None,
         v_init: str | Tensor = "gaussian",
     ):
@@ -42,7 +42,7 @@ class SingleMeasurementSampler:
     def walk_jump(
         self,
         model,
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
         y_init: Optional[torch.Tensor] = None,
         v_init: str | Tensor = "gaussian",
     ):
@@ -80,7 +80,7 @@ class SingleMeasurementSampler:
     def sample(
         self,
         model,
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
         y_init: Optional[torch.Tensor] = None,
         v_init: str | Tensor = "gaussian",
     ):

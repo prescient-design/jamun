@@ -1,16 +1,19 @@
 # @package _global_
 
+defaults:
+  - override /callbacks:
+    - sampler/save_trajectory.yaml
+  - _self_
+
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
   root: "${paths.data_path}/timewarp/4AA-large/test/"
   traj_pattern: "^(.*)-traj-arrays.npz"
   pdb_pattern: "^(.*)-traj-state0.pdb"
   subsample: 1
-  max_datasets: 10
-  max_datasets_offset: 0
 
-num_sampling_steps_per_batch: 1000
-num_batches: 100
+num_sampling_steps_per_batch: 20000
+num_batches: 5
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
