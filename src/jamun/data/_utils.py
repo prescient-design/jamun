@@ -97,7 +97,7 @@ def parse_datasets_from_directory(
         codes = codes[:max_datasets]
 
     datasets = []
-    for code in tqdm(codes):
+    for code in tqdm(codes, desc="Creating datasets"):
         dataset = MDtrajDataset(
             root,
             trajfiles=traj_files[code],

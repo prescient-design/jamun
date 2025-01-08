@@ -31,5 +31,5 @@ srun --cpus-per-task 8 --cpu-bind=cores,verbose \
         experiment=sample_uncapped_2AA.yaml \
         ++sampler.devices=$SLURM_GPUS_PER_NODE \
         ++sampler.num_nodes=$SLURM_JOB_NUM_NODES \
-        ++logger.wandb.tags=["'${SLURM_JOB_ID}'","sample"] \
+        ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","sample"] \
         ++run_key=$RUN_KEY
