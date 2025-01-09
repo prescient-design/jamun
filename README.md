@@ -65,14 +65,23 @@ Now, set the environment variable `JAMUN_DATA_PATH`:
 ```bash
 export JAMUN_DATA_PATH=/path/to/data/root/
 ```
-or, create a `.env` file and set `JAMUN_DATA_PATH`:
+or, create a `.env` file in the root of the repository and set `JAMUN_DATA_PATH`:
 ```txt
 JAMUN_DATA_PATH=/path/to/data/root/
 ```
 
+Set the environment variable `JAMUN_ROOT_PATH` (default: current directory) to specify where outputs from training and sampling are saved:
+```bash
+export JAMUN_ROOT_PATH=...
+```
+or in the .env file in the root of the repository:
+```txt
+JAMUN_ROOT_PATH=...
+```
+
 ## Training
 
-Once you have downloaded the data and set the appropriate data variables correctly, 
+Once you have downloaded the data and set the appropriate variables correctly, 
 you can start training on Timewarp.
 
 We recommend first running our test config to check that installation was successful:
@@ -90,8 +99,6 @@ or the uncapped 4AA peptides dataset:
 jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 ```
 
-By default, all run outputs will be saved to `outputs` in the current directory.
-
 We also provide example [SLURM](https://slurm.schedmd.com/documentation.html) launcher scripts for [training](https://github.com/prescient-design/jamun/blob/main/scripts/slurm/train.sh) and [sampling](https://github.com/prescient-design/jamun/blob/main/scripts/slurm/sample.sh) on SLURM clusters:
 ```bash
 sbatch scripts/slurm/train.sh 
@@ -100,7 +107,8 @@ sbatch scripts/slurm/sample.sh
 
 ## Inference
 
-We provide trained weights for inference at ...
+### Loading Trained Models 
+We provide trained models for the uncapped and capped peptides datasets at ..... These can be used by...
 
 If you want to test out your own trained model, 
 either specify the `wandb_train_run_path` (in the form `entity/project/run_id`, which can be obtained from the Overview tab in the Weights and Biases UI for your training run), or the `checkpoint_dir` of the trained model.
@@ -110,7 +118,7 @@ jamun_sample ... ++wandb_train_run_path=[WANDB_TRAIN_RUN_PATH]
 jamun_sample ... ++checkpoint_dir=[CHECKPOINT_DIR]
 ```
 
-### Sampling a Peptide Sequence
+### Sampling Conformations for a Peptide Sequence
 
 If you want to sample conformations for a particular peptide sequence, you need to first generate a `.pdb` file.
 
