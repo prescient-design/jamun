@@ -138,7 +138,9 @@ def compute_ramachandran_histogram(trajectory: md.Trajectory, bins: int):
     return hist
 
 
-def compute_JS_divergence_of_ramachandran(trajectory: md.Trajectory, ref_trajectory: md.Trajectory, bins: int = 100) -> float:
+def compute_JS_divergence_of_ramachandran(
+    trajectory: md.Trajectory, ref_trajectory: md.Trajectory, bins: int = 100
+) -> float:
     """Computes the Jensen-Shannon divergence between the Ramachandran histograms from two trajectories."""
 
     hist = compute_ramachandran_histogram(trajectory, bins)

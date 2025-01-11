@@ -34,7 +34,9 @@ class SampleVisualizer(TrajectoryMetric):
 
         # Warn if there are not enough samples to plot.
         if len(all_mols) < self.num_samples_to_plot:
-            utils.dist_log(f"Only {len(all_mols)} samples available for visualization: {traj} after subsampling by {self.subsample}.")
+            utils.dist_log(
+                f"Only {len(all_mols)} samples available for visualization: {traj} after subsampling by {self.subsample}."
+            )
 
         # Create a dictionary of the RDKit mols, indexed by row.
         mols = {}

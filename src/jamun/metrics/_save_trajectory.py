@@ -29,7 +29,6 @@ class SaveTrajectory(TrajectoryMetric):
         for ext in self.pred_samples_extensions:
             os.makedirs(os.path.join(self.pred_samples_dir, ext), exist_ok=True)
 
-
     def filename_pred(self, trajectory_index: Union[int, str], extension: str) -> str:
         """Returns the filename for the predicted samples."""
         if extension not in self.pred_samples_extensions:

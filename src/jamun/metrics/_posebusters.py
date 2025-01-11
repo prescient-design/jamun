@@ -26,6 +26,7 @@ def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.Data
     del blocker
     return results
 
+
 class PoseBustersMetrics(TrajectoryMetric):
     """Computes chemical validity metrics using PoseBusters."""
 

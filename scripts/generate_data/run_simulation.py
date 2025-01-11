@@ -10,15 +10,14 @@ from typing import Optional, Tuple
 import openmm_utils as op
 from openmm.app import ForceField, Simulation, Topology
 
-logging.basicConfig(
-    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("run_simulation")
+
 
 @dataclass
 class SimulationConfig:
     """Configuration parameters for MD simulation"""
+
     init_pdb: str
     output_dir: Optional[str] = None
     dt_ps: float = 0.002
@@ -58,73 +57,81 @@ Examples:
     # Full customization of equilibration steps
     %(prog)s init_pdb --nvt-restraint-steps 200000 --npt-restraint-steps 200000 \\
         --nvt-equil-steps 500000 --npt-equil-steps 5000000
-        """
+        """,
     )
 
     # Required arguments
-    parser.add_argument(
-        "init_pdb",
-        help="Initial PDB file."
-    )
+    parser.add_argument("init_pdb", help="Initial PDB file.")
 
     parser.add_argument(
-        "--output-dir", type=str, default=None,
-        help="Output directory for simulation files (default: temporary directory)"
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output directory for simulation files (default: temporary directory)",
     )
     parser.add_argument(
-        "--save-intermediate-files", action="store_true",
-        help="Save intermediate files (default: False)"
+        "--save-intermediate-files", action="store_true", help="Save intermediate files (default: False)"
     )
 
     # Simulation parameters
-    sim_group = parser.add_argument_group('Simulation Parameters')
+    sim_group = parser.add_argument_group("Simulation Parameters")
     sim_group.add_argument(
-        "--dt", type=float, default=SimulationConfig.dt_ps,
-        help="Timestep in ps (default: %(default)s)"
+        "--dt", type=float, default=SimulationConfig.dt_ps, help="Timestep in ps (default: %(default)s)"
     )
     sim_group.add_argument(
-        "--temp", type=float, default=SimulationConfig.temp_K,
-        help="Temperature in K (default: %(default)s)"
+        "--temp", type=float, default=SimulationConfig.temp_K, help="Temperature in K (default: %(default)s)"
     )
     sim_group.add_argument(
-        "--pressure", type=float, default=SimulationConfig.pressure_bar,
-        help="Pressure in bar (default: %(default)s)"
+        "--pressure", type=float, default=SimulationConfig.pressure_bar, help="Pressure in bar (default: %(default)s)"
     )
     sim_group.add_argument(
-        "--position-restraint-k", type=float, default=SimulationConfig.position_restraint_k,
-        help="Position restraint force constant in KJ/(mol.A^2) (default: %(default)s)"
+        "--position-restraint-k",
+        type=float,
+        default=SimulationConfig.position_restraint_k,
+        help="Position restraint force constant in KJ/(mol.A^2) (default: %(default)s)",
     )
 
     # Forcefield options
-    ff_group = parser.add_argument_group('Forcefield Options')
+    ff_group = parser.add_argument_group("Forcefield Options")
     ff_group.add_argument(
-        "--forcefield", nargs=2,
+        "--forcefield",
+        nargs=2,
         default=SimulationConfig.forcefield,
-        metavar=('FF1', 'FF2'),
-        help="Forcefield XML files (default: %(default)s)"
+        metavar=("FF1", "FF2"),
+        help="Forcefield XML files (default: %(default)s)",
     )
 
     # Steps for different equilibration stages.
-    steps_group = parser.add_argument_group('Simulation Steps')
+    steps_group = parser.add_argument_group("Simulation Steps")
     steps_group.add_argument(
-        "--energy-minimization-steps", type=int, default=SimulationConfig.energy_minimization_steps,
-        help="Steps for energy minimization (default: %(default)s)"
+        "--energy-minimization-steps",
+        type=int,
+        default=SimulationConfig.energy_minimization_steps,
+        help="Steps for energy minimization (default: %(default)s)",
     )
     steps_group.add_argument(
-        "--nvt-restraint-steps", type=int, default=SimulationConfig.nvt_restraint_steps,
-        help="Steps for NVT equilibration with restraints (default: %(default)s)"
+        "--nvt-restraint-steps",
+        type=int,
+        default=SimulationConfig.nvt_restraint_steps,
+        help="Steps for NVT equilibration with restraints (default: %(default)s)",
     )
     steps_group.add_argument(
-        "--npt-restraint-steps", type=int, default=SimulationConfig.npt_restraint_steps,
-        help="Steps for NPT equilibration with restraints (default: %(default)s)"
+        "--npt-restraint-steps",
+        type=int,
+        default=SimulationConfig.npt_restraint_steps,
+        help="Steps for NPT equilibration with restraints (default: %(default)s)",
     )
     steps_group.add_argument(
-        "--nvt-equil-steps", type=int, default=SimulationConfig.nvt_equil_steps,
-        help="Steps for NVT equilibration without restraints (default: %(default)s)"
+        "--nvt-equil-steps",
+        type=int,
+        default=SimulationConfig.nvt_equil_steps,
+        help="Steps for NVT equilibration without restraints (default: %(default)s)",
     )
     steps_group.add_argument(
-        "--npt-equil-steps", type=int, default=SimulationConfig.npt_equil_steps,
-        help="Steps for NPT equilibration without restraints (default: %(default)s)"
+        "--npt-equil-steps",
+        type=int,
+        default=SimulationConfig.npt_equil_steps,
+        help="Steps for NPT equilibration without restraints (default: %(default)s)",
     )
 
     args = parser.parse_args()
@@ -143,7 +150,7 @@ Examples:
         npt_restraint_steps=args.npt_restraint_steps,
         nvt_equil_steps=args.nvt_equil_steps,
         npt_equil_steps=args.npt_equil_steps,
-        save_intermediate_files=args.save_intermediate_files
+        save_intermediate_files=args.save_intermediate_files,
     )
 
 
@@ -152,9 +159,7 @@ def get_output_file_prefix(filename: str) -> str:
     return os.path.splitext(os.path.basename(filename))[0]
 
 
-def setup_system(
-    config: SimulationConfig
-) -> Tuple[op.Positions, Topology, Simulation]:
+def setup_system(config: SimulationConfig) -> Tuple[op.Positions, Topology, Simulation]:
     """Set up the initial system."""
 
     # Create a temporary directory for output files, if not provided.
@@ -173,57 +178,54 @@ def setup_system(
 
     # Fix PDB and add hydrogens
     positions, topology = op.fix_pdb(
-        config.init_pdb,
-        output_file_prefix=f"{output_file_prefix}_fixed",
-        save_file=config.save_intermediate_files
+        config.init_pdb, output_file_prefix=f"{output_file_prefix}_fixed", save_file=config.save_intermediate_files
     )
     ff = ForceField(*config.forcefield)
     positions, topology = op.add_hydrogens(
-        positions, topology, ff,
+        positions,
+        topology,
+        ff,
         output_file_prefix=f"{output_file_prefix}_hydrogenated",
-        save_file=config.save_intermediate_files
+        save_file=config.save_intermediate_files,
     )
 
     # Solvate system
     positions, topology = op.solvate(
-        positions, topology, ff,
+        positions,
+        topology,
+        ff,
         padding_nm=config.padding_nm,
         water_model=config.water_model,
         positive_ion=config.positive_ion,
         negative_ion=config.negative_ion,
         output_file_prefix=f"{output_file_prefix}_solvated",
-        save_file=config.save_intermediate_files
+        save_file=config.save_intermediate_files,
     )
 
     # Create and setup simulation
-    simulation = op.get_system_with_Langevin_integrator(
-        topology, ff,
-        config.temp_K,
-        dt_ps=config.dt_ps
-    )
+    simulation = op.get_system_with_Langevin_integrator(topology, ff, config.temp_K, dt_ps=config.dt_ps)
 
     return positions, topology, simulation
 
 
 def run_full_simulation(
-    positions: op.Positions,
-    topology: Topology,
-    simulation: Simulation,
-    config: SimulationConfig
+    positions: op.Positions, topology: Topology, simulation: Simulation, config: SimulationConfig
 ) -> None:
     """Run the full simulation including equilibration."""
     # Add restraints.
-    simulation = op.add_position_restraints(
-        positions, topology,
-        simulation,
-        k=config.position_restraint_k
-    )
+    simulation = op.add_position_restraints(positions, topology, simulation, k=config.position_restraint_k)
 
     # Get a prefix for output files.
     output_file_prefix = get_output_file_prefix(config.init_pdb)
 
     # Minimize energy.
-    positions, simulation = op.minimize_energy(positions, simulation, num_steps=config.energy_minimization_steps, output_file_prefix=f"{output_file_prefix}_minimized", save_file=config.save_intermediate_files)
+    positions, simulation = op.minimize_energy(
+        positions,
+        simulation,
+        num_steps=config.energy_minimization_steps,
+        output_file_prefix=f"{output_file_prefix}_minimized",
+        save_file=config.save_intermediate_files,
+    )
 
     # NVT with restraints.
     positions, velocities, simulation = op.run_simulation(
@@ -252,9 +254,7 @@ def run_full_simulation(
     )
 
     py_logger.info("Removing position restraints.")
-    simulation.context.getSystem().removeForce(
-        simulation.context.getSystem().getNumForces() - 1
-    )
+    simulation.context.getSystem().removeForce(simulation.context.getSystem().getNumForces() - 1)
 
     # NVT equilibration.
     positions, velocities, simulation = op.run_simulation(
@@ -283,7 +283,7 @@ def run_full_simulation(
         save_pdb=True,
         pdb_output_file=f"{output_file_prefix}.pdb",
         save_xtc=True,
-        xtc_output_file=f"{output_file_prefix}.xtc"
+        xtc_output_file=f"{output_file_prefix}.xtc",
     )
 
 

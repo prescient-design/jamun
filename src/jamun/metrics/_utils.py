@@ -81,7 +81,8 @@ class TrajectoryMetric(torchmetrics.Metric):
         # In distributed mode, self.samples has shape (num_devices, batch_size, num_atoms, num_frames, 3).
         if samples.ndim == 5:
             samples = einops.rearrange(
-                samples, "num_devices batch_size num_atoms num_frames coords -> (batch_size num_devices) num_atoms num_frames coords"
+                samples,
+                "num_devices batch_size num_atoms num_frames coords -> (batch_size num_devices) num_atoms num_frames coords",
             )
 
         if new:
@@ -91,7 +92,8 @@ class TrajectoryMetric(torchmetrics.Metric):
     def joined_sample_tensor(self) -> torch.Tensor:
         """Return the samples as a torch.Tensor, concatenated across all batches."""
         return einops.rearrange(
-            self.sample_tensors(new=False), "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords"
+            self.sample_tensors(new=False),
+            "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords",
         )
 
     def sample_trajectories(self, *, new: bool) -> List[md.Trajectory]:

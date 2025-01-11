@@ -10,7 +10,9 @@ def unpack_irreps(x: torch.Tensor, irreps: e3nn.o3.Irreps) -> Iterator[Tuple[int
     yield tuples (mul, ir, field) where field has dimension [..., mul, 2*l+1]
     for each irrep in irreps
     """
-    assert x.shape[-1] == irreps.dim, f"last dimension of x (shape {x.shape}) does not match irreps.dim ({irreps} with dim {irreps.dim})"
+    assert x.shape[-1] == irreps.dim, (
+        f"last dimension of x (shape {x.shape}) does not match irreps.dim ({irreps} with dim {irreps.dim})"
+    )
     ix = 0
     for mul, ir in irreps:
         field = x.narrow(-1, ix, mul * ir.dim).reshape(*x.shape[:-1], mul, ir.dim)
@@ -20,7 +22,9 @@ def unpack_irreps(x: torch.Tensor, irreps: e3nn.o3.Irreps) -> Iterator[Tuple[int
     assert ix == irreps.dim
 
 
-def factor_tuples(unpacked_tuples: Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]], factor: int) -> Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]]:
+def factor_tuples(
+    unpacked_tuples: Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]], factor: int
+) -> Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]]:
     """Factor the fields in each tuple by a factor."""
     for mul, ir, field in unpacked_tuples:
         if mul % factor != 0:
@@ -30,7 +34,9 @@ def factor_tuples(unpacked_tuples: Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tens
         yield new_mul, ir, new_field
 
 
-def undo_factor_tuples(factored_tuples: Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]], factor: int) -> Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]]:
+def undo_factor_tuples(
+    factored_tuples: Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]], factor: int
+) -> Iterator[Tuple[int, e3nn.o3.Irrep, torch.Tensor]]:
     """Undo the factorization of the fields in each tuple."""
     for mul, ir, field in factored_tuples:
         new_mul = mul * factor
@@ -69,6 +75,7 @@ def axis_to_mul(x: torch.Tensor, irreps: e3nn.o3.Irreps) -> Tuple[torch.Tensor, 
 
 class MulToAxis(torch.nn.Module):
     """Adds a new axis by factoring out irreps."""
+
     def __init__(self, irreps_in: e3nn.o3.Irreps, factor: int):
         super().__init__()
         self.irreps_in = irreps_in
@@ -81,12 +88,12 @@ class MulToAxis(torch.nn.Module):
 
 class AxisToMul(torch.nn.Module):
     """Collapses the second-last axis by flattening the irreps."""
+
     def __init__(self, irreps_in: e3nn.o3.Irreps, factor: int):
         super().__init__()
         self.irreps_in = irreps_in
         self.irreps_out = e3nn.o3.Irreps([(mul * factor, ir) for mul, ir in irreps_in])
         self.factor = factor
-
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return axis_to_mul(x, self.irreps_in)[0]
