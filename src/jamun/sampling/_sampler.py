@@ -83,7 +83,7 @@ class Sampler:
         total_sampling_time = 0.0
         total_num_graphs = 0
 
-        with torch.inference_mode(), self.fabric.init_module():
+        with torch.inference_mode():
             for batch_idx in iterable:
                 self.global_step = batch_idx
 
