@@ -1,4 +1,3 @@
 score_distribution:
   _target_: jamun.callbacks.sampler.ScoreDistributionCallback
   datasets: ${init_datasets}
-

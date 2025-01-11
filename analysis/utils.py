@@ -48,7 +48,7 @@ def get_peptides_in_JAMUN_run(run_path: str) -> Sequence[str]:
 
 def search_for_JAMUN_files(root_path: str) -> List[str]:
     """Heuristically finds JAMUN output files in a given directory."""
-    
+
     output_dir = os.path.join(root_path, "outputs")
     if not os.path.exists(output_dir):
         raise ValueError(f"No outputs directory found in {root_path}")
@@ -58,7 +58,7 @@ def search_for_JAMUN_files(root_path: str) -> List[str]:
     for dirpath, dirnames, filenames in os.walk(output_dir):
         if "sampler" in dirnames:
             run_paths.append(dirpath)
-    
+
     return run_paths
 
 
@@ -82,16 +82,16 @@ def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, 
 
             if not os.path.exists(trajectory_files[peptide]["dcd"]):
                 raise ValueError(f"DCD file {trajectory_files[peptide]['dcd']} not found.")
-                
+
             for pdb_file in [
                 f"{run_path}/sampler/{peptide}/topology.pdb",
-                f"{run_path}/sampler/{peptide}/predicted_samples/pdb/0.pdb", 
+                f"{run_path}/sampler/{peptide}/predicted_samples/pdb/0.pdb",
                 f"{run_path}/pdbs/{peptide}-modified.pdb"
             ]:
                 if os.path.exists(pdb_file):
                     trajectory_files[peptide]["pdb"] = pdb_file
                     break
-            
+
             if "pdb" not in trajectory_files[peptide]:
                 raise ValueError(f"No PDB file found for peptide {peptide} in run {run_path}")
 

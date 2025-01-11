@@ -576,4 +576,3 @@ class Ophiuchus(nn.Module):
         # print("output head done")
         # Convert data back to atom-based representation.
         return to_atom_data(residue_data)
-

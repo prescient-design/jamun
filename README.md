@@ -81,7 +81,7 @@ JAMUN_ROOT_PATH=...
 
 ## Training
 
-Once you have downloaded the data and set the appropriate variables correctly, 
+Once you have downloaded the data and set the appropriate variables correctly,
 you can start training on Timewarp.
 
 We recommend first running our test config to check that installation was successful:
@@ -101,16 +101,16 @@ jamun_train --config-dir=configs experiment=train_uncapped_4AA.yaml
 
 We also provide example [SLURM](https://slurm.schedmd.com/documentation.html) launcher scripts for [training](https://github.com/prescient-design/jamun/blob/main/scripts/slurm/train.sh) and [sampling](https://github.com/prescient-design/jamun/blob/main/scripts/slurm/sample.sh) on SLURM clusters:
 ```bash
-sbatch scripts/slurm/train.sh 
-sbatch scripts/slurm/sample.sh 
+sbatch scripts/slurm/train.sh
+sbatch scripts/slurm/sample.sh
 ```
 
 ## Inference
 
-### Loading Trained Models 
+### Loading Trained Models
 We provide trained models for the uncapped and capped peptides datasets at ..... These can be used by...
 
-If you want to test out your own trained model, 
+If you want to test out your own trained model,
 either specify the `wandb_train_run_path` (in the form `entity/project/run_id`, which can be obtained from the Overview tab in the Weights and Biases UI for your training run), or the `checkpoint_dir` of the trained model.
 
 ```bash
@@ -173,12 +173,12 @@ If you found this repository useful, please cite our preprint!
 
 ```bibtex
 @misc{daigavane2024jamuntransferablemolecularconformational,
-      title={JAMUN: Transferable Molecular Conformational Ensemble Generation with Walk-Jump Sampling}, 
+      title={JAMUN: Transferable Molecular Conformational Ensemble Generation with Walk-Jump Sampling},
       author={Ameya Daigavane and Bodhi P. Vani and Saeed Saremi and Joseph Kleinhenz and Joshua Rackers},
       year={2024},
       eprint={2410.14621},
       archivePrefix={arXiv},
       primaryClass={physics.bio-ph},
-      url={https://arxiv.org/abs/2410.14621}, 
+      url={https://arxiv.org/abs/2410.14621},
 }
 ```

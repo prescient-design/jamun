@@ -1,4 +1,3 @@
 ramachandran_plot:
   _target_: jamun.callbacks.sampler.RamachandranPlotMetricsCallback
   datasets: ${init_datasets}
-
