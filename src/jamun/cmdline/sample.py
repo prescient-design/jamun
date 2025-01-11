@@ -41,7 +41,8 @@ def run(cfg):
     dist_log(f"{OmegaConf.to_yaml(log_cfg)}")
     dist_log(f"{os.getcwd()=}")
     dist_log(f"{torch.__config__.parallel_info()}")
-    dist_log(f"{os.sched_getaffinity(0)=}")
+    if hasattr(os, "sched_getaffinity"):
+        dist_log(f"{os.sched_getaffinity(0)=}")
 
     if matmul_prec := cfg.get("float32_matmul_precision"):
         torch.set_float32_matmul_precision(matmul_prec)
@@ -92,11 +93,20 @@ def run(cfg):
         param_sum = sum(p.sum() for p in model.parameters())
 
         # Train the model for a fixed number of steps.
-        trainer = pl.Trainer(logger=loggers, max_steps=num_finetuning_steps, min_steps=num_finetuning_steps, log_every_n_steps=1, check_val_every_n_epoch=1)
-        trainer.fit(model, datamodule=MDtrajDataModule(
-            datasets={"train": init_datasets, "val": init_datasets},
-            batch_size=finetuning_cfg.batch_size,
-        ))
+        trainer = pl.Trainer(
+            logger=loggers,
+            max_steps=num_finetuning_steps,
+            min_steps=num_finetuning_steps,
+            log_every_n_steps=1,
+            check_val_every_n_epoch=1,
+        )
+        trainer.fit(
+            model,
+            datamodule=MDtrajDataModule(
+                datasets={"train": init_datasets, "val": init_datasets},
+                batch_size=finetuning_cfg.batch_size,
+            ),
+        )
 
         # Check that model parameters changed.
         new_param_sum = sum(p.sum() for p in model.parameters())
