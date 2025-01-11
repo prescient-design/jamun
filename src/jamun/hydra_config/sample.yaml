@@ -14,6 +14,7 @@ sample_pdb: null
 repeat_init_samples: 1
 num_batches: 1
 continue_chain: true
+finetune_on_init: false
 
 seed: 42
 task_name: "sample"
