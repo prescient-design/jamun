@@ -10,7 +10,7 @@ class DataWithResidueInformation(torch_geometric.data.Data):
     atom_code_index: torch.Tensor
     residue_code_index: torch.Tensor
     residue_sequence_index: torch.Tensor
-    residue_index: torch.Tensor # batched version of residue_sequence_index
+    residue_index: torch.Tensor  # batched version of residue_sequence_index
     num_residues: int
     loss_weight: float
 

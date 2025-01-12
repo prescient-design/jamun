@@ -1,5 +1,5 @@
 from ._conv import Conv, ConvBlock, ExperimentalConv, SeparableConv
-from ._gate import Gate, Gated
+from ._gate import Gate, Gated, GateWrapper
 from ._interaction import LinearSelfInteraction
 from ._layer_norm import LayerNorm
 from ._mlp import EquivariantMLP, ScalarMLP

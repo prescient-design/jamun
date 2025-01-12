@@ -46,7 +46,7 @@ def to_residue_data(data: utils.DataWithResidueInformation) -> ResidueData:
         data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
 
     ALPHA_CARBON_INDEX = utils.ResidueMetadata.ATOM_CODES.index("CA")
-    alpha_carbon_indices = (data.atom_code_index == ALPHA_CARBON_INDEX)
+    alpha_carbon_indices = data.atom_code_index == ALPHA_CARBON_INDEX
     base_coords = data.pos[alpha_carbon_indices]
     relative_coords = data.pos - base_coords[data.residue_index]
 
@@ -73,7 +73,7 @@ def to_atom_data(residue_data: ResidueData) -> utils.DataWithResidueInformation:
     relative_coords = residue_data.residue_relative_coords
 
     ALPHA_CARBON_INDEX = utils.ResidueMetadata.ATOM_CODES.index("CA")
-    alpha_carbon_indices = (residue_data.atom_code_index == ALPHA_CARBON_INDEX)
+    alpha_carbon_indices = residue_data.atom_code_index == ALPHA_CARBON_INDEX
     relative_coords[alpha_carbon_indices] = 0.0
     coords = base_coords + relative_coords
 
@@ -99,15 +99,13 @@ class TestEquivariance(nn.Module):
 
     def forward(self, x):
         if self.test_equivariance:
+
             def forward_wrapped(x):
                 return self.module(x)
 
             self.test_equivariance = False
             e3nn.util.test.equivariance_error(
-                      forward_wrapped,
-                      args_in=[x],
-                      irreps_in=[self.irreps_in],
-                      irreps_out=[self.irreps_out]
+                forward_wrapped, args_in=[x], irreps_in=[self.irreps_in], irreps_out=[self.irreps_out]
             )
 
         return self.module(x)
@@ -176,10 +174,7 @@ class InitialResidueEmbedding(nn.Module):
             irreps_out=self.irreps_out,
         )
 
-    def forward(
-        self, residue_data: torch_geometric.data.Data
-    ) -> ResidueState:
-
+    def forward(self, residue_data: torch_geometric.data.Data) -> ResidueState:
         base_coords = residue_data.residue_base_coords
         device = base_coords.device
 
@@ -188,15 +183,21 @@ class InitialResidueEmbedding(nn.Module):
         atom_codes = []
         atom_types = []
         for index in residue_data.residue_index:
-            assert residue_data.residue_relative_coords.shape[0] == residue_data.atom_code_index.shape[0] == residue_data.atom_type_index.shape[0]
+            assert (
+                residue_data.residue_relative_coords.shape[0]
+                == residue_data.atom_code_index.shape[0]
+                == residue_data.atom_type_index.shape[0]
+            )
 
-            residue_mask = (residue_data.residue_index_atomwise == index)
+            residue_mask = residue_data.residue_index_atomwise == index
             num_atoms = (residue_mask).sum()
             mask.append(
-                torch.cat([
-                    torch.ones(num_atoms, dtype=torch.bool, device=device),
-                    torch.zeros(self.residue_pad_length - num_atoms, dtype=torch.bool, device=device),
-                ])
+                torch.cat(
+                    [
+                        torch.ones(num_atoms, dtype=torch.bool, device=device),
+                        torch.zeros(self.residue_pad_length - num_atoms, dtype=torch.bool, device=device),
+                    ]
+                )
             )
 
             residue_relative_coords = residue_data.residue_relative_coords[residue_mask]
@@ -349,10 +350,7 @@ class OutputHead(nn.Module):
 
     def __init__(self, irreps_in: e3nn.o3.Irreps, irreps_out: e3nn.o3.Irreps, residue_pad_length: int):
         super().__init__()
-        self.base_coords_linear = e3nn.o3.Linear(
-            irreps_in=irreps_in,
-            irreps_out=irreps_out
-        )
+        self.base_coords_linear = e3nn.o3.Linear(irreps_in=irreps_in, irreps_out=irreps_out)
         self.relative_coords_linear = e3nn.o3.Linear(
             irreps_in=irreps_in,
             irreps_out=residue_pad_length * irreps_out,
@@ -367,12 +365,10 @@ class OutputHead(nn.Module):
         )
         unpadded_relative_coords = []
         for index in residue_data.residue_index:
-            residue_mask = (residue_data.residue_index_atomwise == index)
+            residue_mask = residue_data.residue_index_atomwise == index
             num_residue_atoms = (residue_mask).sum()
             residue_relative_coords = relative_coords[index, :num_residue_atoms]
-            unpadded_relative_coords.append(
-                residue_relative_coords
-            )
+            unpadded_relative_coords.append(residue_relative_coords)
         relative_coords = torch.cat(unpadded_relative_coords)
 
         residue_data = residue_data.clone()
@@ -576,4 +572,3 @@ class Ophiuchus(nn.Module):
         # print("output head done")
         # Convert data back to atom-based representation.
         return to_atom_data(residue_data)
-

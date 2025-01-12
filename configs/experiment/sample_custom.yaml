@@ -29,7 +29,7 @@ friction: 1.0
 inverse_temperature: 1.0
 score_fn_clip: 100.0
 
-init_datasets: 
+init_datasets:
   _target_: jamun.data.create_dataset_from_pdb
   pdbfile: ${init_pdb}
   label: ${label}

@@ -1,3 +1,2 @@
 _target_: lightning.Trainer
 val_check_interval: 0.1
-

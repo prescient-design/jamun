@@ -9,10 +9,7 @@ from typing import List, Tuple
 
 from jamun.utils import convert_to_one_letter_code, convert_to_three_letter_code
 
-logging.basicConfig(
-    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("prepare_pdb")
 
 
@@ -26,8 +23,8 @@ def parse_sequence(sequence: str) -> List[str]:
     sequence = sequence.upper()
 
     # Check if it's a hyphen-separated three-letter code sequence
-    if '-' in sequence:
-        sequence = sequence.split('-')
+    if "-" in sequence:
+        sequence = sequence.split("-")
 
     return [convert_to_three_letter_code(aa) for aa in sequence]
 
@@ -72,22 +69,20 @@ savepdb x {output_file}
 quit
 """
 
+
 def run_tleap(input_content: str) -> Tuple[bool, str]:
     """Run tleap with given input content."""
 
     # Write tleap input file.
-    _, input_file = tempfile.mkstemp(suffix='.in', prefix='tleap_', text=True)
-    with open(input_file, 'w') as f:
+    _, input_file = tempfile.mkstemp(suffix=".in", prefix="tleap_", text=True)
+    with open(input_file, "w") as f:
         f.write(input_content)
 
     py_logger.info("Running tleap with input: \n" + input_content)
 
     try:
         # Run tleap command
-        subprocess.run(['tleap', '-f', input_file],
-                             capture_output=True,
-                             text=True,
-                             check=True)
+        subprocess.run(["tleap", "-f", input_file], capture_output=True, text=True, check=True)
         success = True
         message = "Successfully generated structure"
     except subprocess.CalledProcessError as e:
@@ -100,27 +95,31 @@ def run_tleap(input_content: str) -> Tuple[bool, str]:
 
     return success, message
 
+
 def create_output_filename(amino_acids: List[str], mode: str, outputdir: str) -> str:
     """Create output filename based on sequence and mode."""
     sequence_short = "".join([convert_to_one_letter_code(aa) for aa in amino_acids])
     return os.path.join(outputdir, f"{mode}_{sequence_short}.pdb")
 
+
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description='Generate .pdb file for a peptide sequence using AmberTools tleap',
+        description="Generate .pdb file for a peptide sequence using AmberTools tleap",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Sequence format examples:
   AGPF             (one-letter codes)
   ALA-GLY-PRO-PHE  (three-letter codes with hyphens)
-        """)
-    parser.add_argument('sequence',
-                      help='Amino acid sequence (one-letter string or hyphen-separated three-letter codes)')
-    parser.add_argument('--mode', choices=['capped', 'uncapped'], required=True,
-                      help='Specify if peptide should be capped with ACE/NME')
-    parser.add_argument('--outputdir', default='.',
-                      help='Output directory (default: current directory)')
+        """,
+    )
+    parser.add_argument(
+        "sequence", help="Amino acid sequence (one-letter string or hyphen-separated three-letter codes)"
+    )
+    parser.add_argument(
+        "--mode", choices=["capped", "uncapped"], required=True, help="Specify if peptide should be capped with ACE/NME"
+    )
+    parser.add_argument("--outputdir", default=".", help="Output directory (default: current directory)")
 
     # Parse arguments
     args = parser.parse_args()
@@ -159,6 +158,7 @@ Sequence format examples:
     except Exception as e:
         py_logger.info(f"Unexpected error: {str(e)}")
         exit(1)
+
 
 if __name__ == "__main__":
     main()

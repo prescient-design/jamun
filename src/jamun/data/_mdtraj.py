@@ -72,7 +72,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
         if trajfiles[0].endswith(".npz") or trajfiles[0].endswith(".npy"):
             self.traj = md.load(pdbfile)
-            self.traj.xyz = np.vstack([np.load(os.path.join(self.root, filename))["positions"] for filename in trajfiles])
+            self.traj.xyz = np.vstack(
+                [np.load(os.path.join(self.root, filename))["positions"] for filename in trajfiles]
+            )
 
             assert self.traj.xyz.shape[1] == self.traj.n_atoms
             assert self.traj.xyz.shape[2] == 3
@@ -104,8 +106,12 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.traj = self.traj.atom_slice(select)
 
         # Encode the atom types, residue codes, and residue sequence indices.
-        atom_type_index = torch.tensor([utils.encode_atom_type(x.element.symbol) for x in self.top.atoms], dtype=torch.int32)
-        residue_code_index = torch.tensor([utils.encode_residue(x.residue.name) for x in self.top.atoms], dtype=torch.int32)
+        atom_type_index = torch.tensor(
+            [utils.encode_atom_type(x.element.symbol) for x in self.top.atoms], dtype=torch.int32
+        )
+        residue_code_index = torch.tensor(
+            [utils.encode_residue(x.residue.name) for x in self.top.atoms], dtype=torch.int32
+        )
         residue_sequence_index = torch.tensor([x.residue.index for x in self.top.atoms], dtype=torch.int32)
         atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in self.top.atoms], dtype=torch.int32)
 

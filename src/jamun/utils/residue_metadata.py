@@ -33,10 +33,26 @@ class ResidueMetadata:
 
     # One to three letter code mapping
     AA_3CODES: Dict[str, str] = {
-        'A': 'ALA', 'R': 'ARG', 'N': 'ASN', 'D': 'ASP', 'C': 'CYS',
-        'E': 'GLU', 'Q': 'GLN', 'G': 'GLY', 'H': 'HIS', 'I': 'ILE',
-        'L': 'LEU', 'K': 'LYS', 'M': 'MET', 'F': 'PHE', 'P': 'PRO',
-        'S': 'SER', 'T': 'THR', 'W': 'TRP', 'Y': 'TYR', 'V': 'VAL'
+        "A": "ALA",
+        "R": "ARG",
+        "N": "ASN",
+        "D": "ASP",
+        "C": "CYS",
+        "E": "GLU",
+        "Q": "GLN",
+        "G": "GLY",
+        "H": "HIS",
+        "I": "ILE",
+        "L": "LEU",
+        "K": "LYS",
+        "M": "MET",
+        "F": "PHE",
+        "P": "PRO",
+        "S": "SER",
+        "T": "THR",
+        "W": "TRP",
+        "Y": "TYR",
+        "V": "VAL",
     }
 
     # Three to one letter code mapping

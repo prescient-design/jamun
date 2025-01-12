@@ -6,10 +6,7 @@ import shutil
 import sys
 from typing import List, Tuple
 
-logging.basicConfig(
-    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("process_fast_folding_proteins")
 
 
@@ -18,6 +15,7 @@ SPLITS = {
     "val": 0.5,
     "test": 0.1,
 }
+
 
 def find_xtc_files(root_dir: str) -> List[Tuple[str, str]]:
     """
@@ -35,7 +33,7 @@ def find_xtc_files(root_dir: str) -> List[Tuple[str, str]]:
     for dirpath, dirnames, filenames in os.walk(root_dir):
         # Find all files with .xtc extension
         for filename in filenames:
-            if not filename.endswith('.xtc') or filename.startswith('.'):
+            if not filename.endswith(".xtc") or filename.startswith("."):
                 continue
 
             # Get full file path and containing folder
@@ -45,10 +43,13 @@ def find_xtc_files(root_dir: str) -> List[Tuple[str, str]]:
 
     return xtc_files
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Create splits of .xtc files based on containing folder')
-    parser.add_argument('--inputdir', help='Directory where original trajectories were downloaded', type=str, required=True)
-    parser.add_argument('--outputdir', '-o', help='Output directory to save splits', type=str, required=True)
+    parser = argparse.ArgumentParser(description="Create splits of .xtc files based on containing folder")
+    parser.add_argument(
+        "--inputdir", help="Directory where original trajectories were downloaded", type=str, required=True
+    )
+    parser.add_argument("--outputdir", "-o", help="Output directory to save splits", type=str, required=True)
     args = parser.parse_args()
 
     # Check if directory exists

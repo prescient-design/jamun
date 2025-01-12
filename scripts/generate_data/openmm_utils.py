@@ -39,12 +39,8 @@ from openmm.unit import (
 Positions = List[Tuple[Vec3, ...]]
 Velocities = List[Tuple[Vec3, ...]]
 
-logging.basicConfig(
-    format='[%(asctime)s][%(name)s][%(levelname)s] - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("openmm_utils")
-
 
 
 def filename_with_prefix(prefix: str, extension: str) -> str:
@@ -77,7 +73,7 @@ def fix_pdb(
     pdb_file: str,
     output_file_prefix: str = "fixed",
     save_file: bool = True,
-    ) -> Tuple[Positions, Topology]:
+) -> Tuple[Positions, Topology]:
     """Fixes the raw .pdb from colabfold using pdbfixer."""
     py_logger.info("Fixing the PDB file with pdbfixer.")
     fixer = pdbfixer.PDBFixer(pdb_file)
@@ -232,9 +228,7 @@ def add_position_restraints(
     return simulation
 
 
-def add_dihedral_restraints(
-    dihedrals: np.ndarray, simulation: Simulation, k: float = 1
-) -> Simulation:
+def add_dihedral_restraints(dihedrals: np.ndarray, simulation: Simulation, k: float = 1) -> Simulation:
     """Adds a periodic torsion potential to the dihedral angles of the system with a force constant 'k' in units of kJ/mol."""
     phase = [-1.1053785, -0.7255615]
     force = PeriodicTorsionForce()
@@ -249,16 +243,19 @@ def add_dihedral_restraints(
 
 
 def minimize_energy(
-        positions: Positions,
-        simulation: Simulation,
-        tolerance_kJ_per_mol_per_nm: float = 10,
-        num_steps: int = 1500,
-        output_file_prefix: str = "minimized",
-        save_file: bool = True) -> Tuple[Positions, Simulation]:
+    positions: Positions,
+    simulation: Simulation,
+    tolerance_kJ_per_mol_per_nm: float = 10,
+    num_steps: int = 1500,
+    output_file_prefix: str = "minimized",
+    save_file: bool = True,
+) -> Tuple[Positions, Simulation]:
     """Energy minimization steps to relax the system."""
     py_logger.info("Minimizing the energy of the system.")
     simulation.context.setPositions(positions)
-    simulation.minimizeEnergy(tolerance=tolerance_kJ_per_mol_per_nm * kilojoules_per_mole / nanometer, maxIterations=num_steps)
+    simulation.minimizeEnergy(
+        tolerance=tolerance_kJ_per_mol_per_nm * kilojoules_per_mole / nanometer, maxIterations=num_steps
+    )
     minimized_positions = simulation.context.getState(getPositions=True).getPositions()
 
     if save_file:
@@ -315,10 +312,10 @@ def run_simulation(
     """
     # Setup ensemble forces.
     if ensemble == "NPT":
-        py_logger.info(f"Setting up NPT ensemble with pressure barostat at {pressure_bar} bar and temperature {temp_K} K.")
-        simulation.context.getSystem().addForce(
-            MonteCarloBarostat(pressure_bar * bar, temp_K * kelvin)
+        py_logger.info(
+            f"Setting up NPT ensemble with pressure barostat at {pressure_bar} bar and temperature {temp_K} K."
         )
+        simulation.context.getSystem().addForce(MonteCarloBarostat(pressure_bar * bar, temp_K * kelvin))
     elif ensemble == "NVT":
         py_logger.info("Setting up NVT ensemble.")
         if pressure_bar is not None:
@@ -343,9 +340,7 @@ def run_simulation(
             checkpoint_file = filename_with_prefix(output_file_prefix, extension="chk")
 
         chkpt_freq = int(0.05 * num_steps)
-        simulation.reporters.append(
-            CheckpointReporter(checkpoint_file, chkpt_freq)
-        )
+        simulation.reporters.append(CheckpointReporter(checkpoint_file, chkpt_freq))
 
     # State reporter for logging.
     if save_intermediate_files:
@@ -381,10 +376,7 @@ def run_simulation(
     py_logger.info("Simulation completed.")
 
     # Save final state.
-    pdb_positions = simulation.context.getState(
-        getPositions=True,
-        enforcePeriodicBox=True
-    ).getPositions()
+    pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
 
     if save_pdb:
         if pdb_output_file is None:
@@ -401,18 +393,12 @@ def run_simulation(
         py_logger.info(f"Trajectory file saved at: {os.path.abspath(xtc_output_file)}")
 
     # Get final positions and velocities.
-    final_positions = simulation.context.getState(
-        getPositions=True
-    ).getPositions()
+    final_positions = simulation.context.getState(getPositions=True).getPositions()
 
-    final_velocities = simulation.context.getState(
-        getVelocities=True
-    ).getVelocities()
+    final_velocities = simulation.context.getState(getVelocities=True).getVelocities()
 
     # Cleanup NPT forces.
     if ensemble == "NPT":
-        simulation.context.getSystem().removeForce(
-            simulation.context.getSystem().getNumForces() - 1
-        )
+        simulation.context.getSystem().removeForce(simulation.context.getSystem().getNumForces() - 1)
 
     return final_positions, final_velocities, simulation
