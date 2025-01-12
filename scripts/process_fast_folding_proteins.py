@@ -68,6 +68,7 @@ if __name__ == "__main__":
 
     # Randomly shuffle the files and folders.
     random.seed(42)
+    files = list(sorted(files, key=lambda x: x[1]))
     random.shuffle(files)
 
     # Now, create the splits based on the folders.
