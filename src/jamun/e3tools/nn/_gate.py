@@ -65,6 +65,8 @@ class Gate(torch.nn.Module):
 
 
 class Gated(torch.nn.Module):
+    """Wraps another layer with an equivariant gate."""
+
     def __init__(
         self,
         layer: Callable[..., torch.nn.Module],
@@ -74,7 +76,7 @@ class Gated(torch.nn.Module):
         act_gates: Optional[Mapping[int, torch.nn.Module]] = None,
     ):
         """
-        Wrapper another layer with an equivariant gate
+        Wraps another layer with an equivariant gate.
 
         Parameters
         ----------
@@ -106,3 +108,25 @@ class Gated(torch.nn.Module):
         out = self.f(*args, **kwargs)
         out = self.gate(out)
         return out
+
+
+class GateWrapper(torch.nn.Module):
+    """Applies a linear transformation before and after the gate."""
+
+    def __init__(self, irreps_in: e3nn.o3.Irreps, irreps_out: e3nn.o3.Irreps, irreps_gate: e3nn.o3.Irreps):
+        """Applies a linear transformation before and after the gate."""
+        super().__init__()
+        self.irreps_in = e3nn.o3.Irreps(irreps_in)
+        self.irreps_out = e3nn.o3.Irreps(irreps_out)
+        self.irreps_gate = e3nn.o3.Irreps(irreps_gate)
+
+        self.gate = Gate(irreps_out)
+        self.pre_gate = e3nn.o3.Linear(self.irreps_in, self.gate.irreps_in)
+        self.post_gate = e3nn.o3.Linear(self.gate.irreps_out, self.irreps_out)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.pre_gate(x)
+        x = self.gate(x)
+        x = self.post_gate(x)
+        return x
+ 
