@@ -6,3 +6,5 @@ from ._mlp import EquivariantMLP, ScalarMLP
 from ._pack_unpack import AxisToMul, MulToAxis
 from ._tensor_product import ExperimentalTensorProduct, SeparableTensorProduct
 from ._transformer import Attention, MultiheadAttention, TransformerBlock
+from ._extract_irreps import ExtractIrreps
+from ._scaling import ScaleIrreps
