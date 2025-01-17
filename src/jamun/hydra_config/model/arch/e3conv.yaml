@@ -17,7 +17,7 @@ hidden_layer_factory:
   conv:
     _target_: jamun.e3tools.nn.Conv
     _partial_: true
-    use_torch_compile: true
+    use_torch_compile: false
     torch_compile_kwargs:
         fullgraph: true
         dynamic: true

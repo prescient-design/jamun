@@ -1,6 +1,7 @@
 import collections
 import os
 import re
+import random
 from typing import List, Optional, Sequence
 
 import hydra
@@ -40,6 +41,9 @@ def parse_datasets_from_directory(
     max_datasets: Optional[int] = None,
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
+    partition_numbers: Optional[Sequence[int]] = None,
+    num_partitions: Optional[int] = None,
+    partitioning_seed: Optional[int] = None,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
@@ -88,6 +92,25 @@ def parse_datasets_from_directory(
     # Filter out codes.
     if filter_codes is not None:
         codes = [code for code in codes if code in set(filter_codes)]
+
+    # Partition the codes, if necessary. 
+    # This is used to splits the dataset into multiple partitions, for distributed training.
+    if partition_numbers is not None and num_partitions is not None:
+        assert max(partition_numbers) < num_partitions
+
+        # Randomly permute the codes, using the seed.
+        assert partitioning_seed is not None
+        codes = list(sorted(codes))
+        random.seed(partitioning_seed)
+        random.shuffle(codes)
+
+        # Partition the codes.
+        partition_size = len(codes) // num_partitions
+        all_partitions = [codes[i : i + partition_size] for i in range(0, len(codes), partition_size)]
+
+        # Choose the partitions that we want.
+        partitions = [all_partitions[i] for i in partition_numbers]
+        codes = [code for partition in partitions for code in partition]
 
     # Sort the codes and offset them, if necessary.
     codes = list(sorted(codes))

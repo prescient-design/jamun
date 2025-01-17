@@ -1,4 +1,6 @@
 defaults:
   - timing.yaml
   - lr_monitor.yaml
+  - model_checkpoint.yaml
+  - visualize_denoise.yaml
   - _self_
