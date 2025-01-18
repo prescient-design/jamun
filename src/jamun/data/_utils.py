@@ -9,7 +9,7 @@ import requests
 import torch
 from tqdm.auto import tqdm
 
-from jamun.data._mdtraj import MDtrajDataset
+from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
 
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
@@ -44,6 +44,7 @@ def parse_datasets_from_directory(
     partition_numbers: Optional[Sequence[int]] = None,
     num_partitions: Optional[int] = None,
     partitioning_seed: Optional[int] = None,
+    as_iterable: bool = False,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
@@ -119,9 +120,14 @@ def parse_datasets_from_directory(
     if max_datasets is not None:
         codes = codes[:max_datasets]
 
+    if as_iterable:
+        dataset_class = MDtrajIterableDataset
+    else:
+        dataset_class = MDtrajDataset
+
     datasets = []
     for code in tqdm(codes, desc="Creating datasets"):
-        dataset = MDtrajDataset(
+        dataset = dataset_class(
             root,
             trajfiles=traj_files[code],
             pdbfile=pdb_files[code],
