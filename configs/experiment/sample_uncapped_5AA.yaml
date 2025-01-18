@@ -1,0 +1,41 @@
+# @package _global_
+
+num_sampling_steps_per_batch: 1000
+num_batches: 1
+num_init_samples_per_dataset: 1
+repeat_init_samples: 1
+continue_chain: true
+
+# New 4AA
+wandb_train_run_path: prescient-design/jamun/6297yugb
+
+
+# Put path to 5AA pdb here.
+# init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
+init_pdb: ???
+label: null
+
+checkpoint_type: best_so_far
+sigma: 0.04
+M: 1.0
+delta: 0.04
+friction: 1.0
+inverse_temperature: 1.0
+score_fn_clip: 100.0
+
+init_datasets:
+  _target_: jamun.data.create_dataset_from_pdb
+  pdbfile: ${init_pdb}
+  label: ${label}
+
+finetune_on_init:
+  num_steps: ???
+  batch_size: 16
+
+sampler:
+  _target_: jamun.sampling.Sampler
+  devices: 1
+
+logger:
+  wandb:
+    group: sample_custom

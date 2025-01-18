@@ -1,14 +1,5 @@
 # @package _global_
 
-defaults:
-  - override /data: md.yaml
-  - override /model/arch: e3conv.yaml
-  - override /callbacks:
-    - default.yaml
-    - model_checkpoint.yaml
-    - visualize_denoise.yaml
-  - _self_
-
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
@@ -23,15 +14,14 @@ callbacks:
 
 data:
   datamodule:
-    batch_size: 32
+    batch_size: 16
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
         root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/train/"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        subsample: 100
-        max_datasets: 20
+        as_iterable: true
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
