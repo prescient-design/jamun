@@ -10,9 +10,9 @@ def unpack_irreps(x: torch.Tensor, irreps: e3nn.o3.Irreps) -> Iterator[Tuple[int
     yield tuples (mul, ir, field) where field has dimension [..., mul, 2*l+1]
     for each irrep in irreps
     """
-    assert x.shape[-1] == irreps.dim, (
-        f"last dimension of x (shape {x.shape}) does not match irreps.dim ({irreps} with dim {irreps.dim})"
-    )
+    assert (
+        x.shape[-1] == irreps.dim
+    ), f"last dimension of x (shape {x.shape}) does not match irreps.dim ({irreps} with dim {irreps.dim})"
     ix = 0
     for mul, ir in irreps:
         field = x.narrow(-1, ix, mul * ir.dim).reshape(*x.shape[:-1], mul, ir.dim)

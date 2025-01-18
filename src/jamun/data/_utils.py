@@ -93,7 +93,7 @@ def parse_datasets_from_directory(
     if filter_codes is not None:
         codes = [code for code in codes if code in set(filter_codes)]
 
-    # Partition the codes, if necessary. 
+    # Partition the codes, if necessary.
     # This is used to splits the dataset into multiple partitions, for distributed training.
     if partition_numbers is not None and num_partitions is not None:
         assert max(partition_numbers) < num_partitions

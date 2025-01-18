@@ -54,12 +54,8 @@ def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Dat
     top_withH = topology.subset(select_withH)
 
     # Encode the atom types, residue codes, and residue sequence indices.
-    atom_type_index = torch.tensor(
-        [utils.encode_atom_type(x.element.symbol) for x in top.atoms], dtype=torch.int32
-    )
-    residue_code_index = torch.tensor(
-        [utils.encode_residue(x.residue.name) for x in top.atoms], dtype=torch.int32
-    )
+    atom_type_index = torch.tensor([utils.encode_atom_type(x.element.symbol) for x in top.atoms], dtype=torch.int32)
+    residue_code_index = torch.tensor([utils.encode_residue(x.residue.name) for x in top.atoms], dtype=torch.int32)
     residue_sequence_index = torch.tensor([x.residue.index for x in top.atoms], dtype=torch.int32)
     atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in top.atoms], dtype=torch.int32)
 
@@ -80,6 +76,7 @@ def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Dat
     graph.residues = [x.residue.name for x in top.atoms]
     graph.atom_names = [x.name for x in top.atoms]
     return graph, top, top_withH
+
 
 @singleton
 class MDtrajIterableDataset(torch.utils.data.IterableDataset):
@@ -109,7 +106,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
 
         pdbfile = os.path.join(self.root, pdbfile)
         topology = md.load_topology(pdbfile)
-        
+
         self.graph, self.top, self.top_withH = preprocess_topology(topology)
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
@@ -134,7 +131,6 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
                     if self.transform:
                         graph = self.transform(graph)
                     yield graph
-
 
     @functools.cached_property
     def structure(self) -> md.Trajectory:
@@ -198,7 +194,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         topology = self.traj.topology
         self.graph, self.top, self.top_withH = preprocess_topology(topology)
         self.traj = self.traj.atom_slice(self.top.select("all"))
-        
+
         self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.dataset_label = self.label()
