@@ -99,9 +99,6 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.chunk_size = chunk_size
         self.all_files = []
 
-        if start_frame is None:
-            start_frame = 0
-
         self.trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
 
         pdbfile = os.path.join(self.root, pdbfile)
@@ -111,16 +108,14 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
 
-        utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
-        utils.dist_log(
-            f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
-        )
+        utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files {trajfiles} and PDB file {pdbfile}.")
         self.save_topology_pdb()
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)
         filename = f"dataset_pdbs/{self.label()}.pdb"
-        utils.save_pdb(self.traj[0], filename)
+        traj = next(md.iterload(self.trajfiles[0], top=self.top, chunk=self.chunk_size))
+        utils.save_pdb(traj[0], filename)
 
     def __iter__(self):
         for trajfile in self.trajfiles:
@@ -163,9 +158,6 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.loss_weight = loss_weight
         self.all_files = []
 
-        if start_frame is None:
-            start_frame = 0
-
         pdbfile = os.path.join(self.root, pdbfile)
         trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
 
@@ -181,6 +173,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
             self.traj.time = np.arange(self.traj.n_frames)
         else:
             self.traj = md.load(trajfiles, top=pdbfile)
+
+        if start_frame is None:
+            start_frame = 0
 
         if num_frames == -1 or num_frames is None:
             num_frames = self.traj.n_frames - start_frame
