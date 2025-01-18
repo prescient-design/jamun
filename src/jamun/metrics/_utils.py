@@ -19,7 +19,7 @@ def validate_sample(sample: torch_geometric.data.Batch, dataset: MDtrajDataset) 
             f"Sample dataset label {sample.dataset_label} does not match expected label {dataset.label()}."
         )
 
-    expected_atom_types = [atom.element.symbol for atom in dataset.structure.topology.atoms]
+    expected_atom_types = [atom.element.symbol for atom in dataset.topology.atoms]
     actual_atom_types = [ResidueMetadata.ATOM_TYPES[idx] for idx in sample.atom_type_index]
     if expected_atom_types != actual_atom_types:
         raise ValueError(
@@ -99,14 +99,14 @@ class TrajectoryMetric(torchmetrics.Metric):
     def sample_trajectories(self, *, new: bool) -> List[md.Trajectory]:
         """Convert the samples to MD trajectories."""
         samples = self.sample_tensors(new=new)
-        trajectories = utils.coordinates_to_trajectories(samples, self.dataset.structure)
+        trajectories = utils.coordinates_to_trajectories(samples, self.dataset.topology)
         return trajectories
 
     def joined_sample_trajectory(self) -> md.Trajectory:
         """Convert the samples to a single MD trajectory."""
         py_logger = logging.getLogger("jamun")
 
-        trajectories = utils.coordinates_to_trajectories(self.sample_tensors(new=False), self.dataset.structure)
+        trajectories = utils.coordinates_to_trajectories(self.sample_tensors(new=False), self.dataset.topology)
         py_logger.info(f"{self.dataset.label()}: Joining {len(trajectories)} trajectories into 1.")
 
         joined_trajectory = md.join(trajectories, check_topology=True)

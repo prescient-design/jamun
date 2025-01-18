@@ -7,7 +7,7 @@ import torch
 
 
 def coordinates_to_trajectories(
-    coords: Union[torch.Tensor, np.ndarray], structure: md.Trajectory
+    coords: Union[torch.Tensor, np.ndarray], topology: md.Topology
 ) -> List[md.Trajectory]:
     """Converts a tensor of coordinates to MDtraj trajectories."""
     if isinstance(coords, torch.Tensor):
@@ -19,10 +19,10 @@ def coordinates_to_trajectories(
     coords = einops.rearrange(
         coords,
         "batch_size atoms num_sampling_steps coords -> batch_size num_sampling_steps atoms coords",
-        atoms=structure.n_atoms,
+        atoms=topology.n_atoms,
     )
 
-    return [md.Trajectory(traj_coords, structure.topology) for traj_coords in coords]
+    return [md.Trajectory(traj_coords, topology) for traj_coords in coords]
 
 
 def save_pdb(traj: md.Trajectory, path: str) -> None:

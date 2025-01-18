@@ -1,7 +1,7 @@
 import functools
 import os
 import threading
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import lightning.pytorch as pl
 import mdtraj as md
@@ -40,6 +40,109 @@ def singleton(cls):
         return _instances[obj_key]
 
     return get_instance
+
+
+def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Data, md.Topology, md.Topology]:
+    """Preprocess the MDtraj topology, returning a PyTorch Geometric graph, the topology with protein only, and the topology with hydrogenated protein."""
+    # Select all heavy atoms in the protein.
+    # This also removes all waters.
+    select = topology.select("protein and not type H")
+    top = topology.subset(select)
+
+    # Select all atoms in the protein.
+    select_withH = topology.select("protein")
+    top_withH = topology.subset(select_withH)
+
+    # Encode the atom types, residue codes, and residue sequence indices.
+    atom_type_index = torch.tensor(
+        [utils.encode_atom_type(x.element.symbol) for x in top.atoms], dtype=torch.int32
+    )
+    residue_code_index = torch.tensor(
+        [utils.encode_residue(x.residue.name) for x in top.atoms], dtype=torch.int32
+    )
+    residue_sequence_index = torch.tensor([x.residue.index for x in top.atoms], dtype=torch.int32)
+    atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in top.atoms], dtype=torch.int32)
+
+    bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in top.bonds], dtype=torch.long).T
+
+    # Create the graph.
+    # Positions will be updated later.
+    graph = utils.DataWithResidueInformation(
+        atom_type_index=atom_type_index,
+        residue_code_index=residue_code_index,
+        residue_sequence_index=residue_sequence_index,
+        atom_code_index=atom_code_index,
+        residue_index=residue_sequence_index,
+        num_residues=residue_sequence_index.max().item() + 1,
+        edge_index=bonds,
+        pos=None,
+    )
+    graph.residues = [x.residue.name for x in top.atoms]
+    graph.atom_names = [x.name for x in top.atoms]
+    return graph, top, top_withH
+
+@singleton
+class MDtrajIterableDataset(torch.utils.data.IterableDataset):
+    """PyTorch iterable dataset for MDtraj trajectories."""
+
+    def __init__(
+        self,
+        root: str,
+        trajfiles: Sequence[str],
+        pdbfile: str,
+        label: str,
+        transform: Optional[Callable] = None,
+        loss_weight: float = 1.0,
+        chunk_size: int = 100,
+    ):
+        self.root = root
+        self.label = lambda: label
+        self.transform = transform
+        self.loss_weight = loss_weight
+        self.chunk_size = chunk_size
+        self.all_files = []
+
+        if start_frame is None:
+            start_frame = 0
+
+        self.trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
+
+        pdbfile = os.path.join(self.root, pdbfile)
+        topology = md.load_topology(pdbfile)
+        
+        self.graph, self.top, self.top_withH = preprocess_topology(topology)
+        self.graph.dataset_label = self.label()
+        self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
+
+        utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
+        utils.dist_log(
+            f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
+        )
+        self.save_topology_pdb()
+
+    def save_topology_pdb(self):
+        os.makedirs("dataset_pdbs", exist_ok=True)
+        filename = f"dataset_pdbs/{self.label()}.pdb"
+        utils.save_pdb(self.traj[0], filename)
+
+    def __iter__(self):
+        for trajfile in self.trajfiles:
+            for traj in md.iterload(trajfile, top=self.top, chunk=self.chunk_size):
+                for frame in traj:
+                    graph = self.graph.clone()
+                    graph.pos = torch.tensor(frame.xyz[0])
+                    if self.transform:
+                        graph = self.transform(graph)
+                    yield graph
+
+
+    @functools.cached_property
+    def structure(self) -> md.Trajectory:
+        return self.top
+
+    @functools.cached_property
+    def trajectory(self) -> md.Trajectory:
+        return md.load(self.trajfiles, top=self.top)
 
 
 @singleton
@@ -81,13 +184,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
             self.traj.time = np.arange(self.traj.n_frames)
         else:
-            # start time
-            # import time
-            # start = time.time()
             self.traj = md.load(trajfiles, top=pdbfile)
-            # end time
-            # end = time.time()
-            # print(f"Time taken to load the trajectory {trajfiles}: {end - start}")
 
         if num_frames == -1 or num_frames is None:
             num_frames = self.traj.n_frames - start_frame
@@ -98,49 +195,19 @@ class MDtrajDataset(torch.utils.data.Dataset):
         # Subsample the trajectory.
         self.traj = self.traj[start_frame : start_frame + num_frames : subsample]
 
-        # Select all heavy atoms in the protein.
-        # This also removes all waters.
-        select = self.traj.topology.select("protein and not type H")
-        self.top = self.traj.topology.subset(select)
-        self.top_withH = self.traj.topology.subset(self.traj.topology.select("protein"))
-        self.traj = self.traj.atom_slice(select)
-
-        # Encode the atom types, residue codes, and residue sequence indices.
-        atom_type_index = torch.tensor(
-            [utils.encode_atom_type(x.element.symbol) for x in self.top.atoms], dtype=torch.int32
-        )
-        residue_code_index = torch.tensor(
-            [utils.encode_residue(x.residue.name) for x in self.top.atoms], dtype=torch.int32
-        )
-        residue_sequence_index = torch.tensor([x.residue.index for x in self.top.atoms], dtype=torch.int32)
-        atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in self.top.atoms], dtype=torch.int32)
-
-        bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in self.top.bonds], dtype=torch.long).T
-        positions = torch.tensor(self.traj.xyz[0], dtype=torch.float)
-        loss_weight = torch.tensor([self.loss_weight], dtype=torch.float)
-
-        # Create the graph.
-        # Positions will be updated in __getitem__.
-        self.graph = utils.DataWithResidueInformation(
-            atom_type_index=atom_type_index,
-            residue_code_index=residue_code_index,
-            residue_sequence_index=residue_sequence_index,
-            atom_code_index=atom_code_index,
-            residue_index=residue_sequence_index,
-            num_residues=residue_sequence_index.max().item() + 1,
-            edge_index=bonds,
-            pos=positions,
-        )
-        self.graph.residues = [x.residue.name for x in self.top.atoms]
-        self.graph.atom_names = [x.name for x in self.top.atoms]
+        topology = self.traj.topology
+        self.graph, self.top, self.top_withH = preprocess_topology(topology)
+        self.traj = self.traj.atom_slice(self.top.select("all"))
+        
+        self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
+        self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.dataset_label = self.label()
-        self.graph.loss_weight = loss_weight
 
         utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
         utils.dist_log(
             f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
         )
-        # self.save_topology_pdb()
+        self.save_topology_pdb()
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)
@@ -158,8 +225,8 @@ class MDtrajDataset(torch.utils.data.Dataset):
         return self.traj.n_frames
 
     @functools.cached_property
-    def structure(self) -> md.Trajectory:
-        return self.traj
+    def topology(self) -> md.Topology:
+        return self.traj.topology
 
     @functools.cached_property
     def trajectory(self) -> md.Trajectory:

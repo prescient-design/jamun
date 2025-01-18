@@ -88,7 +88,7 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
             sigma: {
                 key: utils.coordinates_to_trajectories(
                     einops.rearrange(dim_zero_cat(getattr(self, f"coordinates_{sigma}_{key}")), "b n x -> n b x"),
-                    self.dataset.structure,
+                    self.dataset.topology,
                 )[0]
                 for key in ["x", "y", "xhat"]
             }
