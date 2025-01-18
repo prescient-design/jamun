@@ -28,9 +28,7 @@ nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
     jamun_sample --config-dir=/homefs/home/daigavaa/jamun/configs \
-        experiment=sample_custom.yaml \
-        ++init_datasets.max_datasets=50 \
-        ++init_datasets.max_datasets_offset=50 \
+        experiment=sample_uncapped_5AA.yaml \
         ++sampler.devices=$SLURM_GPUS_PER_NODE \
         ++sampler.num_nodes=$SLURM_JOB_NUM_NODES \
         ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","sample"] \
