@@ -100,8 +100,10 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         pdbfile: str,
         label: str,
         transform: Optional[Callable] = None,
+        subsample: Optional[int] = None,
         loss_weight: float = 1.0,
         chunk_size: int = 100,
+        verbose: bool = False,
     ):
         self.root = root
         self.label = lambda: label
@@ -112,6 +114,10 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
 
         self.trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
 
+        if subsample is None or subsample == 0:
+            subsample = 1
+        self.subsample = subsample  
+
         pdbfile = os.path.join(self.root, pdbfile)
         topology = md.load_topology(pdbfile)
 
@@ -119,8 +125,10 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
 
-        utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files {trajfiles} and PDB file {pdbfile}.")
         self.save_topology_pdb()
+
+        if verbose:
+            utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files {trajfiles} and PDB file {pdbfile}.")
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)
@@ -131,7 +139,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         for trajfile in self.trajfiles:
             for traj in md.iterload(trajfile, top=self.top, chunk=self.chunk_size):
-                for frame in traj:
+                for frame in traj[::self.subsample]:
                     graph = self.graph.clone()
                     graph.pos = torch.tensor(frame.xyz[0])
                     if self.transform:
@@ -162,6 +170,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         transform: Optional[Callable] = None,
         subsample: Optional[int] = None,
         loss_weight: float = 1.0,
+        verbose: bool = False,
     ):
         self.root = root
         self.label = lambda: label
@@ -205,11 +214,13 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.dataset_label = self.label()
 
-        utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
-        utils.dist_log(
-            f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
-        )
         self.save_topology_pdb()
+
+        if verbose:
+            utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
+            utils.dist_log(
+                f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
+            )
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)

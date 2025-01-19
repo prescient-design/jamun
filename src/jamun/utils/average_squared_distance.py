@@ -1,9 +1,10 @@
 import collections
-import logging
 from typing import Optional
 
 import numpy as np
 import torch
+
+from jamun import utils
 
 
 def compute_distance_matrix(x: np.ndarray, cutoff: Optional[float] = None) -> np.ndarray:
@@ -33,7 +34,8 @@ def compute_average_squared_distance(x: np.ndarray, cutoff: Optional[float] = No
 
 
 def compute_average_squared_distance_from_data(
-    dataloader: torch.utils.data.DataLoader, cutoff: float, num_estimation_graphs: int = 5000
+    dataloader: torch.utils.data.DataLoader, cutoff: float, num_estimation_graphs: int = 5000,
+    verbose: bool = False,
 ) -> float:
     """Computes the average squared distance for normalization."""
     avg_sq_dists = collections.defaultdict(list)
@@ -48,13 +50,14 @@ def compute_average_squared_distance_from_data(
         if num_graphs >= num_estimation_graphs:
             break
 
-    logger = logging.getLogger("jamun")
-    logger.info(f"For cutoff {cutoff} nm:")
-    for label in sorted(avg_sq_dists):
-        logger.info(
-            f"- Dataset {label}: Average squared distance = {np.mean(avg_sq_dists[label]):0.3f} +- {np.std(avg_sq_dists[label]):0.3f} nm^2"
-        )
-
     mean_avg_sq_dist = sum(np.sum(avg_sq_dists[label]) for label in avg_sq_dists) / num_graphs
-    logger.info(f"Mean average squared distance = {mean_avg_sq_dist:0.3f} nm^2")
+    utils.dist_log(f"Mean average squared distance = {mean_avg_sq_dist:0.3f} nm^2")
+    
+    if verbose:
+        utils.dist_log(f"For cutoff {cutoff} nm:")
+        for label in sorted(avg_sq_dists):
+            utils.dist_log(
+                f"- Dataset {label}: Average squared distance = {np.mean(avg_sq_dists[label]):0.3f} +- {np.std(avg_sq_dists[label]):0.3f} nm^2"
+            )
+
     return mean_avg_sq_dist

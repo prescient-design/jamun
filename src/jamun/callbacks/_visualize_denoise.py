@@ -26,6 +26,7 @@ class VisualizeDenoise(pl.Callback):
             )
             for dataset in sorted(datasets, key=lambda dataset: dataset.label())
         }
+        print("VisualizeDenoiseMetrics", list(self.visualizers.keys()))
         self.every_n_epochs = every_n_epochs
 
     def setup(self, trainer, pl_module, stage):

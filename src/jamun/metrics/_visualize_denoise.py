@@ -45,7 +45,8 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
     """Plots and computes metrics for samples from a single dataset."""
 
     def __init__(self, dataset: MDtrajDataset, sigma_list: List[float]):
-        super().__init__()
+        # TODO: Understand why we need sync_on_compute=False.
+        super().__init__(sync_on_compute=False)
 
         self.dataset = dataset
         self.sigma_list = sigma_list
@@ -84,16 +85,19 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
             self.has_samples = torch.tensor(True, device=self.device)
 
     def coordinates_to_trajectories(self) -> dict[float, dict[str, md.Trajectory]]:
-        return {
-            sigma: {
-                key: utils.coordinates_to_trajectories(
-                    einops.rearrange(dim_zero_cat(getattr(self, f"coordinates_{sigma}_{key}")), "b n x -> n b x"),
-                    self.dataset.topology,
+        all_trajs = {}
+        for sigma in self.sigma_list:
+            sigma_trajs = {}
+            for key in ["x", "y", "xhat"]:
+                coords = getattr(self, f"coordinates_{sigma}_{key}")
+                coords = dim_zero_cat(coords, label=f"{self.dataset.label()}/{sigma}/{key}")
+                coords = einops.rearrange(coords, "b n x -> n b x")
+                traj = utils.coordinates_to_trajectories(
+                    coords, self.dataset.topology
                 )[0]
-                for key in ["x", "y", "xhat"]
-            }
-            for sigma in self.sigma_list
-        }
+                sigma_trajs[key] = traj
+            all_trajs[sigma] = sigma_trajs
+        return all_trajs
 
     def compute(self) -> Tuple[Optional[Dict[str, md.Trajectory]], Optional[Dict[float, float]]]:
         if not self.has_samples:
@@ -117,7 +121,6 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
             x -= x.mean(dim=0, keepdim=True)
 
             scaled_rmsd_per_sigma[sigma] = utils.scaled_rmsd(xhat, x, sigma)
-
         return trajectories, scaled_rmsd_per_sigma
 
     def log(
