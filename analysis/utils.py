@@ -100,7 +100,7 @@ def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, 
 
 
 def get_JAMUN_trajectories(run_paths: Sequence[str], filter_codes: Optional[Sequence[str]] = None) -> Dict[str, md.Trajectory]:
-    """Returns a dictionary mapping peptide names to the sampled MDTraj trajectory."""
+    """Returns a dictionary mapping peptide names to the sampled JAMUN trajectory."""
     trajectory_files = get_JAMUN_trajectory_files(run_paths)
     trajectories = {}
     for peptide, peptide_files in trajectory_files.items():
@@ -110,7 +110,19 @@ def get_JAMUN_trajectories(run_paths: Sequence[str], filter_codes: Optional[Sequ
     return trajectories
 
 
-def get_Timewarp_trajectories(data_path: str, peptide_type: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, md.Trajectory]:
+def get_MDGen_trajectories(data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "test") -> Dict[str, md.Trajectory]:
+    """Returns a dictionary mapping peptide names to the MDGen trajectory."""
+    datasets = parse_datasets_from_directory(
+        root=f"{data_path}/mdgen/data/4AA_sims_partitioned/{split}/",
+        traj_pattern="^(.*).xtc",
+        pdb_pattern="^(.*).pdb",
+        filter_codes=filter_codes,
+    )
+    return {dataset.label(): dataset.trajectory for dataset in datasets}
+
+
+
+def get_Timewarp_trajectories(data_path: str, peptide_type: str, filter_codes: Optional[Sequence[str]] = None, split: str = "test") -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to the Timewarp MDTraj trajectory."""
     if peptide_type == "2AA":
         peptide_type_dir = "2AA-1-large"
@@ -123,15 +135,15 @@ def get_Timewarp_trajectories(data_path: str, peptide_type: str, filter_codes: O
     assert len(set(one_letter_filter_codes)) == len(one_letter_filter_codes), "Filter codes must be unique"
 
     datasets = parse_datasets_from_directory(
-        root=f"{data_path}/timewarp/{peptide_type_dir}/test/",
+        root=f"{data_path}/timewarp/{peptide_type_dir}/{split}/",
         traj_pattern="^(.*)-traj-arrays.npz",
         pdb_pattern="^(.*)-traj-state0.pdb",
         filter_codes=one_letter_filter_codes,
     )
 
     # Remap keys.
-    one_letter_filter_codes_map = dict(zip(one_letter_filter_codes, filter_codes))
-    return {one_letter_filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
+    filter_codes_map = dict(zip(one_letter_filter_codes, filter_codes))
+    return {filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
 
 
 def get_OpenMM_trajectories(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, md.Trajectory]:
@@ -147,8 +159,8 @@ def get_OpenMM_trajectories(data_path: str, filter_codes: Optional[Sequence[str]
     )
 
     # Remap keys.
-    three_letter_filter_codes_map = dict(zip(three_letter_filter_codes, filter_codes))
-    return {three_letter_filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
+    filter_codes_map = dict(zip(three_letter_filter_codes, filter_codes))
+    return {filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
 
 
 def get_TBG_trajectories(root: str) -> Dict[str, md.Trajectory]:

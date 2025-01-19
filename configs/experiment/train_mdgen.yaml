@@ -28,16 +28,14 @@ data:
         root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/val/"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        subsample: 100
-        max_datasets: 20
+        as_iterable: true
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
         root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/test/"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        subsample: 100
-        max_datasets: 20
+        as_iterable: true
 
 trainer:
   val_check_interval: 0.1

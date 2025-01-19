@@ -11,16 +11,21 @@ import torch.utils.data
 import torch_geometric
 
 from jamun import utils
+from jamun.data._random_chain_dataset import StreamingRandomChainDataset
 
 
 def singleton(cls):
-    """Decorator to create a singleton instance of a class, based on the arguments to __init__."""
-
+    """
+    Decorator that implements singleton pattern by modifying __init__.
+    """
     _instances = {}
     _lock = threading.Lock()
-
-    def get_instance(*args, **kwargs):
-        # Convert args and kwargs to hashable types.
+    
+    original_init = cls.__init__
+    
+    def __init__(self, *args, **kwargs):
+        # Convert args and kwargs to hashable types
+        args = list(args)
         for i, arg in enumerate(args):
             if isinstance(arg, list):
                 args[i] = tuple(arg)
@@ -31,15 +36,21 @@ def singleton(cls):
                 kwargs[key] = tuple(value)
             if isinstance(value, dict):
                 kwargs[key] = frozenset(value.items())
-
-        obj_key = (args, frozenset(kwargs.items()))
+                
+        obj_key = (tuple(args), frozenset(kwargs.items()))
+        
         if obj_key not in _instances:
             with _lock:
                 if obj_key not in _instances:
-                    _instances[obj_key] = cls(*args, **kwargs)
-        return _instances[obj_key]
-
-    return get_instance
+                    _instances[obj_key] = self
+                    original_init(self, *args, **kwargs)
+                    return
+        
+        # Copy state from singleton instance
+        self.__dict__.update(_instances[obj_key].__dict__)
+    
+    cls.__init__ = __init__
+    return cls
 
 
 def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Data, md.Topology, md.Topology]:
@@ -128,7 +139,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
                     yield graph
 
     @functools.cached_property
-    def structure(self) -> md.Trajectory:
+    def topology(self) -> md.Trajectory:
         return self.top
 
     @functools.cached_property
@@ -231,7 +242,7 @@ class MDtrajDataModule(pl.LightningDataModule):
         self,
         datasets: Dict[str, Sequence[MDtrajDataset]],
         batch_size: int,
-        num_workers: int = 2,
+        num_workers: int = 8,
     ):
         super().__init__()
 
@@ -240,6 +251,7 @@ class MDtrajDataModule(pl.LightningDataModule):
 
         self.datasets = datasets
         self.concatenated_datasets = {}
+        self.shuffle = True
 
     def prepare_data(self):
         pass
@@ -249,17 +261,29 @@ class MDtrajDataModule(pl.LightningDataModule):
             if datasets is None:
                 continue
 
-            self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
-            utils.dist_log(
-                f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
-            )
+            if isinstance(datasets[0], MDtrajDataset):
+                self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
+                self.shuffle = True
+                
+                utils.dist_log(
+                    f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
+                )
+
+            elif isinstance(datasets[0], MDtrajIterableDataset):
+                # Shuffling is handled by the StreamingRandomChainDataset.
+                self.concatenated_datasets[split] = StreamingRandomChainDataset(datasets)
+                self.shuffle = False
+    
+                utils.dist_log(
+                    f"Split {split}: Loaded {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
+                )
 
     def train_dataloader(self):
         return torch_geometric.loader.DataLoader(
             self.concatenated_datasets["train"],
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            shuffle=True,
+            shuffle=self.shuffle,
         )
 
     def val_dataloader(self):
@@ -271,5 +295,7 @@ class MDtrajDataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return torch_geometric.loader.DataLoader(
-            self.concatenated_datasets["test"], batch_size=self.batch_size, num_workers=self.num_workers
+            self.concatenated_datasets["test"],
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
         )
