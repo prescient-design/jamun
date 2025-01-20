@@ -207,7 +207,6 @@ class MDtrajDataset(torch.utils.data.Dataset):
         topology = self.traj.topology
         self.graph, self.top, self.top_withH = preprocess_topology(topology)
         self.traj = self.traj.atom_slice(topology.select("protein and not type H"))
-        print(self.traj, topology.select("protein and not type H"))
 
         self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
