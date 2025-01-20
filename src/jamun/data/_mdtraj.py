@@ -187,8 +187,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
                 [np.load(os.path.join(self.root, filename))["positions"] for filename in trajfiles]
             )
 
-            assert self.traj.xyz.shape[1] == self.traj.n_atoms
-            assert self.traj.xyz.shape[2] == 3
+            assert self.traj.xyz.shape == (self.traj.n_frames, self.traj.n_atoms, 3)
 
             self.traj.time = np.arange(self.traj.n_frames)
         else:
@@ -205,10 +204,10 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
         # Subsample the trajectory.
         self.traj = self.traj[start_frame : start_frame + num_frames : subsample]
-
         topology = self.traj.topology
         self.graph, self.top, self.top_withH = preprocess_topology(topology)
-        self.traj = self.traj.atom_slice(self.top.select("all"))
+        self.traj = self.traj.atom_slice(topology.select("protein and not type H"))
+        print(self.traj, topology.select("protein and not type H"))
 
         self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)

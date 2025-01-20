@@ -29,6 +29,7 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         as_iterable: true
+        subsample: 100
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -36,9 +37,11 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         as_iterable: true
+        subsample: 100
 
 trainer:
-  val_check_interval: 0.1
+  val_check_interval: 30000
+  limit_val_batches: 1000
   max_epochs: 10
 
 logger:

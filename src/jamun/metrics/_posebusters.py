@@ -5,7 +5,6 @@ import mdtraj as md
 import pandas as pd
 import posebusters
 import wandb
-from rdkit import rdBase
 
 from jamun import utils
 from jamun.metrics._utils import TrajectoryMetric
@@ -13,9 +12,6 @@ from jamun.metrics._utils import TrajectoryMetric
 
 def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.DataFrame]:
     """Run PoseBusters on each frame of a trajectory."""
-    # Suppress RDKit warnings.
-    blocker = rdBase.BlockLogs()
-
     mols = utils.to_rdkit_mols(trajectory)
     if len(mols) == 0:
         return None
@@ -23,7 +19,6 @@ def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.Data
     buster = posebusters.PoseBusters(config="mol")
     results = buster.bust(mols, None, None, full_report=False)
 
-    del blocker
     return results
 
 
