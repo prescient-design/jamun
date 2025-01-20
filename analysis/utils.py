@@ -118,10 +118,10 @@ def get_JAMUN_trajectories(
     return trajectories
 
 
-def get_MDGen_trajectories(
+def get_MDGenReference_trajectories(
     data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, md.Trajectory]:
-    """Returns a dictionary mapping peptide names to the MDGen trajectory."""
+    """Returns a dictionary mapping peptide names to the MDGen reference trajectory."""
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
         return data.parse_datasets_from_directory(
@@ -197,7 +197,29 @@ def get_TBG_trajectories(root: str) -> Dict[str, md.Trajectory]:
     raise NotImplementedError("TBG trajectories not implemented yet.")
 
 
-def featurize_trajectory(traj: md.Trajectory, cossin: bool):
+def compute_PMFs(traj: md.Trajectory, nbins: int = 50) -> Dict[str, np.ndarray]:
+    """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
+    _, phi = md.compute_phi(traj)
+    _, psi = md.compute_psi(traj)
+    num_dihedrals = phi.shape[1]
+    pmf = np.zeros((num_dihedrals, nbins - 1, nbins - 1))
+    xedges = np.linspace(-np.pi, np.pi, nbins)
+    yedges = np.linspace(-np.pi, np.pi, nbins)
+
+    for dihedral_index in range(num_dihedrals):
+        H, _, _ = np.histogram2d(
+            phi[:, dihedral_index], psi[:, dihedral_index],
+            bins=np.linspace(-np.pi, np.pi, nbins)
+        )
+        pmf[dihedral_index] = -np.log(H.T) + np.max(np.log(H.T))
+    
+    return {
+        "pmf": pmf,
+        "xedges": xedges,
+        "yedges": yedges,
+    }
+
+def featurize_trajectory(traj: md.Trajectory, cossin: bool) -> Tuple[pyemma.coordinates.featurizer, np.ndarray]:
     """Featurize an MDTraj trajectory with backbone and sidechain torsion angles using pyEMMA.
     Adapted from MDGen.
 
@@ -216,48 +238,50 @@ def featurize_trajectory(traj: md.Trajectory, cossin: bool):
     return feat, featurized_traj
 
 
-def get_KMeans(traj: np.ndarray, k: int = 100) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
+def get_KMeans(traj_featurized: np.ndarray, k: int = 100) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
     """Cluster a featurized trajectory using k-means clustering. Taken from MDGen."""
-    kmeans = pyemma.coordinates.cluster_kmeans(traj, k=k, max_iter=100, fixed_seed=137)
-    return kmeans, kmeans.transform(traj)[:,0]
+    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=k, max_iter=100, fixed_seed=137)
+    return kmeans, kmeans.transform(traj_featurized)[:,0]
 
 
-def get_MSM(traj: np.ndarray, lag: int, nstates: int):
+def get_MSM(traj_featurized: np.ndarray, lag: int, nstates: int):
     """Estimate an Markov State Model (MSM), PCCA (clustering of MSM states), and coarse-grained MSM from a trajectory. Taken from MDGen."""
-    msm = pyemma.msm.estimate_markov_model(traj, lag=lag)
+    msm = pyemma.msm.estimate_markov_model(traj_featurized, lag=lag)
     pcca = msm.pcca(nstates)
     assert len(msm.metastable_assignments) == lag // nstates, f"Invalid number of metastable states: {len(msm.metastable_assignments)}"
-    cmsm = pyemma.msm.estimate_markov_model(msm.metastable_assignments[traj], lag=lag)
+    cmsm = pyemma.msm.estimate_markov_model(msm.metastable_assignments[traj_featurized], lag=lag)
     return msm, pcca, cmsm
 
 
-def discretize(traj: np.ndarray, kmeans: pyemma.coordinates.clustering.KmeansClustering, msm: pyemma.msm.MSM):
+def discretize(traj_featurized: np.ndarray, kmeans: pyemma.coordinates.clustering.KmeansClustering, msm: pyemma.msm.MSM):
     """Returns the metastable state assignments for a trajectory, after clustering. Taken from MDGen."""
-    return msm.metastable_assignments[kmeans.transform(traj)[:,0]]
+    return msm.metastable_assignments[kmeans.transform(traj_featurized)[:,0]]
 
-def compute_JSD_stats(traj_featurized: np.ndarray, ref_featurized: np.ndarray, feats: pd.DataFrame):
+
+def compute_JSD_stats(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pd.DataFrame):
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory. Taken from MDGen."""
     results = {}
     for i, feat in enumerate(feats.describe()):
-        ref_p = np.histogram(ref_featurized[:,i], range=(-np.pi, np.pi), bins=100)[0]
+        ref_p = np.histogram(ref_traj_featurized[:,i], range=(-np.pi, np.pi), bins=100)[0]
         traj_p = np.histogram(traj_featurized[:,i], range=(-np.pi, np.pi), bins=100)[0]
         results[feat] = distance.jensenshannon(ref_p, traj_p)
 
     for i in [1, 3]:
-        ref_p = np.histogram2d(*ref_featurized[:,i:i+2].T, range=((-np.pi, np.pi),(-np.pi,np.pi)), bins=50)[0]
+        ref_p = np.histogram2d(*ref_traj_featurized[:,i:i+2].T, range=((-np.pi, np.pi),(-np.pi,np.pi)), bins=50)[0]
         traj_p = np.histogram2d(*traj_featurized[:,i:i+2].T, range=((-np.pi, np.pi),(-np.pi,np.pi)), bins=50)[0]
         results['|'.join(feats.describe()[i:i+2])] = distance.jensenshannon(ref_p.flatten(), traj_p.flatten())
     return results
 
 
-def compute_JSDs_stats_against_time(traj: md.Trajectory, reference_traj: md.Trajectory, t_steps: int) -> np.ndarray:
+def compute_JSDs_stats_against_time(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pd.DataFrame) -> np.ndarray:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
-    steps = np.linspace(0, len(traj), (t_steps + 1)).astype(int)[1:]
+    steps = np.linspace(0, len(traj_featurized), 11).astype(int)[1:]
 
     return {
         step: compute_JSD_stats(
-            traj[:step],
-            reference_traj,
+            traj_featurized[:step],
+            ref_traj_featurized,
+            feats,
         )
         for step in steps
     }

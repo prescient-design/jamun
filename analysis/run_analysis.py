@@ -32,14 +32,14 @@ def parse_args():
     parser.add_argument(
         '--trajectory',
         type=str,
-        choices=['JAMUN'],
+        choices=['JAMUN', 'MDGenReference', 'Timewarp'],
         help='Type of trajectory to analyze'
     )
     
     parser.add_argument(
         '--reference',
         type=str,
-        choices=['MDGen', 'Timewarp'],
+        choices=['MDGenReference', 'Timewarp'],
         help='Type of reference trajectory to compare against'
     )
     
@@ -72,9 +72,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
-    """Load trajectories based on command line arguments."""
-    
+def load_trajectories_by_name(
+    name: str,
+    args: argparse.Namespace,
+):
     # Set up data path
     if args.data_path:
         JAMUN_DATA_PATH = args.data_path
@@ -84,33 +85,34 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
             raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path or environment variable")
     py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
     
-    # Load trajectories
     filter_codes = [args.peptide]
-    run_paths = [analysis_utils.get_run_path_for_wandb_run(path) for path in args.wandb_runs]
-    
-    # Load JAMUN trajectories
-    if args.trajectory == 'JAMUN':
-        trajs_md = analysis_utils.get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)
-    else:
-        raise ValueError(f"Trajectory type {args.trajectory} not supported")
-
-    if not trajs_md:
-        raise ValueError(f"No {args.trajectory} trajectories found for peptide {args.peptide}")
-
-    # Load reference trajectories
-    if args.reference == 'Timewarp':
-        ref_trajs_md = analysis_utils.get_Timewarp_trajectories(
-            JAMUN_DATA_PATH, 
-            filter_codes=list(trajs_md.keys()), 
+    if name == "JAMUN":
+        run_paths = [analysis_utils.get_run_path_for_wandb_run(path) for path in args.wandb_runs]
+        return analysis_utils.get_JAMUN_trajectories(
+            run_paths,
+            filter_codes=filter_codes
         )
-    elif args.reference == 'MDGen':
-        ref_trajs_md = analysis_utils.get_MDGen_trajectories(
+    elif name == "MDGenReference":
+        return analysis_utils.get_MDGenReference_trajectories(
             JAMUN_DATA_PATH,
             filter_codes=filter_codes,
         )
+    elif name == "Timewarp":
+        return analysis_utils.get_Timewarp_trajectories(
+            JAMUN_DATA_PATH, 
+            filter_codes=filter_codes, 
+        )
     else:
-        raise ValueError(f"Reference type {args.reference} not supported")
+        raise ValueError(f"Trajectory type {args.trajectory} not supported")
+
+def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
+    """Load trajectories based on command line arguments."""
     
+    trajs_md = load_trajectories_by_name(args.trajectory, args)
+    if not trajs_md:
+        raise ValueError(f"No {args.trajectory} trajectories found for peptide {args.peptide}")
+
+    ref_trajs_md = load_trajectories_by_name(args.reference, args)
     if not ref_trajs_md:
         raise ValueError(f"No {args.reference} trajectories found for peptide {args.peptide}")
         
@@ -154,11 +156,19 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
         'ref_tica': ref_tica,
         'tica': tica,
     }
-    py_logger.info(f"TICA analysis complete.")
+    py_logger.info(f"TICA computed.")
+
+    # Compute PMFs
+    results['PMFs'] = analysis_utils.compute_PMFs(traj_md)
+    py_logger.info(f"PMFs computed.")
 
     # Compute JSDs
     results['JSD_stats'] = analysis_utils.compute_JSD_stats(traj_featurized, ref_traj_featurized, traj_feat)
     py_logger.info(f"JSD stats computed.")
+
+    # Compute JSDs
+    results['JSD_stats_against_time'] = analysis_utils.compute_JSDs_stats_against_time(traj_featurized, ref_traj_featurized, traj_feat)
+    py_logger.info(f"JSD stats as a function of time computed.")
 
     # Compute TICA stats
     results['TICA_stats'] = analysis_utils.compute_TICA_stats(traj_tica, ref_tica)
