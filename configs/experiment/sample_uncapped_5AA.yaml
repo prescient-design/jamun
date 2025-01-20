@@ -17,7 +17,7 @@ wandb_train_run_path: prescient-design/jamun/6297yugb
 
 # Put path to 5AA pdb here.
 # init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
-init_pdb: /homefs/home/daigavaa/jamun/pdbs/uncapped_AMEYA.pdb
+init_pdb: /homefs/home/daigavaa/jamun/pdbs/uncapped_NRLCQ.pdb
 label: null
 
 checkpoint_type: best_so_far
