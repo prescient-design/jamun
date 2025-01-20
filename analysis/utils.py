@@ -1,20 +1,22 @@
 from typing import Dict, Optional, Sequence, Tuple, List
 import os
-import logging
 
 import tqdm
 import numpy as np
 import mdtraj as md
 import pyemma
 import pyemma.coordinates.clustering
+import pandas as pd
 from scipy.spatial import distance
 from statsmodels.tsa import stattools
+import warnings
 
 from jamun import data
 from jamun import utils
 
-logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
-py_logger = logging.getLogger("analysis")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=pyemma.util.exceptions.PyEMMA_DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def find_project_root() -> str:
@@ -108,7 +110,7 @@ def get_JAMUN_trajectories(
     """Returns a dictionary mapping peptide names to the sampled JAMUN trajectory."""
     trajectory_files = get_JAMUN_trajectory_files(run_paths)
     trajectories = {}
-    for peptide, peptide_files in tqdm.tqdm(trajectory_files.items()):
+    for peptide, peptide_files in tqdm.tqdm(trajectory_files.items(), desc="Loading JAMUN trajectories"):
         if filter_codes and peptide not in filter_codes:
             continue
 
@@ -117,38 +119,54 @@ def get_JAMUN_trajectories(
 
 
 def get_MDGen_trajectories(
-    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "test"
+    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to the MDGen trajectory."""
-    datasets = data.parse_datasets_from_directory(
-        root=f"{data_path}/mdgen/data/4AA_sims_partitioned/{split}/",
-        traj_pattern="^(.*).xtc",
-        pdb_pattern="^(.*).pdb",
-        filter_codes=filter_codes,
-    )
+    def get_datasets_for_split(split: str):
+        """Helper function to get datasets for a given split."""
+        return data.parse_datasets_from_directory(
+            root=f"{data_path}/mdgen/data/4AA_sims_partitioned/{split}/",
+            traj_pattern="^(.*).xtc",
+            pdb_pattern="^(.*).pdb",
+            filter_codes=filter_codes,
+        )
+
+    if split in ["train", "val", "test"]:
+        datasets = get_datasets_for_split(split)
+    elif split == "all":
+        datasets = get_datasets_for_split("train") + get_datasets_for_split("val") + get_datasets_for_split("test")
+    else:
+        raise ValueError(f"Invalid split: {split}")
+
     return {dataset.label(): dataset.trajectory for dataset in datasets}
 
 
 def get_Timewarp_trajectories(
-    data_path: str, peptide_type: str, filter_codes: Optional[Sequence[str]] = None, split: str = "test"
+    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to the Timewarp MDTraj trajectory."""
-    if peptide_type == "2AA":
-        peptide_type_dir = "2AA-1-large"
-    elif peptide_type == "4AA":
-        peptide_type_dir = "4AA-large"
-    else:
-        raise ValueError(f"Invalid peptide type: {peptide_type}")
-
+    # Timewarp trajectory files are in one-letter format.
     one_letter_filter_codes = ["".join([utils.convert_to_one_letter_code(aa) for aa in code]) for code in filter_codes]
     assert len(set(one_letter_filter_codes)) == len(one_letter_filter_codes), "Filter codes must be unique"
 
-    datasets = data.parse_datasets_from_directory(
-        root=f"{data_path}/timewarp/{peptide_type_dir}/{split}/",
-        traj_pattern="^(.*)-traj-arrays.npz",
-        pdb_pattern="^(.*)-traj-state0.pdb",
-        filter_codes=one_letter_filter_codes,
-    )
+    def get_datasets_for_split(split: str):
+        """Helper function to get datasets for a given split."""        
+        split_datasets = []
+        for peptide_type_dir in ["2AA-1-large", "4AA-large"]:
+            split_datasets += data.parse_datasets_from_directory(
+                root=f"{data_path}/timewarp/{peptide_type_dir}/{split}/",
+                traj_pattern="^(.*)-traj-arrays.npz",
+                pdb_pattern="^(.*)-traj-state0.pdb",
+                filter_codes=one_letter_filter_codes,
+            )
+        return split_datasets
+    
+    if split in ["train", "val", "test"]:
+        datasets = get_datasets_for_split(split)
+    elif split == "all":
+        datasets = get_datasets_for_split("train") + get_datasets_for_split("val") + get_datasets_for_split("test")
+    else:
+        raise ValueError(f"Invalid split: {split}")
 
     # Remap keys.
     filter_codes_map = dict(zip(one_letter_filter_codes, filter_codes))
@@ -198,27 +216,27 @@ def featurize_trajectory(traj: md.Trajectory, cossin: bool):
     return feat, featurized_traj
 
 
-def get_kmeans(traj: np.ndarray, k: int) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
+def get_KMeans(traj: np.ndarray, k: int = 100) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
     """Cluster a featurized trajectory using k-means clustering. Taken from MDGen."""
     kmeans = pyemma.coordinates.cluster_kmeans(traj, k=k, max_iter=100, fixed_seed=137)
     return kmeans, kmeans.transform(traj)[:,0]
 
 
-def get_msm(traj: np.ndarray, lag: int, nstates: int):
-    """Estimate an Markov State Model (MSM), PCCA (clustering of MSM states), and coarse-grained MSM from a trajectory."""
+def get_MSM(traj: np.ndarray, lag: int, nstates: int):
+    """Estimate an Markov State Model (MSM), PCCA (clustering of MSM states), and coarse-grained MSM from a trajectory. Taken from MDGen."""
     msm = pyemma.msm.estimate_markov_model(traj, lag=lag)
     pcca = msm.pcca(nstates)
-    assert len(msm.metastable_assignments) == nstates
+    assert len(msm.metastable_assignments) == lag // nstates, f"Invalid number of metastable states: {len(msm.metastable_assignments)}"
     cmsm = pyemma.msm.estimate_markov_model(msm.metastable_assignments[traj], lag=lag)
     return msm, pcca, cmsm
 
 
 def discretize(traj: np.ndarray, kmeans: pyemma.coordinates.clustering.KmeansClustering, msm: pyemma.msm.MSM):
-    """Returns the metastable state assignments for a trajectory, after clustering."""
+    """Returns the metastable state assignments for a trajectory, after clustering. Taken from MDGen."""
     return msm.metastable_assignments[kmeans.transform(traj)[:,0]]
 
 def compute_JSD_stats(traj_featurized: np.ndarray, ref_featurized: np.ndarray, feats: pd.DataFrame):
-    """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
+    """Compute Jenson-Shannon distances for a trajectory and reference trajectory. Taken from MDGen."""
     results = {}
     for i, feat in enumerate(feats.describe()):
         ref_p = np.histogram(ref_featurized[:,i], range=(-np.pi, np.pi), bins=100)[0]
@@ -288,8 +306,8 @@ def compute_autocorrelation_stats(traj_tica: np.ndarray, ref_tica: np.ndarray) -
 
 def compute_MSM_stats(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, tica: pyemma.coordinates.tica) -> Dict[str, np.ndarray]:
     # MSM analysis
-    kmeans, ref_kmeans = get_kmeans(tica.transform(ref_traj_featurized))
-    msm, pcca, cmsm = get_msm(ref_kmeans, nstates=10)
+    kmeans, ref_kmeans = get_KMeans(tica.transform(ref_traj_featurized))
+    msm, pcca, cmsm = get_MSM(ref_kmeans, lag=1000, nstates=10)
     
     ref_discrete = discretize(tica.transform(ref_traj_featurized), kmeans, msm)
     traj_discrete = discretize(tica.transform(traj_featurized), kmeans, msm)

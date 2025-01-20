@@ -1,13 +1,16 @@
-from typing import Dict, Optional
+from typing import Dict, Any, Tuple
 import os
 import dotenv
+import logging
 import argparse
 import sys
 import pickle
-from pathlib import Path
 
 import pandas as pd
 import mdtraj as md
+
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
+py_logger = logging.getLogger("analysis")
 
 
 sys.path.append("./")
@@ -18,7 +21,7 @@ def parse_args():
         description='Analyze molecular dynamics trajectories for peptide sequences.',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    
+
     parser.add_argument(
         '--peptide',
         type=str,
@@ -30,15 +33,13 @@ def parse_args():
         '--trajectory',
         type=str,
         choices=['JAMUN'],
-        default='JAMUN',
-        help='Type of trajectory to analyze (currently only JAMUN supported)'
+        help='Type of trajectory to analyze'
     )
     
     parser.add_argument(
         '--reference',
         type=str,
         choices=['MDGen', 'Timewarp'],
-        default='Timewarp',
         help='Type of reference trajectory to compare against'
     )
     
@@ -67,29 +68,21 @@ def parse_args():
         default='analysis_results',
         help='Directory to save analysis results'
     )
-    
-    parser.add_argument(
-        '--t-steps',
-        type=int,
-        default=10,
-        help='Number of time steps for JS distance analysis'
-    )
 
     return parser.parse_args()
 
 
-def load_trajectories(args):
+def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
     """Load trajectories based on command line arguments."""
     
     # Set up data path
     if args.data_path:
         JAMUN_DATA_PATH = args.data_path
     else:
-        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key("../.env", "JAMUN_DATA_PATH"))
+        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key(".env", "JAMUN_DATA_PATH"))
         if not JAMUN_DATA_PATH:
             raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path or environment variable")
-    
-    print(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
+    py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
     
     # Load trajectories
     filter_codes = [args.peptide]
@@ -97,40 +90,37 @@ def load_trajectories(args):
     
     # Load JAMUN trajectories
     if args.trajectory == 'JAMUN':
-        trajs = analysis_utils.get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)
+        trajs_md = analysis_utils.get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)
     else:
         raise ValueError(f"Trajectory type {args.trajectory} not supported")
 
-    if not trajs:
+    if not trajs_md:
         raise ValueError(f"No {args.trajectory} trajectories found for peptide {args.peptide}")
 
     # Load reference trajectories
     if args.reference == 'Timewarp':
-        ref_trajs = analysis_utils.get_Timewarp_trajectories(
+        ref_trajs_md = analysis_utils.get_Timewarp_trajectories(
             JAMUN_DATA_PATH, 
-            peptide_type="4AA", 
-            filter_codes=list(trajs.keys()), 
-            split="test"
+            filter_codes=list(trajs_md.keys()), 
         )
     elif args.reference == 'MDGen':
-        ref_trajs = analysis_utils.get_MDGen_trajectories(
+        ref_trajs_md = analysis_utils.get_MDGen_trajectories(
             JAMUN_DATA_PATH,
             filter_codes=filter_codes,
-            split="val"
         )
     else:
         raise ValueError(f"Reference type {args.reference} not supported")
     
-    if not ref_trajs:
+    if not ref_trajs_md:
         raise ValueError(f"No {args.reference} trajectories found for peptide {args.peptide}")
         
-    return trajs, ref_trajs
+    return trajs_md[args.peptide], ref_trajs_md[args.peptide]
 
 
-def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory):
+def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Any]:
     """Run analysis on the trajectories and return results dictionary."""
     results = {}
-        
+
     # Featurization, with and without cossin
     ref_feat_cossin, ref_traj_featurized_cossin = analysis_utils.featurize_trajectory(
         ref_traj_md, cossin=True
@@ -155,6 +145,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory):
         'traj_feat': traj_feat,
         'traj_featurized': traj_featurized
     }
+    py_logger.info(f"Featurization complete.")
 
     # TICA analysis
     traj_tica, ref_tica, tica = analysis_utils.compute_TICA(traj_featurized_cossin, ref_traj_featurized_cossin)
@@ -163,30 +154,32 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory):
         'ref_tica': ref_tica,
         'tica': tica,
     }
+    py_logger.info(f"TICA analysis complete.")
 
     # Compute JSDs
     results['JSD_stats'] = analysis_utils.compute_JSD_stats(traj_featurized, ref_traj_featurized, traj_feat)
+    py_logger.info(f"JSD stats computed.")
 
     # Compute TICA stats
     results['TICA_stats'] = analysis_utils.compute_TICA_stats(traj_tica, ref_tica)
+    py_logger.info(f"TICA stats computed.")
 
     # Compute autocorrelation stats
     results['autocorrelation_stats'] = analysis_utils.compute_autocorrelation_stats(traj_tica, ref_tica)
+    py_logger.info(f"Autocorrelation stats computed.")
 
     # Compute MSM stats
     results['MSM_stats'] = analysis_utils.compute_MSM_stats(traj_featurized_cossin, ref_traj_featurized_cossin, tica)
-    
+    py_logger.info(f"MSM stats computed.")
+
     return results
 
 
 def save_results(results, args):
     """Save analysis results to pickle file."""
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{args.peptide}_{args.reference}_{timestamp}.pkl"
-    output_path = output_dir / filename
+    output_dir = os.path.join(args.output_dir, args.trajectory, f"ref={args.reference}")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
     
     with open(output_path, 'wb') as f:
         pickle.dump({
@@ -194,27 +187,23 @@ def save_results(results, args):
             'args': vars(args)
         }, f)
     
-    print(f"\nResults saved to: {output_path}")
+    py_logger.info(f"Results saved to: {os.path.abspath(output_path)}")
 
 def main():
     args = parse_args()
     
-    try:
-        # Load trajectories
-        trajs, ref_trajs = load_trajectories(args)
-        print(f"\nSuccessfully loaded trajectories for {args.peptide}:")
-        print(f"- JAMUN trajectory shape: {trajs[args.peptide].xyz.shape}")
-        print(f"- {args.reference} reference shape: {ref_trajs[args.peptide].xyz.shape}")
+    # Load trajectories
+    traj, ref_traj = load_trajectories(args)
+    py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
+    py_logger.info(f"- {args.trajectory} trajectory loaded: {traj}")
+    py_logger.info(f"- {args.reference} reference trajectory loaded: {ref_traj}")
+    
+    # Run analysis
+    results = analyze_trajectories(traj, ref_traj)
+    
+    # Save results
+    save_results(results, args)
         
-        # Run analysis
-        results = analyze_trajectories(trajs, ref_trajs, args.t_steps)
-        
-        # Save results
-        save_results(results, args)
-        
-    except Exception as e:
-        print(f"Error: {str(e)}", file=sys.stderr)
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()
