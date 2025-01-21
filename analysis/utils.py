@@ -237,17 +237,17 @@ def get_TBG_trajectories(root: str) -> Dict[str, md.Trajectory]:
     raise NotImplementedError("TBG trajectories not implemented yet.")
 
 
-def compute_PMF(traj: md.Trajectory, nbins: int = 50) -> Dict[str, np.ndarray]:
+def compute_PMF(traj: md.Trajectory, num_bins: int = 50) -> Dict[str, np.ndarray]:
     """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
     _, phi = md.compute_phi(traj)
     _, psi = md.compute_psi(traj)
     num_dihedrals = phi.shape[1]
-    pmf = np.zeros((num_dihedrals, nbins - 1, nbins - 1))
-    xedges = np.linspace(-np.pi, np.pi, nbins)
-    yedges = np.linspace(-np.pi, np.pi, nbins)
+    pmf = np.zeros((num_dihedrals, num_bins - 1, num_bins - 1))
+    xedges = np.linspace(-np.pi, np.pi, num_bins)
+    yedges = np.linspace(-np.pi, np.pi, num_bins)
 
     for dihedral_index in range(num_dihedrals):
-        H, _, _ = np.histogram2d(phi[:, dihedral_index], psi[:, dihedral_index], bins=np.linspace(-np.pi, np.pi, nbins))
+        H, _, _ = np.histogram2d(phi[:, dihedral_index], psi[:, dihedral_index], bins=np.linspace(-np.pi, np.pi, num_bins))
         pmf[dihedral_index] = -np.log(H.T) + np.max(np.log(H.T))
 
     return {
@@ -284,14 +284,24 @@ def featurize_trajectory(traj: md.Trajectory, cossin: bool) -> Tuple[pyemma.coor
     return feat, featurized_traj
 
 
-def get_bond_lengths(traj: md.Trajectory) -> Tuple[pyemma.coordinates.data.MDFeaturizer, np.ndarray]:
+def get_bond_lengths_for_trajectory(traj: md.Trajectory) -> Tuple[pyemma.coordinates.data.MDFeaturizer, np.ndarray]:
     """Compute bond lengths for a trajectory."""
     feat = pyemma.coordinates.featurizer(traj.topology)
     heavy_atom_distance_pairs = feat.pairs(feat.select_Heavy())
     feat.add_distances(heavy_atom_distance_pairs, periodic=False)
     featurized_traj = feat.transform(traj)
-    return feat, featurized_traj
+    return {
+        "feat": feat,
+        "featurized_traj": featurized_traj,
+    }
 
+
+def compute_bond_lengths(traj: md.Trajectory, ref_traj: md.Trajectory) -> Dict[str, np.ndarray]:
+    """Compute bond lengths for a trajectory."""
+    return {
+        "traj_bond_lengths": get_bond_lengths_for_trajectory(traj),
+        "ref_traj_bond_lengths": get_bond_lengths_for_trajectory(ref_traj),
+    }
 
 def get_KMeans(
     traj_featurized: np.ndarray, k: int = 100
@@ -301,11 +311,11 @@ def get_KMeans(
     return kmeans, kmeans.transform(traj_featurized)[:, 0]
 
 
-def get_MSM(traj_featurized: np.ndarray, lag: int, nstates: int):
+def get_MSM(traj_featurized: np.ndarray, lag: int, num_states: int):
     """Estimate an Markov State Model (MSM), PCCA (clustering of MSM states), and coarse-grained MSM from a trajectory. Taken from MDGen."""
     msm = pyemma.msm.estimate_markov_model(traj_featurized, lag=lag)
-    pcca = msm.pcca(nstates)
-    assert len(msm.metastable_assignments) == lag // nstates
+    pcca = msm.pcca(num_states)
+    assert len(msm.metastable_assignments) == lag // num_states
     cmsm = pyemma.msm.estimate_markov_model(msm.metastable_assignments[traj_featurized], lag=lag)
     return msm, pcca, cmsm
 
@@ -327,11 +337,15 @@ def compute_JSD_stats(
         traj_p = np.histogram(traj_featurized[:, i], range=(-np.pi, np.pi), bins=100)[0]
         results[feat] = distance.jensenshannon(ref_p, traj_p)
 
-    psi_indices = [i for i, feat in enumerate(feats.describe()) if feat.startswith("PSI")]
-    phi_indices = [i for i, feat in enumerate(feats.describe()) if feat.startswith("PHI")]
+    # Compute JSDs for backbone, sidechain, and all torsions.
+    results["backbone"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI")])
+    results["sidechain"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("CHI")])
+    results["all_torsions"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI") or feat.startswith("CHI")])            
 
     # Remove the first psi angle and last phi angle.
     # The first psi angle is for the N-terminal and the last phi angle is for the C-terminal.
+    psi_indices = [i for i, feat in enumerate(feats.describe()) if feat.startswith("PSI")]
+    phi_indices = [i for i, feat in enumerate(feats.describe()) if feat.startswith("PHI")]
     psi_indices = psi_indices[1:]
     phi_indices = phi_indices[:-1]
 
@@ -410,7 +424,7 @@ def compute_MSM_stats(
     """Compute MSM statistics for a trajectory and reference trajectory."""
     # MSM analysis
     kmeans, ref_kmeans = get_KMeans(tica.transform(ref_traj_featurized))
-    msm, pcca, cmsm = get_MSM(ref_kmeans, lag=1000, nstates=10)
+    msm, pcca, cmsm = get_MSM(ref_kmeans, lag=1000, num_states=10)
 
     ref_discrete = discretize(tica.transform(ref_traj_featurized), kmeans, msm)
     traj_discrete = discretize(tica.transform(traj_featurized), kmeans, msm)

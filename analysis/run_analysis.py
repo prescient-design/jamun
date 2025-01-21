@@ -155,6 +155,10 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     results["PMFs"] = analysis_utils.compute_PMFs(traj_md, ref_traj_md)
     py_logger.info(f"PMFs computed.")
 
+    # Compute bond lengths
+    results["bond_lengths"] = analysis_utils.compute_bond_lengths(traj_md, ref_traj_md)
+    py_logger.info(f"Bond lengths computed.")
+
     # Compute JSDs
     results["JSD_stats"] = analysis_utils.compute_JSD_stats(traj_featurized, ref_traj_featurized, traj_feat)
     py_logger.info(f"JSD stats computed.")
