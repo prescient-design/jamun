@@ -238,17 +238,80 @@ def get_TBG_trajectories(root: str) -> Dict[str, md.Trajectory]:
     raise NotImplementedError("TBG trajectories not implemented yet.")
 
 
-def compute_PMF(traj: md.Trajectory, num_bins: int = 50) -> Dict[str, np.ndarray]:
+def featurize_trajectory_with_torsions(
+    traj: md.Trajectory, cossin: bool
+) -> Tuple[pyemma.coordinates.featurizer, np.ndarray]:
+    """Featurize an MDTraj trajectory with backbone and sidechain torsion angles using pyEMMA.
+    Adapted from MDGen.
+
+    Args:
+        traj (mdtraj.Trajectory): Input trajectory to featurize
+        cossin (bool): Whether to transform angles to cosine/sine pairs
+
+    Returns:
+        tuple: (feats, traj_featurized) where feats is the PyEMMA featurizer
+        and traj_featurized is the transformed trajectory data
+    """
+    feats = pyemma.coordinates.featurizer(traj.topology)
+    feats.add_backbone_torsions(cossin=cossin)
+    feats.add_sidechain_torsions(cossin=cossin)
+    traj_featurized = feats.transform(traj)
+    return feats, traj_featurized
+
+
+def featurize_trajectory_with_distances(traj: md.Trajectory) -> Tuple[pyemma.coordinates.featurizer, np.ndarray]:
+    """Featurize an MDTraj trajectory with pairwise distances using pyEMMA."""
+    feats = pyemma.coordinates.featurizer(traj.topology)
+    heavy_atom_distance_pairs = feats.pairs(feats.select_Heavy())
+    feats.add_distances(heavy_atom_distance_pairs, periodic=False)
+    traj_featurized = feats.transform(traj)
+    return feats, traj_featurized
+
+
+def featurize(traj: md.Trajectory) -> Dict[str, np.ndarray]:
+    """Featurize an MDTraj trajectory with backbone, and sidechain torsion angles and distances using pyEMMA."""
+    feats, traj_featurized = featurize_trajectory_with_torsions(traj, cossin=False)
+    feats_cossin, traj_featurized_cossin = featurize_trajectory_with_torsions(traj, cossin=True)
+    feats_dists, traj_featurized_dists = featurize_trajectory_with_distances(traj)
+
+    return {
+        "feats": feats,
+        "traj_featurized": traj_featurized,
+        "feats_cossin": feats_cossin,
+        "traj_featurized_cossin": traj_featurized_cossin,
+        "feats_dists": feats_dists,
+        "traj_featurized_dists": traj_featurized_dists,
+    }
+
+
+def compute_PMF(
+    traj_featurized: np.ndarray,
+    feats: pyemma.coordinates.data.MDFeaturizer,
+    num_bins: int = 50,
+    internal_angles: bool = True,
+) -> Dict[str, np.ndarray]:
     """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
-    _, phi = md.compute_phi(traj)
-    _, psi = md.compute_psi(traj)
+    psi_indices = [i for i, feat in enumerate(feats.describe()) if feat.startswith("PSI")]
+    phi_indices = [i for i, feat in enumerate(feats.describe()) if feat.startswith("PHI")]
+
+    if internal_angles:
+        # Remove the first psi angle and last phi angle.
+        # The first psi angle is for the N-terminal and the last phi angle is for the C-terminal.
+        psi_indices = psi_indices[1:]
+        phi_indices = phi_indices[:-1]
+
+    phi = traj_featurized[:, phi_indices]
+    psi = traj_featurized[:, psi_indices]
     num_dihedrals = phi.shape[1]
+
     pmf = np.zeros((num_dihedrals, num_bins - 1, num_bins - 1))
     xedges = np.linspace(-np.pi, np.pi, num_bins)
     yedges = np.linspace(-np.pi, np.pi, num_bins)
 
     for dihedral_index in range(num_dihedrals):
-        H, _, _ = np.histogram2d(phi[:, dihedral_index], psi[:, dihedral_index], bins=np.linspace(-np.pi, np.pi, num_bins))
+        H, _, _ = np.histogram2d(
+            phi[:, dihedral_index], psi[:, dihedral_index], bins=np.linspace(-np.pi, np.pi, num_bins)
+        )
         pmf[dihedral_index] = -np.log(H.T) + np.max(np.log(H.T))
 
     return {
@@ -258,57 +321,23 @@ def compute_PMF(traj: md.Trajectory, num_bins: int = 50) -> Dict[str, np.ndarray
     }
 
 
-def compute_PMFs(traj: md.Trajectory, ref_traj: md.Trajectory) -> Dict[str, np.ndarray]:
+def compute_PMFs(
+    traj: np.ndarray, ref_traj: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
+) -> Dict[str, np.ndarray]:
     """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
     return {
-        "traj_pmf": compute_PMF(traj),
-        "ref_traj_pmf": compute_PMF(ref_traj),
+        "traj_pmf": compute_PMF(traj, feats, internal_angles=False),
+        "ref_traj_pmf": compute_PMF(ref_traj, feats, internal_angles=False),
+        "traj_pmf_internal": compute_PMF(traj, feats, internal_angles=True),
+        "ref_traj_pmf_internal": compute_PMF(ref_traj, feats, internal_angles=True),
     }
 
-
-def featurize_trajectory(traj: md.Trajectory, cossin: bool) -> Tuple[pyemma.coordinates.featurizer, np.ndarray]:
-    """Featurize an MDTraj trajectory with backbone and sidechain torsion angles using pyEMMA.
-    Adapted from MDGen.
-
-    Args:
-        traj (mdtraj.Trajectory): Input trajectory to featurize
-        cossin (bool): Whether to transform angles to cosine/sine pairs
-
-    Returns:
-        tuple: (feats, featurized_traj) where feats is the PyEMMA featurizer
-        and featurized_traj is the transformed trajectory data
-    """
-    feats = pyemma.coordinates.featurizer(traj.topology)
-    feats.add_backbone_torsions(cossin=cossin)
-    feats.add_sidechain_torsions(cossin=cossin)
-    featurized_traj = feats.transform(traj)
-    return feats, featurized_traj
-
-
-def get_bond_lengths_for_trajectory(traj: md.Trajectory) -> Tuple[pyemma.coordinates.data.MDFeaturizer, np.ndarray]:
-    """Compute bond lengths for a trajectory."""
-    feats = pyemma.coordinates.featurizer(traj.topology)
-    heavy_atom_distance_pairs = feats.pairs(feats.select_Heavy())
-    feats.add_distances(heavy_atom_distance_pairs, periodic=False)
-    featurized_traj = feats.transform(traj)
-    return {
-        "feat": feat,
-        "featurized_traj": featurized_traj,
-    }
-
-
-def compute_bond_lengths(traj: md.Trajectory, ref_traj: md.Trajectory) -> Dict[str, np.ndarray]:
-    """Compute bond lengths for a trajectory."""
-    return {
-        "traj_bond_lengths": get_bond_lengths_for_trajectory(traj),
-        "ref_traj_bond_lengths": get_bond_lengths_for_trajectory(ref_traj),
-    }
 
 def get_KMeans(
-    traj_featurized: np.ndarray, k: int = 100
+    traj_featurized: np.ndarray, K: int
 ) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
     """Cluster a featurized trajectory using k-means clustering. Taken from MDGen."""
-    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=k, max_iter=1000, fixed_seed=137)
+    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=K, max_iter=1000, fixed_seed=137)
     return kmeans, kmeans.transform(traj_featurized)[:, 0]
 
 
@@ -339,9 +368,17 @@ def compute_JSD_stats(
         results[feat] = distance.jensenshannon(ref_p, traj_p)
 
     # Compute JSDs for backbone, sidechain, and all torsions.
-    results["backbone"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI")])
+    results["backbone"] = np.mean(
+        [results[feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI")]
+    )
     results["sidechain"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("CHI")])
-    results["all_torsions"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI") or feat.startswith("CHI")])            
+    results["all_torsions"] = np.mean(
+        [
+            results[feat]
+            for feat in feats.describe()
+            if feat.startswith("PHI") or feat.startswith("PSI") or feat.startswith("CHI")
+        ]
+    )
 
     # Remove the first psi angle and last phi angle.
     # The first psi angle is for the N-terminal and the last phi angle is for the C-terminal.
@@ -379,29 +416,33 @@ def compute_JSDs_stats_against_time(
     }
 
 
-def compute_TICA(
-    traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray, pyemma.coordinates.tica]:
+def compute_TICA(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute TICA projections of trajectories."""
     tica = pyemma.coordinates.tica(ref_traj_featurized, lag=1000, kinetic_map=True)
-    ref_tica = tica.transform(ref_traj_featurized)
+    ref_traj_tica = tica.transform(ref_traj_featurized)
     traj_tica = tica.transform(traj_featurized)
-    return traj_tica, ref_tica, tica
+    return {
+        "traj_tica": traj_tica,
+        "ref_traj_tica": ref_traj_tica,
+        "tica": tica,
+    }
 
 
-def compute_TICA_stats(traj_tica: np.ndarray, ref_tica: np.ndarray) -> Dict[str, float]:
+def compute_TICA_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, float]:
     """Compute Jenson-Shannon distances on TICA projections of trajectories."""
-    tica_0_min = min(ref_tica[:, 0].min(), traj_tica[:, 0].min())
-    tica_0_max = max(ref_tica[:, 0].max(), traj_tica[:, 0].max())
+    tica_0_min = min(ref_traj_tica[:, 0].min(), traj_tica[:, 0].min())
+    tica_0_max = max(ref_traj_tica[:, 0].max(), traj_tica[:, 0].max())
 
-    tica_1_min = min(ref_tica[:, 1].min(), traj_tica[:, 1].min())
-    tica_1_max = max(ref_tica[:, 1].max(), traj_tica[:, 1].max())
+    tica_1_min = min(ref_traj_tica[:, 1].min(), traj_tica[:, 1].min())
+    tica_1_max = max(ref_traj_tica[:, 1].max(), traj_tica[:, 1].max())
 
-    ref_p = np.histogram(ref_tica[:, 0], range=(tica_0_min, tica_0_max), bins=100)[0]
+    ref_p = np.histogram(ref_traj_tica[:, 0], range=(tica_0_min, tica_0_max), bins=100)[0]
     traj_p = np.histogram(traj_tica[:, 0], range=(tica_0_min, tica_0_max), bins=100)[0]
     tica_0_jsd = distance.jensenshannon(ref_p, traj_p)
 
-    ref_p = np.histogram2d(*ref_tica[:, :2].T, range=((tica_0_min, tica_0_max), (tica_1_min, tica_1_max)), bins=50)[0]
+    ref_p = np.histogram2d(
+        *ref_traj_tica[:, :2].T, range=((tica_0_min, tica_0_max), (tica_1_min, tica_1_max)), bins=50
+    )[0]
     traj_p = np.histogram2d(*traj_tica[:, :2].T, range=((tica_0_min, tica_0_max), (tica_1_min, tica_1_max)), bins=50)[0]
     tica_01_jsd = distance.jensenshannon(ref_p.flatten(), traj_p.flatten())
 
@@ -411,24 +452,22 @@ def compute_TICA_stats(traj_tica: np.ndarray, ref_tica: np.ndarray) -> Dict[str,
     }
 
 
-def compute_autocorrelation_stats(traj_tica: np.ndarray, ref_tica: np.ndarray) -> Dict[str, np.ndarray]:
+def compute_autocorrelation_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute autocorrelation functions for TICA projections of trajectories."""
     nlag = 1000
-    ref_autocorr = stattools.acovf(ref_tica[:, 0], nlag=nlag, adjusted=True, demean=False)
+    ref_autocorr = stattools.acovf(ref_traj_tica[:, 0], nlag=nlag, adjusted=True, demean=False)
     traj_autocorr = stattools.acovf(traj_tica[:, 0], nlag=nlag, adjusted=True, demean=False)
     return {"ref_autocorr": ref_autocorr, "traj_autocorr": traj_autocorr}
 
 
-def compute_MSM_stats(
-    traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, tica: pyemma.coordinates.tica
-) -> Dict[str, np.ndarray]:
+def compute_MSM_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute MSM statistics for a trajectory and reference trajectory."""
     # MSM analysis
-    kmeans, ref_kmeans = get_KMeans(tica.transform(ref_traj_featurized))
+    kmeans, ref_kmeans = get_KMeans(ref_traj_tica, K=100)
     msm, pcca, cmsm = get_MSM(ref_kmeans, lag=1000, num_states=10)
 
-    ref_discrete = discretize(tica.transform(ref_traj_featurized), kmeans, msm)
-    traj_discrete = discretize(tica.transform(traj_featurized), kmeans, msm)
+    ref_discrete = discretize(ref_traj_tica, kmeans, msm)
+    traj_discrete = discretize(traj_tica, kmeans, msm)
 
     # Compute metastable probabilities
     ref_metastable_probs = (ref_discrete == np.arange(10)[:, None]).mean(1)

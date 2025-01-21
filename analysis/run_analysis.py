@@ -51,7 +51,7 @@ def parse_args():
             "prescient-design/jamun/xv2dsan8",
             "prescient-design/jamun/a8fukafx",
             "prescient-design/jamun/odb1bs62",
-            "prescient-design/jamun/5dklwb4r"
+            "prescient-design/jamun/5dklwb4r",
         ],
         help="Weights & Biases run paths for JAMUN sampling runs",
     )
@@ -124,62 +124,78 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     """Run analysis on the trajectories and return results dictionary."""
     results = {}
 
-    # Featurization, with and without cossin
-    ref_traj_feats_cossin, ref_traj_featurized_cossin = analysis_utils.featurize_trajectory(ref_traj_md, cossin=True)
-    ref_traj_feats, ref_traj_featurized = analysis_utils.featurize_trajectory(ref_traj_md, cossin=False)
-
-    traj_feats_cossin, traj_featurized_cossin = analysis_utils.featurize_trajectory(traj_md, cossin=True)
-    traj_feats, traj_featurized = analysis_utils.featurize_trajectory(traj_md, cossin=False)
+    # Featurization of trajectories
     results["featurization"] = {
-        "ref_traj_feats_cossin": ref_traj_feats_cossin,
-        "ref_traj_featurized_cossin": ref_traj_featurized_cossin,
-        "ref_traj_feats": ref_traj_feats,
-        "ref_traj_featurized": ref_traj_featurized,
-        "traj_feats_cossin": traj_feats_cossin,
-        "traj_featurized_cossin": traj_featurized_cossin,
-        "traj_feats": traj_feats,
-        "traj_featurized": traj_featurized,
+        "traj": analysis_utils.featurize(traj_md),
+        "ref_traj": analysis_utils.featurize(ref_traj_md),
     }
     py_logger.info(f"Featurization complete.")
 
-    # TICA analysis
-    traj_tica, ref_tica, tica = analysis_utils.compute_TICA(traj_featurized_cossin, ref_traj_featurized_cossin)
-    results["TICA"] = {
-        "traj_tica": traj_tica,
-        "ref_tica": ref_tica,
-        "tica": tica,
-    }
-    py_logger.info(f"TICA computed.")
+    traj_results = results["featurization"]["traj"]
+    traj_feats = traj_results["feats"]
+    traj_featurized = traj_results["traj_featurized"]
+    traj_featurized_cossin = traj_results["traj_featurized_cossin"]
+
+    ref_traj_results = results["featurization"]["ref_traj"]
+    ref_traj_featurized = ref_traj_results["traj_featurized"]
+    ref_traj_featurized_cossin = ref_traj_results["traj_featurized_cossin"]
 
     # Compute PMFs
-    results["PMFs"] = analysis_utils.compute_PMFs(traj_md, ref_traj_md)
+    results["PMFs"] = analysis_utils.compute_PMFs(
+        traj_featurized,
+        ref_traj_featurized,
+    )
     py_logger.info(f"PMFs computed.")
 
-    # Compute bond lengths
-    results["bond_lengths"] = analysis_utils.compute_bond_lengths(traj_md, ref_traj_md)
-    py_logger.info(f"Bond lengths computed.")
-
     # Compute JSDs
-    results["JSD_stats"] = analysis_utils.compute_JSD_stats(traj_featurized, ref_traj_featurized, traj_feats)
+    results["JSD_stats"] = analysis_utils.compute_JSD_stats(
+        traj_featurized,
+        ref_traj_featurized,
+        traj_feats,
+    )
     py_logger.info(f"JSD stats computed.")
 
     # Compute JSDs
     results["JSD_stats_against_time"] = analysis_utils.compute_JSDs_stats_against_time(
-        traj_featurized, ref_traj_featurized, traj_feats
+        traj_featurized,
+        ref_traj_featurized,
+        traj_feats,
     )
     py_logger.info(f"JSD stats as a function of time computed.")
 
+    # TICA analysis
+    results["TICA"] = analysis_utils.compute_TICA(
+        traj_featurized_cossin,
+        ref_traj_featurized_cossin,
+    )
+    py_logger.info(f"TICA computed.")
+
+    tica = results["TICA"]["tica"]
+    traj_tica = results["TICA"]["traj"]
+    ref_traj_tica = results["TICA"]["ref_traj"]
+
+    # Compute MSM stats
+    results["MSM_stats"] = analysis_utils.compute_MSM_stats(
+        traj_featurized_cossin,
+        ref_traj_featurized_cossin,
+        tica,
+    )
+    py_logger.info(f"MSM stats computed.")
+
     # Compute TICA stats
-    results["TICA_stats"] = analysis_utils.compute_TICA_stats(traj_tica, ref_tica)
+    results["TICA_stats"] = analysis_utils.compute_TICA_stats(
+        traj_tica,
+        ref_traj_tica,
+        tica,
+    )
     py_logger.info(f"TICA stats computed.")
 
     # Compute autocorrelation stats
-    results["autocorrelation_stats"] = analysis_utils.compute_autocorrelation_stats(traj_tica, ref_tica)
+    results["autocorrelation_stats"] = analysis_utils.compute_autocorrelation_stats(
+        traj_tica,
+        ref_traj_tica,
+    )
     py_logger.info(f"Autocorrelation stats computed.")
-
-    # Compute MSM stats
-    results["MSM_stats"] = analysis_utils.compute_MSM_stats(traj_featurized_cossin, ref_traj_featurized_cossin, tica)
-    py_logger.info(f"MSM stats computed.")
 
     return results
 
