@@ -96,6 +96,7 @@ def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, 
                 f"{run_path}/sampler/{peptide}/topology.pdb",
                 f"{run_path}/sampler/{peptide}/predicted_samples/pdb/0.pdb",
                 f"{run_path}/pdbs/{peptide}-modified.pdb",
+                f"{run_path}/dataset_pdbs/{peptide}.pdb",
             ]:
                 if os.path.exists(pdb_file):
                     trajectory_files[peptide]["pdb"] = pdb_file
@@ -274,22 +275,22 @@ def featurize_trajectory(traj: md.Trajectory, cossin: bool) -> Tuple[pyemma.coor
         cossin (bool): Whether to transform angles to cosine/sine pairs
 
     Returns:
-        tuple: (feat, featurized_traj) where feat is the PyEMMA featurizer
+        tuple: (feats, featurized_traj) where feats is the PyEMMA featurizer
         and featurized_traj is the transformed trajectory data
     """
-    feat = pyemma.coordinates.featurizer(traj.topology)
-    feat.add_backbone_torsions(cossin=cossin)
-    feat.add_sidechain_torsions(cossin=cossin)
-    featurized_traj = feat.transform(traj)
-    return feat, featurized_traj
+    feats = pyemma.coordinates.featurizer(traj.topology)
+    feats.add_backbone_torsions(cossin=cossin)
+    feats.add_sidechain_torsions(cossin=cossin)
+    featurized_traj = feats.transform(traj)
+    return feats, featurized_traj
 
 
 def get_bond_lengths_for_trajectory(traj: md.Trajectory) -> Tuple[pyemma.coordinates.data.MDFeaturizer, np.ndarray]:
     """Compute bond lengths for a trajectory."""
-    feat = pyemma.coordinates.featurizer(traj.topology)
-    heavy_atom_distance_pairs = feat.pairs(feat.select_Heavy())
-    feat.add_distances(heavy_atom_distance_pairs, periodic=False)
-    featurized_traj = feat.transform(traj)
+    feats = pyemma.coordinates.featurizer(traj.topology)
+    heavy_atom_distance_pairs = feats.pairs(feats.select_Heavy())
+    feats.add_distances(heavy_atom_distance_pairs, periodic=False)
+    featurized_traj = feats.transform(traj)
     return {
         "feat": feat,
         "featurized_traj": featurized_traj,
@@ -307,7 +308,7 @@ def get_KMeans(
     traj_featurized: np.ndarray, k: int = 100
 ) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
     """Cluster a featurized trajectory using k-means clustering. Taken from MDGen."""
-    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=k, max_iter=100, fixed_seed=137)
+    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=k, max_iter=1000, fixed_seed=137)
     return kmeans, kmeans.transform(traj_featurized)[:, 0]
 
 

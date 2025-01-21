@@ -43,16 +43,16 @@ def parse_args():
         "--wandb-runs",
         type=str,
         nargs="+",
-        default=[
-            "prescient-design/jamun/w5qiuq63",
-            "prescient-design/jamun/flby06tj",
-        ],
         # default=[
-        #     "prescient-design/jamun/xv2dsan8",
-        #     "prescient-design/jamun/a8fukafx",
-        #     "prescient-design/jamun/odb1bs62",
-        #     "prescient-design/jamun/5dklwb4r"
+        #     "prescient-design/jamun/w5qiuq63",
+        #     "prescient-design/jamun/flby06tj",
         # ],
+        default=[
+            "prescient-design/jamun/xv2dsan8",
+            "prescient-design/jamun/a8fukafx",
+            "prescient-design/jamun/odb1bs62",
+            "prescient-design/jamun/5dklwb4r"
+        ],
         help="Weights & Biases run paths for JAMUN sampling runs",
     )
 
@@ -125,19 +125,19 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     results = {}
 
     # Featurization, with and without cossin
-    ref_traj_feat_cossin, ref_traj_featurized_cossin = analysis_utils.featurize_trajectory(ref_traj_md, cossin=True)
-    ref_traj_feat, ref_traj_featurized = analysis_utils.featurize_trajectory(ref_traj_md, cossin=False)
+    ref_traj_feats_cossin, ref_traj_featurized_cossin = analysis_utils.featurize_trajectory(ref_traj_md, cossin=True)
+    ref_traj_feats, ref_traj_featurized = analysis_utils.featurize_trajectory(ref_traj_md, cossin=False)
 
-    traj_feat_cossin, traj_featurized_cossin = analysis_utils.featurize_trajectory(traj_md, cossin=True)
-    traj_feat, traj_featurized = analysis_utils.featurize_trajectory(traj_md, cossin=False)
+    traj_feats_cossin, traj_featurized_cossin = analysis_utils.featurize_trajectory(traj_md, cossin=True)
+    traj_feats, traj_featurized = analysis_utils.featurize_trajectory(traj_md, cossin=False)
     results["featurization"] = {
-        "ref_traj_feat_cossin": ref_traj_feat_cossin,
+        "ref_traj_feats_cossin": ref_traj_feats_cossin,
         "ref_traj_featurized_cossin": ref_traj_featurized_cossin,
-        "ref_traj_feat": ref_traj_feat,
+        "ref_traj_feats": ref_traj_feats,
         "ref_traj_featurized": ref_traj_featurized,
-        "traj_feat_cossin": traj_feat_cossin,
+        "traj_feats_cossin": traj_feats_cossin,
         "traj_featurized_cossin": traj_featurized_cossin,
-        "traj_feat": traj_feat,
+        "traj_feats": traj_feats,
         "traj_featurized": traj_featurized,
     }
     py_logger.info(f"Featurization complete.")
@@ -160,12 +160,12 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     py_logger.info(f"Bond lengths computed.")
 
     # Compute JSDs
-    results["JSD_stats"] = analysis_utils.compute_JSD_stats(traj_featurized, ref_traj_featurized, traj_feat)
+    results["JSD_stats"] = analysis_utils.compute_JSD_stats(traj_featurized, ref_traj_featurized, traj_feats)
     py_logger.info(f"JSD stats computed.")
 
     # Compute JSDs
     results["JSD_stats_against_time"] = analysis_utils.compute_JSDs_stats_against_time(
-        traj_featurized, ref_traj_featurized, traj_feat
+        traj_featurized, ref_traj_featurized, traj_feats
     )
     py_logger.info(f"JSD stats as a function of time computed.")
 
