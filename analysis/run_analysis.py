@@ -144,6 +144,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     results["PMFs"] = analysis_utils.compute_PMFs(
         traj_featurized,
         ref_traj_featurized,
+        traj_feats,
     )
     py_logger.info(f"PMFs computed.")
 
@@ -171,14 +172,13 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     py_logger.info(f"TICA computed.")
 
     tica = results["TICA"]["tica"]
-    traj_tica = results["TICA"]["traj"]
-    ref_traj_tica = results["TICA"]["ref_traj"]
+    traj_tica = results["TICA"]["traj_tica"]
+    ref_traj_tica = results["TICA"]["ref_traj_tica"]
 
     # Compute MSM stats
     results["MSM_stats"] = analysis_utils.compute_MSM_stats(
-        traj_featurized_cossin,
-        ref_traj_featurized_cossin,
-        tica,
+        traj_tica,
+        ref_traj_tica,
     )
     py_logger.info(f"MSM stats computed.")
 
@@ -186,7 +186,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     results["TICA_stats"] = analysis_utils.compute_TICA_stats(
         traj_tica,
         ref_traj_tica,
-        tica,
     )
     py_logger.info(f"TICA stats computed.")
 

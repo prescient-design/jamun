@@ -337,7 +337,7 @@ def get_KMeans(
     traj_featurized: np.ndarray, K: int
 ) -> Tuple[pyemma.coordinates.clustering.KmeansClustering, np.ndarray]:
     """Cluster a featurized trajectory using k-means clustering. Taken from MDGen."""
-    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=K, max_iter=1000, fixed_seed=137)
+    kmeans = pyemma.coordinates.cluster_kmeans(traj_featurized, k=K, max_iter=100, fixed_seed=137)
     return kmeans, kmeans.transform(traj_featurized)[:, 0]
 
 
@@ -472,6 +472,7 @@ def compute_MSM_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[
     # Compute metastable probabilities
     ref_metastable_probs = (ref_discrete == np.arange(10)[:, None]).mean(1)
     traj_metastable_probs = (traj_discrete == np.arange(10)[:, None]).mean(1)
+    JSD_metastable_probs = distance.jensenshannon(ref_metastable_probs, traj_metastable_probs)
 
     # Compute transition matrices
     msm_transition_matrix = np.eye(10)
@@ -496,6 +497,7 @@ def compute_MSM_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[
     return {
         "ref_metastable_probs": ref_metastable_probs,
         "traj_metastable_probs": traj_metastable_probs,
+        "JSD_metastable_probs": JSD_metastable_probs,
         "msm_transition_matrix": msm_transition_matrix,
         "msm_pi": msm_pi,
         "traj_transition_matrix": traj_transition_matrix,
