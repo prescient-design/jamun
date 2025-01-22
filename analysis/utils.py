@@ -55,7 +55,7 @@ def featurize_trajectory_with_distances(traj: md.Trajectory) -> Tuple[pyemma.coo
     return feats, traj_featurized
 
 
-def featurize(traj: md.Trajectory) -> Dict[str, np.ndarray]:
+def featurize_trajectory(traj: md.Trajectory) -> Dict[str, np.ndarray]:
     """Featurize an MDTraj trajectory with backbone, and sidechain torsion angles and distances using pyEMMA."""
 
     feats, traj_featurized = featurize_trajectory_with_torsions(traj, cossin=False)
@@ -76,13 +76,27 @@ def featurize(traj: md.Trajectory) -> Dict[str, np.ndarray]:
     }
 
 
-def compute_feature_histograms(traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+def featurize(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Dict[str, np.ndarray]]:
+    """Featurize MDTraj trajectories with backbone, and sidechain torsion angles and distances using pyEMMA."""
+    return {
+        "traj": featurize_trajectory(traj_md),
+        "ref_traj": featurize_trajectory(ref_traj_md),
+    }
+
+def compute_feature_histograms_for_trajectory(traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """Compute histograms of features for a trajectory."""
     return {
         key: pyemma_helper.compute_1D_histogram(traj_featurized)
         for key, traj_featurized in traj_featurized_dict.items()
     }
 
+
+def compute_feature_histograms(traj_featurized_dict: Dict[str, np.ndarray], ref_traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """Compute histograms of features for a trajectory."""
+    return {
+        "traj": compute_feature_histograms_for_trajectory(traj_featurized_dict),
+        "ref_traj": compute_feature_histograms_for_trajectory(ref_traj_featurized_dict),
+    }
 
 def compute_PMF(
     traj_featurized: np.ndarray,
@@ -126,10 +140,14 @@ def compute_PMFs(
 ) -> Dict[str, np.ndarray]:
     """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
     return {
-        "traj_pmf": compute_PMF(traj, feats, internal_angles=False),
-        "ref_traj_pmf": compute_PMF(ref_traj, feats, internal_angles=False),
-        "traj_pmf_internal": compute_PMF(traj, feats, internal_angles=True),
-        "ref_traj_pmf_internal": compute_PMF(ref_traj, feats, internal_angles=True),
+        "traj": {
+            "pmf_all": compute_PMF(traj, feats, internal_angles=False),
+            "pmf_internal": compute_PMF(traj, feats, internal_angles=True),
+        },
+        "ref_traj": {
+            "pmf_all": compute_PMF(ref_traj, feats, internal_angles=False),
+            "pmf_internal": compute_PMF(ref_traj, feats, internal_angles=True),
+        }
     }
 
 
@@ -220,8 +238,8 @@ def compute_JSDs_stats_against_time(
 ) -> Dict[str, Dict[int, Dict[str, float]]]:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
     return {
-        "traj": compute_JSDs_stats_against_time_for_trajectory(traj_featurized),
-        "ref_traj": compute_JSDs_stats_against_time_for_trajectory(ref_traj_featurized),
+        "traj": compute_JSDs_stats_against_time_for_trajectory(traj_featurized, ref_traj_featurized, feats),
+        "ref_traj": compute_JSDs_stats_against_time_for_trajectory(ref_traj_featurized, ref_traj_featurized, feats),
     }
 
 

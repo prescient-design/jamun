@@ -132,31 +132,24 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     results = {}
 
     # Featurize trajectories.
-    results["featurization"] = {
-        "traj": analysis_utils.featurize(traj_md),
-        "ref_traj": analysis_utils.featurize(ref_traj_md),
-    }
-
+    results["featurization"] = analysis_utils.featurize(traj_md, ref_traj_md)
+    
     traj_results = results["featurization"]["traj"]
     traj_feats = traj_results["feats"]["torsions"]
     traj_featurized_dict = traj_results["traj_featurized"]
     traj_featurized = traj_featurized_dict["torsions"]
-    traj_featurized_cossin = traj_featurized_dict["torsions_cossin"]
-    traj_featurized_dists = traj_featurized_dict["distances"]
 
     ref_traj_results = results["featurization"]["ref_traj"]
     ref_traj_feats = ref_traj_results["feats"]["torsions"]
     ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
     ref_traj_featurized = ref_traj_featurized_dict["torsions"]
-    ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
-    ref_traj_featurized_dists = ref_traj_featurized_dict["distances"]
     py_logger.info(f"Featurization complete.")
 
     # Compute feature histograms.
-    results["feature_histograms"] = {
-        "traj": analysis_utils.compute_feature_histograms(traj_featurized_dict),
-        "ref_traj": analysis_utils.compute_feature_histograms(ref_traj_featurized_dict),
-    }
+    results["feature_histograms"] = analysis_utils.compute_feature_histograms(
+        traj_featurized_dict,
+        ref_traj_featurized_dict,
+    )
     py_logger.info(f"Feature histograms computed.")
 
     # Compute PMFs.
@@ -182,6 +175,9 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
         traj_feats,
     )
     py_logger.info(f"JSD stats as a function of time computed.")
+
+    traj_featurized_cossin = traj_featurized_dict["torsions_cossin"]
+    ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
 
     # TICA analysis.
     results["TICA"] = analysis_utils.compute_TICA(
