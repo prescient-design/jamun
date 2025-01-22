@@ -13,6 +13,7 @@ logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s
 py_logger = logging.getLogger("analysis")
 
 
+# TODO: Fix imports
 sys.path.append("./")
 import utils as analysis_utils
 
@@ -129,16 +130,29 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
         "traj": analysis_utils.featurize(traj_md),
         "ref_traj": analysis_utils.featurize(ref_traj_md),
     }
-    py_logger.info(f"Featurization complete.")
 
     traj_results = results["featurization"]["traj"]
     traj_feats = traj_results["feats"]
     traj_featurized = traj_results["traj_featurized"]
     traj_featurized_cossin = traj_results["traj_featurized_cossin"]
+    traj_featurized_dists = traj_results["traj_featurized_dists"]
 
     ref_traj_results = results["featurization"]["ref_traj"]
     ref_traj_featurized = ref_traj_results["traj_featurized"]
     ref_traj_featurized_cossin = ref_traj_results["traj_featurized_cossin"]
+    ref_traj_featurized_dists = ref_traj_results["traj_featurized_dists"]
+    py_logger.info(f"Featurization complete.")
+
+    # Compute feature histograms
+    results["feature_histograms"] = {
+        "traj": analysis_utils.compute_feature_histograms(
+            traj_featurized, traj_featurized_cossin, traj_featurized_dists
+        ),
+        "ref_traj": analysis_utils.compute_feature_histograms(
+            ref_traj_featurized, ref_traj_featurized_cossin, ref_traj_featurized_dists
+        ),
+    }
+    py_logger.info(f"Feature histograms computed.")
 
     # Compute PMFs
     results["PMFs"] = analysis_utils.compute_PMFs(
@@ -171,7 +185,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     )
     py_logger.info(f"TICA computed.")
 
-    tica = results["TICA"]["tica"]
     traj_tica = results["TICA"]["traj_tica"]
     ref_traj_tica = results["TICA"]["ref_traj_tica"]
 
@@ -196,6 +209,16 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     )
     py_logger.info(f"Autocorrelation stats computed.")
 
+    # Delete intermediate results, to reduce memory usage.
+    del results["featurization"]["traj"]["traj_featurized"]
+    del results["featurization"]["ref_traj"]["traj_featurized"]
+    del results["featurization"]["traj"]["traj_featurized_cossin"]
+    del results["featurization"]["ref_traj"]["traj_featurized_cossin"]
+    del results["featurization"]["traj"]["traj_featurized_dists"]
+    del results["featurization"]["ref_traj"]["traj_featurized_dists"]
+    del results["TICA"]["traj_tica"]
+    del results["TICA"]["ref_traj_tica"]
+
     return results
 
 
@@ -204,6 +227,16 @@ def save_results(results, args):
     output_dir = os.path.join(args.output_dir, args.trajectory, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
+
+    # Print size of each object in results
+    def print_size(d, name):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                print_size(v, f"{name}.{k}")
+            else:
+                py_logger.info(f"{name}.{k}: {sys.getsizeof(v)} bytes")
+
+    print_size(results, "results")
 
     with open(output_path, "wb") as f:
         pickle.dump({"results": results, "args": vars(args)}, f)
