@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - override /callbacks:
+    - sampler/save_trajectory.yaml
+  - _self_
+
+num_sampling_steps_per_batch: 10000
+num_batches: 10
+num_init_samples_per_dataset: 1
+repeat_init_samples: 1
+continue_chain: true
+
+# MDGen
+wandb_train_run_path: prescient-design/jamun/4lcltkan
+
+
+checkpoint_type: best_so_far
+sigma: 0.04
+M: 1.0
+delta: 0.04
+friction: 1.0
+inverse_temperature: 1.0
+score_fn_clip: 100.0
+
+init_datasets:
+  _target_: jamun.data.parse_datasets_from_directory
+  root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/test/"
+  traj_pattern: "^(.*).xtc"
+  pdb_pattern: "^(.*).pdb"
+  as_iterable: false
+
+sampler:
+  _target_: jamun.sampling.Sampler
+  devices: 1
+
+logger:
+  wandb:
+    group: sample_custom
