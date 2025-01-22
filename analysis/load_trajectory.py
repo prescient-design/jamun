@@ -171,7 +171,7 @@ def get_TimewarpReference_trajectories(
     return {filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
 
 
-def get_2AA_JAMUNReference_trajectories(
+def get_JAMUNReference_2AA_trajectories(
     data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to our reference 2AA MDTraj trajectory."""
@@ -199,7 +199,7 @@ def get_2AA_JAMUNReference_trajectories(
     return {filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
 
 
-def get_5AA_JAMUNReference_trajectories(
+def get_JAMUNReference_5AA_trajectories(
     data_path: str, filter_codes: Optional[Sequence[str]] = None
 ) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to our reference 5AA MDTraj trajectories."""

@@ -83,6 +83,7 @@ def featurize(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, D
         "ref_traj": featurize_trajectory(ref_traj_md),
     }
 
+
 def compute_feature_histograms_for_trajectory(traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """Compute histograms of features for a trajectory."""
     return {
@@ -91,12 +92,15 @@ def compute_feature_histograms_for_trajectory(traj_featurized_dict: Dict[str, np
     }
 
 
-def compute_feature_histograms(traj_featurized_dict: Dict[str, np.ndarray], ref_traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+def compute_feature_histograms(
+    traj_featurized_dict: Dict[str, np.ndarray], ref_traj_featurized_dict: Dict[str, np.ndarray]
+) -> Dict[str, np.ndarray]:
     """Compute histograms of features for a trajectory."""
     return {
         "traj": compute_feature_histograms_for_trajectory(traj_featurized_dict),
         "ref_traj": compute_feature_histograms_for_trajectory(ref_traj_featurized_dict),
     }
+
 
 def compute_PMF(
     traj_featurized: np.ndarray,
@@ -147,7 +151,7 @@ def compute_PMFs(
         "ref_traj": {
             "pmf_all": compute_PMF(ref_traj, feats, internal_angles=False),
             "pmf_internal": compute_PMF(ref_traj, feats, internal_angles=True),
-        }
+        },
     }
 
 

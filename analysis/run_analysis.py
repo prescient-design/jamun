@@ -25,44 +25,45 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument("--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
-
+    parser.add_argument(
+        "--peptide",
+        type=str,
+        required=True,
+        help="Peptide sequence to analyze (e.g., FAFG)"
+    )
     parser.add_argument(
         "--trajectory",
         type=str,
-        choices=["JAMUN", "2AA_JAMUNReference", "5AA_JAMUNReference", "MDGenReference", "TimewarpReference"],
+        choices=["JAMUN", "JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
         help="Type of trajectory to analyze",
     )
-
     parser.add_argument(
         "--reference",
         type=str,
-        choices=["2AA_JAMUNReference", "5AA_JAMUNReference", "MDGenReference", "TimewarpReference"],
+        choices=["JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
         help="Type of reference trajectory to compare against",
     )
-
     parser.add_argument(
-        "--wandb-runs",
+        "--run-path",
         type=str,
-        nargs="+",
-        # default=[
-        #     "prescient-design/jamun/w5qiuq63",
-        #     "prescient-design/jamun/flby06tj",
-        # ],
-        default=[
-            "prescient-design/jamun/xv2dsan8",
-            "prescient-design/jamun/a8fukafx",
-            "prescient-design/jamun/odb1bs62",
-            "prescient-design/jamun/5dklwb4r",
-        ],
-        help="Weights & Biases run paths for JAMUN sampling runs",
+        help="Path to JAMUN run directory containing trajectory files",
     )
-
     parser.add_argument(
-        "--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
+        "--wandb-run",
+        type=str,
+        help="Weights & Biases run paths for JAMUN sampling run. Can be used instead of --run-path",
     )
-
-    parser.add_argument("--output-dir", type=str, default="analysis_results", help="Directory to save analysis results")
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="analysis_results",
+        help="Directory to save analysis results"
+    )
     parser.add_argument(
         "--no-delete-intermediates",
         action="store_true",
@@ -87,7 +88,15 @@ def load_trajectories_by_name(
 
     filter_codes = [args.peptide]
     if name == "JAMUN":
-        run_paths = [load_trajectory.get_run_path_for_wandb_run(path) for path in args.wandb_runs]
+        if not args.run_path and not args.wandb_run:
+            raise ValueError("Must provide either --run-path or --wandb-run for JAMUN trajectory")
+        if args.run_path and args.wandb_run:
+            raise ValueError("Must provide only one of --run-path or --wandb-run for JAMUN trajectory")
+
+        if args.wandb_run:
+            run_paths = [load_trajectory.get_run_path_for_wandb_run(args.wandb_run)]
+        else:
+            run_paths = [args.run_path]
         return load_trajectory.get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)
     elif name == "MDGenReference":
         return load_trajectory.get_MDGenReference_trajectories(
@@ -99,13 +108,13 @@ def load_trajectories_by_name(
             JAMUN_DATA_PATH,
             filter_codes=filter_codes,
         )
-    elif name == "2AA_JAMUNReference":
-        return load_trajectory.get_2AA_JAMUNReference_trajectories(
+    elif name == "JAMUNReference_2AA":
+        return load_trajectory.get_JAMUNReference_2AA_trajectories(
             JAMUN_DATA_PATH,
             filter_codes=filter_codes,
         )
-    elif name == "5AA_JAMUNReference":
-        return load_trajectory.get_5AA_JAMUNReference_trajectories(
+    elif name == "JAMUNReference_5AA":
+        return load_trajectory.get_JAMUNReference_5AA_trajectories(
             JAMUN_DATA_PATH,
             filter_codes=filter_codes,
         )
