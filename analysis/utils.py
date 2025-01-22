@@ -18,7 +18,11 @@ warnings.filterwarnings("ignore", category=pyemma.util.exceptions.PyEMMA_Depreca
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-from . import pyemma_helper
+import sys
+
+sys.path.append("./")
+
+import pyemma_helper as pyemma_helper
 
 
 def featurize_trajectory_with_torsions(
@@ -59,25 +63,24 @@ def featurize(traj: md.Trajectory) -> Dict[str, np.ndarray]:
     feats_dists, traj_featurized_dists = featurize_trajectory_with_distances(traj)
 
     return {
-        "feats": feats,
-        "traj_featurized": traj_featurized,
-        "feats_cossin": feats_cossin,
-        "traj_featurized_cossin": traj_featurized_cossin,
-        "feats_dists": feats_dists,
-        "traj_featurized_dists": traj_featurized_dists,
+        "feats": {
+            "torsions": feats,
+            "torsions_cossin": feats_cossin,
+            "distances": feats_dists,
+        },
+        "traj_featurized": {
+            "torsions": traj_featurized,
+            "torsions_cossin": traj_featurized_cossin,
+            "distances": traj_featurized_dists,
+        },
     }
 
 
-def compute_feature_histograms(
-    traj_featurized: np.ndarray,
-    traj_featurized_cossin: np.ndarray,
-    traj_featurized_dists: np.ndarray,
-) -> Dict[str, np.ndarray]:
+def compute_feature_histograms(traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """Compute histograms of features for a trajectory."""
     return {
-        "torsions": pyemma_helper.compute_1D_histogram(traj_featurized),
-        "torsions_cossin": pyemma_helper.compute_1D_histogram(traj_featurized_cossin),
-        "distances": pyemma_helper.compute_1D_histogram(traj_featurized_dists),
+        key: pyemma_helper.compute_1D_histogram(traj_featurized)
+        for key, traj_featurized in traj_featurized_dict.items()
     }
 
 
@@ -165,10 +168,10 @@ def compute_JSD_stats(
         results[feat] = distance.jensenshannon(ref_p, traj_p)
 
     # Compute JSDs for backbone, sidechain, and all torsions.
-    results["backbone"] = np.mean(
+    results["backbone_torsions"] = np.mean(
         [results[feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI")]
     )
-    results["sidechain"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("CHI")])
+    results["sidechain_torsions"] = np.mean([results[feat] for feat in feats.describe() if feat.startswith("CHI")])
     results["all_torsions"] = np.mean(
         [
             results[feat]
@@ -197,12 +200,11 @@ def compute_JSD_stats(
     return results
 
 
-def compute_JSDs_stats_against_time(
+def compute_JSDs_stats_against_time_for_trajectory(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
-) -> np.ndarray:
+) -> Dict[int, Dict[str, float]]:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
-    steps = np.linspace(0, len(traj_featurized), 11).astype(int)[1:]
-
+    steps = np.logspace(0, np.log10(len(traj_featurized)), num=10, dtype=int)
     return {
         step: compute_JSD_stats(
             traj_featurized[:step],
@@ -210,6 +212,16 @@ def compute_JSDs_stats_against_time(
             feats,
         )
         for step in steps
+    }
+
+
+def compute_JSDs_stats_against_time(
+    traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
+) -> Dict[str, Dict[int, Dict[str, float]]]:
+    """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
+    return {
+        "traj": compute_JSDs_stats_against_time_for_trajectory(traj_featurized),
+        "ref_traj": compute_JSDs_stats_against_time_for_trajectory(ref_traj_featurized),
     }
 
 
@@ -264,19 +276,19 @@ def compute_autocorrelation_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarr
 
 def compute_MSM_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute MSM statistics for a trajectory and reference trajectory."""
-    # MSM analysis
+    # MSM analysis.
     kmeans, ref_kmeans = get_KMeans(ref_traj_tica, K=100)
     msm, pcca, cmsm = get_MSM(ref_kmeans, lag=1000, num_states=10)
 
     ref_discrete = discretize(ref_traj_tica, kmeans, msm)
     traj_discrete = discretize(traj_tica, kmeans, msm)
 
-    # Compute metastable probabilities
+    # Compute metastable probabilities.
     ref_metastable_probs = (ref_discrete == np.arange(10)[:, None]).mean(1)
     traj_metastable_probs = (traj_discrete == np.arange(10)[:, None]).mean(1)
     JSD_metastable_probs = distance.jensenshannon(ref_metastable_probs, traj_metastable_probs)
 
-    # Compute transition matrices
+    # Compute transition matrices.
     msm_transition_matrix = np.eye(10)
     for a, i in enumerate(cmsm.active_set):
         for b, j in enumerate(cmsm.active_set):
@@ -285,7 +297,7 @@ def compute_MSM_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[
     msm_pi = np.zeros(10)
     msm_pi[cmsm.active_set] = cmsm.pi
 
-    # Compute trajectory MSM
+    # Compute trajectory MSM.
     traj_msm = pyemma.msm.estimate_markov_model(traj_discrete, lag=10)
     traj_transition_matrix = np.eye(10)
     for a, i in enumerate(traj_msm.active_set):
@@ -295,7 +307,7 @@ def compute_MSM_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[
     traj_pi = np.zeros(10)
     traj_pi[traj_msm.active_set] = traj_msm.pi
 
-    # Store MSM results
+    # Store MSM results.
     return {
         "ref_metastable_probs": ref_metastable_probs,
         "traj_metastable_probs": traj_metastable_probs,

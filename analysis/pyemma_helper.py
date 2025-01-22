@@ -1,22 +1,30 @@
-from typing import Tuple
+from typing import Dict
 import numpy as np
-import pyemma
 import matplotlib.pyplot as plt
 from warnings import warn
 
+from pyemma.plots.plots2d import get_histogram, plot_map, _to_free_energy
+
 
 def compute_2D_histogram(xall: np.ndarray, yall: np.ndarray, weights=None, nbins=100, avoid_zero_count=False):
-    return pyemma.plots.get_histogram(xall, yall, nbins=nbins, weights=weights, avoid_zero_count=avoid_zero_count)
+    return get_histogram(xall, yall, nbins=nbins, weights=weights, avoid_zero_count=avoid_zero_count)
 
 
-def compute_1D_histogram(xyzall: np.ndarray, n_bins: int = 50) -> Tuple[np.ndarray, np.ndarray]:
+def compute_1D_histogram(xyzall: np.ndarray, n_bins: int = 50) -> Dict[str, np.ndarray]:
     all_hists = []
     all_edges = []
+
     for coordinate in xyzall.T:
         hist, edges = np.histogram(coordinate, bins=n_bins)
         all_hists.append(hist)
         all_edges.append(edges)
-    return all_hists, all_edges
+
+    all_hists = np.array(all_hists)
+    all_edges = np.array(all_edges)
+    return {
+        "histograms": all_hists,
+        "edges": all_edges,
+    }
 
 
 def plot_free_energy(
@@ -45,10 +53,12 @@ def plot_free_energy(
 
     Parameters
     ----------
-    xall : ndarray(T)
-        Sample x-coordinates.
-    yall : ndarray(T)
-        Sample y-coordinates.
+    x : ndarray(nbins, nbins)
+        The bins' x-coordinates in meshgrid format.
+    y : ndarray(nbins, nbins)
+        The bins' y-coordinates in meshgrid format.
+    z : ndarray(nbins, nbins)
+        Histogram counts in meshgrid format.
     weights : ndarray(T), optional, default=None
         Sample weights; by default all samples have the same weight.
     ax : matplotlib.Axes object, optional, default=None
@@ -174,8 +184,8 @@ def plot_free_energy(
         if ncountours is not None:
             raise ValueError("Parameter ncountours is not allowed outside" " legacy mode; use ncontours instead")
 
-    f = pyemma.plots._to_free_energy(z, minener_zero=minener_zero) * kT
-    fig, ax, misc = pyemma.plots.plot_map(
+    f = _to_free_energy(z, minener_zero=minener_zero) * kT
+    fig, ax, misc = plot_map(
         x,
         y,
         f,

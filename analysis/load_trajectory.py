@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Sequence
 import os
 import mdtraj as md
+import tqdm
 
 from jamun import data
 from jamun import utils
