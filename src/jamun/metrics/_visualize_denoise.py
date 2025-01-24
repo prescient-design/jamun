@@ -90,7 +90,7 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
             sigma_trajs = {}
             for key in ["x", "y", "xhat"]:
                 coords = getattr(self, f"coordinates_{sigma}_{key}")
-                coords = dim_zero_cat(coords, label=f"{self.dataset.label()}/{sigma}/{key}")
+                coords = dim_zero_cat(coords)
                 coords = einops.rearrange(coords, "b n x -> n b x")
                 traj = utils.coordinates_to_trajectories(
                     coords, self.dataset.topology
