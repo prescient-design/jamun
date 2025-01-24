@@ -13,8 +13,11 @@ import load_trajectory
 def run_analysis(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
     """Run analysis for a single peptide."""
     peptide, trajectory, reference, run_path, experiment, output_dir = args
-    cmd = [
-        'srun --partition=cpu --mem=64G' if use_srun else '',
+    
+    cmd = []
+    if use_srun:
+        cmd += ['srun', '--partition=cpu', '--mem=64G']
+    cmd += [
         'python',
         'analysis/run_analysis.py',
         f'--peptide={peptide}',
