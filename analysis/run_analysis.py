@@ -59,6 +59,12 @@ def parse_args():
         help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
     )
     parser.add_argument(
+        "--experiment",
+        type=str,
+        default="",
+        help="Experiment name for saving results"
+    )
+    parser.add_argument(
         "--output-dir",
         type=str,
         default="analysis_results",
@@ -232,7 +238,7 @@ def save_results(results, args):
         del results["TICA"]["traj_tica"]
         del results["TICA"]["ref_traj_tica"]
 
-    output_dir = os.path.join(args.output_dir, args.trajectory, f"ref={args.reference}")
+    output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
 

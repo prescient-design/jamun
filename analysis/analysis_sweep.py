@@ -1,8 +1,8 @@
-import pandas as pd
 import subprocess
 import argparse
-from pathlib import Path
+import os
 import sys
+import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 sys.path.append('./')
@@ -11,15 +11,16 @@ import load_trajectory
 
 def run_analysis(args):
     """Run analysis for a single peptide."""
-    peptide, reference, run_path = args
+    peptide, trajectory, reference, run_path, experiment, output_dir = args
     cmd = [
         'python',
         'analysis/run_analysis.py',
         f'--peptide={peptide}',
-        f'--trajectory=JAMUN',
+        f'--trajectory={trajectory}',
         f'--run-path={run_path}',
         f'--reference={reference}',
-        f'--output-dir=/data/bucket/kleinhej/jamun-analysis',
+        f'--experiment={experiment}',
+        f'--output-dir={output_dir}',
     ]
     print(f"Running command: {' '.join(cmd)}")
     try:
@@ -30,11 +31,15 @@ def run_analysis(args):
 
 def main():
     parser = argparse.ArgumentParser(description='Run analysis for multiple peptides')
-    parser.add_argument('--csv', type=Path, required=True, help='CSV file containing wandb runs')
+    parser.add_argument('--csv', type=str, required=True, help='CSV file containing wandb runs')
     parser.add_argument('--experiment', type=str, required=True, help='Experiment type')
+    parser.add_argument('--output-dir', type=str, required=True, help='Output directory')
     parser.add_argument('--num-workers', type=int, default=multiprocessing.cpu_count(),
                       help='Number of parallel workers')
     args = parser.parse_args()
+
+    # Make output directory if it doesn't exist.
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # Read wandb run paths from CSV.
     df = pd.read_csv(args.csv)
@@ -50,7 +55,16 @@ def main():
     df = df.explode('peptide')
     
     # Prepare arguments for parallel processing.
-    analysis_args = list(zip(df['peptide'], df['reference'], df['run_path']))
+    analysis_args = list(
+        zip(
+            df['peptide'],
+            df['trajectory'],
+            df['reference'],
+            df['run_path'],
+            [args.experiment] * len(df),
+            [args.output_dir] * len(df),
+        )
+    )
     
     # Run analyses in parallel.
     with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
