@@ -151,6 +151,10 @@ jamun_sample --config-dir=configs experiment=sample_uncapped_4AA.yaml checkpoint
 
 ## Analysis
 
+```bash
+python analysis/analysis_sweep.py --csv wandb_runs.csv --experiment Timewarp_2AA --output-dir /data/bucket/kleinhej/jamun-analysis/
+```
+
 Our sampling scripts produce visualizations and some simple analysis in the Weights and Biases UI.
 
 For more in-depth exploration, we provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
