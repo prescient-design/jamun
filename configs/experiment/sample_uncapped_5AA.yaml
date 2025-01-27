@@ -17,7 +17,12 @@ wandb_train_run_path: prescient-design/jamun/6297yugb
 
 # Put path to 5AA pdb here.
 # init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
-init_pdb: /homefs/home/daigavaa/jamun/pdbs/uncapped_NRLCQ.pdb
+init_pdbs:
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_AMEYA.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_NRLCQ.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_VWSPF.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_KTYDI.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_VANIP.pdb
 label: null
 
 checkpoint_type: best_so_far
@@ -29,9 +34,8 @@ inverse_temperature: 1.0
 score_fn_clip: 100.0
 
 init_datasets:
-  _target_: jamun.data.create_dataset_from_pdb
-  pdbfile: ${init_pdb}
-  label: ${label}
+  _target_: jamun.data.create_dataset_from_pdbs
+  pdbfiles: ${init_pdbs}
 
 sampler:
   _target_: jamun.sampling.Sampler

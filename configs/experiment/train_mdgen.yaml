@@ -47,3 +47,8 @@ trainer:
 logger:
   wandb:
     group: train_mdgen
+
+
+resume_from_checkpoint:
+  wandb_train_run_path: prescient-design/jamun/zrlnc4a6
+  checkpoint_type: last

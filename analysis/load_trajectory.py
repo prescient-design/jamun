@@ -93,11 +93,11 @@ def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, 
                 raise ValueError(f"No PDB file found for peptide {peptide} in run {run_path}")
 
     # Remove the prefix "uncapped_" and "capped_" from the peptide names.
-    for peptide in list(trajectory_files.keys()):
-        for prefix in ["uncapped_", "capped_"]:
-            if not peptide.startswith(prefix):
-                continue
-            trajectory_files[peptide[len(prefix) :]] = trajectory_files.pop(peptide)
+    # for peptide in list(trajectory_files.keys()):
+    #     for prefix in ["uncapped_", "capped_"]:
+    #         if not peptide.startswith(prefix):
+    #             continue
+    #         trajectory_files[peptide[len(prefix) :]] = trajectory_files.pop(peptide)
     return trajectory_files
 
 
@@ -203,15 +203,25 @@ def get_JAMUNReference_5AA_trajectories(
     data_path: str, filter_codes: Optional[Sequence[str]] = None
 ) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to our reference 5AA MDTraj trajectories."""
+    prefix = ""
+    for code in filter_codes:
+        if code.startswith("uncapped_"):
+            prefix = "uncapped_"
+            break
+        if code.startswith("uncapped_"):
+            prefix = "capped_"
+            break
+
+    # Remove prefix.
     three_letter_filter_codes = [
-        "_".join([utils.convert_to_three_letter_code(aa) for aa in code]) for code in filter_codes
+        "_".join([utils.convert_to_three_letter_code(aa) for aa in code]) for code[len(prefix):] in filter_codes
     ]
     assert len(set(three_letter_filter_codes)) == len(three_letter_filter_codes), "Filter codes must be unique"
 
     datasets = data.parse_datasets_from_directory(
         root=f"{data_path}/5AA/",
-        traj_pattern="^(.*).xtc",
-        pdb_pattern="^(.*).pdb",
+        traj_pattern="^(.*)_traj3-arrays.npz",
+        pdb_pattern="^(.*)_traj3-state0.pdb",
         filter_codes=three_letter_filter_codes,
     )
 
