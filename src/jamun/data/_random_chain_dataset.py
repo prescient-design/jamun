@@ -1,7 +1,6 @@
 from torch.utils.data import IterableDataset
 from typing import List, Iterator, Any
-import random
-from itertools import cycle
+import numpy as np
 
 
 class StreamingRandomChainDataset(IterableDataset):
@@ -32,25 +31,24 @@ class StreamingRandomChainDataset(IterableDataset):
         
         self.seed = seed
         if seed is not None:
-            random.seed(seed)
+            np.random.seed(seed)
     
     def __iter__(self) -> Iterator[Any]:
         """
         Returns an iterator that yields items randomly from all datasets
         according to their weights.
         """
-        # Create iterators for all datasets
-        self.streams = [iter(dataset) for dataset in self.datasets]
+        # Create iterators for all datasets.
+        streams = [iter(dataset) for dataset in self.datasets]
+
         while True:
-            # Randomly select which dataset to sample from
-            dataset_idx = random.choices(
-                self.streams,
-                weights=self.weights,
-                k=1
-            )[0]
-            
-            # Get next item from selected dataset
+            # Randomly select which dataset to sample from.
+            dataset_idx = np.random.randint(len(streams))
+
+            # Get next item from selected dataset.
             try:
-                yield next(self.streams[dataset_idx])
-            except StopIteration:
-                self.streams[dataset_idx] = iter(self.datasets[dataset_idx])
+                yield next(streams[dataset_idx])
+            
+            except StopIteration: 
+                # Refresh stream.
+                streams[dataset_idx] = iter(self.datasets[dataset_idx])

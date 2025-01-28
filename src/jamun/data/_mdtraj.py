@@ -103,8 +103,9 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         subsample: Optional[int] = None,
         loss_weight: float = 1.0,
         chunk_size: int = 100,
+        start_at_random_frame: bool = True,
+        max_frames_guess: int = 500000,
         verbose: bool = False,
-        max_frames_guess: int = 500000
     ):
         self.root = root
         self.label = lambda: label
@@ -112,6 +113,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.loss_weight = loss_weight
         self.chunk_size = chunk_size
         self.max_frames_guess = max_frames_guess
+        self.start_at_random_frame = start_at_random_frame
 
         self.trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
 
@@ -138,8 +140,12 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         utils.save_pdb(traj[0], filename)
 
     def __iter__(self):
-        skip = np.random.randint(self.max_frames_guess)
         for trajfile in self.trajfiles:
+            if self.start_at_random_frame:
+                skip = np.random.randint(self.max_frames_guess)
+            else:
+                skip = 0
+    
             for traj in md.iterload(trajfile, top=self.top, chunk=self.chunk_size, stride=self.subsample, skip=skip):
                 for frame in traj:
                     graph = self.graph.clone()
