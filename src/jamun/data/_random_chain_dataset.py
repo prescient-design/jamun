@@ -33,10 +33,6 @@ class StreamingRandomChainDataset(IterableDataset):
         self.seed = seed
         if seed is not None:
             random.seed(seed)
-            
-    def get_stream(self, dataset: IterableDataset) -> Iterator:
-        """Creates an infinite stream from a dataset."""
-        return cycle(iter(dataset))
     
     def __iter__(self) -> Iterator[Any]:
         """
@@ -44,23 +40,17 @@ class StreamingRandomChainDataset(IterableDataset):
         according to their weights.
         """
         # Create iterators for all datasets
-        streams = [self.get_stream(dataset) for dataset in self.datasets]
-        
-        self.available_datasets = list(range(len(self.datasets)))
+        self.streams = [iter(dataset) for dataset in self.datasets]
         while True:
             # Randomly select which dataset to sample from
             dataset_idx = random.choices(
-                self.available_datasets,
+                self.streams,
                 weights=self.weights,
                 k=1
             )[0]
             
             # Get next item from selected dataset
             try:
-                yield next(streams[dataset_idx])
+                yield next(self.streams[dataset_idx])
             except StopIteration:
-                # Remove dataset from available datasets if it is exhausted
-                self.available_datasets.remove(dataset_idx)
-                if len(self.available_datasets) == 0:
-                    break
-                
+                self.streams[dataset_idx] = iter(self.datasets[dataset_idx])
