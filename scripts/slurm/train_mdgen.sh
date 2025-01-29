@@ -6,7 +6,7 @@
 #SBATCH --gpus-per-node 2
 #SBATCH --cpus-per-task 8
 #SBATCH --time 3-0
-#SBATCH --mem 64G
+#SBATCH --mem 128G
 
 eval "$(conda shell.bash hook)"
 conda activate jamun-extras

@@ -1,13 +1,41 @@
 """Script to process mdgen data into splits for training and testing."""
 
+from typing import Tuple, Optional
 import argparse
 import logging
 import os
 import requests
-import shutil
 import tqdm
+import multiprocessing
+import subprocess
+from concurrent.futures import ProcessPoolExecutor
 
 import pandas as pd
+
+
+def run_preprocess(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
+    """Run preprocessing for a single peptide."""
+    name, input_dir, output_dir = args
+    
+    trajectory = os.path.join(input_dir, 'data', '4AA_sims', name, f'{name}.xtc')
+    topology = os.path.join(input_dir, 'data', '4AA_sims', name, f'{name}.pdb')
+
+    cmd = []
+    if use_srun:
+        cmd += ['srun', '--partition=cpu', '--mem=64G']
+    cmd += [
+        'python',
+        'scripts/chunk_trajectory.py',
+        f'--trajectory={trajectory}',
+        f'--topology={topology}',
+        f'--output-dir={output_dir}',
+    ]
+    print(f"Running command: {' '.join(cmd)}")
+    try:
+        subprocess.run(cmd, check=True)
+        return (name, None)
+    except subprocess.CalledProcessError as e:
+        return (name, str(e))
 
 
 def download_github_csv(url):
@@ -35,8 +63,10 @@ def download_github_csv(url):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create splits of .xtc files based on containing folder.')
-    parser.add_argument('--inputdir', help='Directory where original trajectories were downloaded.', type=str, required=True)
-    parser.add_argument('--outputdir', '-o', help='Output directory to save splits.', type=str, required=True)
+    parser.add_argument('--input-dir', help='Directory where original trajectories were downloaded.', type=str, required=True)
+    parser.add_argument('--output-dir', '-o', help='Output directory to save splits.', type=str, required=True)
+    parser.add_argument('--num-workers', type=int, default=multiprocessing.cpu_count(),
+                      help='Number of parallel workers')
     args = parser.parse_args()
 
     # Download splits.
@@ -49,16 +79,25 @@ if __name__ == "__main__":
         # Download the split file
         df = download_github_csv(url)
     
-        split_dir = os.path.join(args.outputdir, split)
+        split_dir = os.path.join(args.output_dir, split)
         os.makedirs(split_dir, exist_ok=True)
 
-        # Iterate over each row in the DataFrame, and copy the corresponding files
-        for index, row in tqdm.tqdm(df.iterrows(), total=df.shape[0], desc=f"Processing {split} split"):
-            name = row['name']
-            for extension in ['xtc', 'pdb']:
-                source_file = os.path.join(args.inputdir, 'data', '4AA_sims', name, f'{name}.{extension}')
-                assert os.path.isfile(source_file), f"Source file {source_file} does not exist."
-                destination_file = os.path.join(split_dir, f'{name}.{extension}')
-                
-                # Copy the file.
-                shutil.copy(source_file, destination_file)
+        df = df[:10]  # Limit to first 10 peptides for testing
+
+        # Run analyses in parallel.
+        preprocess_args = list(
+            zip(
+                df['name'],
+                [args.input_dir] * len(df),
+                [split_dir] * len(df),
+            )
+        )
+        with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
+            results = list(executor.map(run_preprocess, preprocess_args))
+
+        # Process results.
+        for peptide, error in results:
+            if error:
+                print(f"Error processing peptide {peptide}: {error}")
+            else:
+                print(f"Successfully processed peptide {peptide}")

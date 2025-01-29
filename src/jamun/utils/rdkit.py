@@ -4,6 +4,7 @@ from typing import List
 
 import mdtraj as md
 from rdkit import Chem, rdBase, RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 
 from jamun import utils

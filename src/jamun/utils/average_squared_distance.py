@@ -34,7 +34,9 @@ def compute_average_squared_distance(x: np.ndarray, cutoff: Optional[float] = No
 
 
 def compute_average_squared_distance_from_data(
-    dataloader: torch.utils.data.DataLoader, cutoff: float, num_estimation_graphs: int = 5000,
+    dataloader: torch.utils.data.DataLoader,
+    cutoff: float,
+    num_estimation_graphs: int = 5000,
     verbose: bool = False,
 ) -> float:
     """Computes the average squared distance for normalization."""
@@ -52,7 +54,7 @@ def compute_average_squared_distance_from_data(
 
     mean_avg_sq_dist = sum(np.sum(avg_sq_dists[label]) for label in avg_sq_dists) / num_graphs
     utils.dist_log(f"Mean average squared distance = {mean_avg_sq_dist:0.3f} nm^2")
-    
+
     if verbose:
         utils.dist_log(f"For cutoff {cutoff} nm:")
         for label in sorted(avg_sq_dists):

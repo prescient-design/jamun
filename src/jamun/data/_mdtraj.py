@@ -20,9 +20,9 @@ def singleton(cls):
     """
     _instances = {}
     _lock = threading.Lock()
-    
+
     original_init = cls.__init__
-    
+
     def __init__(self, *args, **kwargs):
         # Convert args and kwargs to hashable types
         args = list(args)
@@ -36,19 +36,19 @@ def singleton(cls):
                 kwargs[key] = tuple(value)
             if isinstance(value, dict):
                 kwargs[key] = frozenset(value.items())
-                
+
         obj_key = (tuple(args), frozenset(kwargs.items()))
-        
+
         if obj_key not in _instances:
             with _lock:
                 if obj_key not in _instances:
                     _instances[obj_key] = self
                     original_init(self, *args, **kwargs)
                     return
-        
+
         # Copy state from singleton instance
         self.__dict__.update(_instances[obj_key].__dict__)
-    
+
     cls.__init__ = __init__
     return cls
 
@@ -103,7 +103,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         subsample: Optional[int] = None,
         loss_weight: float = 1.0,
         chunk_size: int = 100,
-        start_at_random_frame: bool = True,
+        start_at_random_frame: bool = False,
         max_frames_guess: int = 500000,
         verbose: bool = False,
     ):
@@ -119,7 +119,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
 
         if subsample is None or subsample == 0:
             subsample = 1
-        self.subsample = subsample  
+        self.subsample = subsample
 
         pdbfile = os.path.join(self.root, pdbfile)
         topology = md.load_topology(pdbfile)
@@ -131,7 +131,9 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.save_topology_pdb()
 
         if verbose:
-            utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files {trajfiles} and PDB file {pdbfile}.")
+            utils.dist_log(
+                f"Dataset {self.label()}: Iteratively loading trajectory files {trajfiles} and PDB file {pdbfile}."
+            )
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)
@@ -145,7 +147,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
                 skip = np.random.randint(self.max_frames_guess)
             else:
                 skip = 0
-    
+
             for traj in md.iterload(trajfile, top=self.top, chunk=self.chunk_size, stride=self.subsample, skip=skip):
                 for frame in traj:
                     graph = self.graph.clone()
@@ -280,7 +282,7 @@ class MDtrajDataModule(pl.LightningDataModule):
             if isinstance(datasets[0], MDtrajDataset):
                 self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
                 self.shuffle = True
-                
+
                 utils.dist_log(
                     f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
                 )
@@ -289,7 +291,7 @@ class MDtrajDataModule(pl.LightningDataModule):
                 # Shuffling is handled by the StreamingRandomChainDataset.
                 self.concatenated_datasets[split] = StreamingRandomChainDataset(datasets)
                 self.shuffle = False
-    
+
                 utils.dist_log(
                     f"Split {split}: Loaded {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
                 )
@@ -300,6 +302,7 @@ class MDtrajDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
+            prefetch_factor=10,
         )
 
     def val_dataloader(self):

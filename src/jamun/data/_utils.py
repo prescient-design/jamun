@@ -153,7 +153,7 @@ def create_dataset_from_pdbs(pdbfiles: str, label_prefix: Optional[str] = None) 
         # Note that if pdbfile is an absolute path, the first part of the join will be ignored.
         root = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(pdbfile))
         pdbfile = os.path.basename(pdbfile)
-    
+
         label = pdbfile.split(".")[0]
         if label_prefix is not None:
             label = f"{label_prefix}{label}"

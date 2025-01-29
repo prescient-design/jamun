@@ -175,6 +175,12 @@ python scripts/generate_data/run_simulation.py [INIT_PDB]
 The defaults correspond to our setup for the capped diamines.
 Please run this script with the `-h` flag to see all simulation parameters.
 
+## Preprocessing
+
+```bash
+python scripts/process_mdgen.py  --input-dir /data/bucket/kleinhej/mdgen --output-dir /data/bucket/kleinhej/mdgen/data/4AA_sims_partitioned_chunked
+```
+
 ## Citation
 
 If you found this repository useful, please cite our preprint!
