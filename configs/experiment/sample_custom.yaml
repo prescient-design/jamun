@@ -19,7 +19,6 @@ wandb_train_run_path: prescient-design/jamun/6297yugb
 
 # init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
 init_pdbs: ???
-label_prefix: null
 
 checkpoint_type: best_so_far
 sigma: 0.04
@@ -31,8 +30,7 @@ score_fn_clip: 100.0
 
 init_datasets:
   _target_: jamun.data.create_dataset_from_pdbs
-  pdbfile: ${init_pdbs}
-  label_prefix: ${label_prefix}
+  pdbfiles: ${init_pdbs}
 
 finetune_on_init:
   num_steps: ???

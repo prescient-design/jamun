@@ -1,5 +1,10 @@
 # @package _global_
 
+defaults:
+  - override /callbacks:
+    - sampler/save_trajectory.yaml
+  - _self_
+
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
@@ -7,20 +12,16 @@ init_datasets:
   traj_pattern: "^(.*).xtc"
   pdb_pattern: "^(.*).pdb"
   subsample: 1
-  max_datasets: 5
 
 
-num_sampling_steps_per_batch: 10
+num_sampling_steps_per_batch: 20000
 num_batches: 5
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
 # New 2AA
-wandb_train_run_path: prescient-design/jamun/zm33y5hd
-
-# Old 2AA
-# wandb_train_run_path: prescient-design/jamun/zzt8s3rc
+wandb_train_run_path: prescient-design/jamun/04xuog2z
 
 checkpoint_type: best_so_far
 sigma: 0.04
@@ -36,4 +37,4 @@ sampler:
 
 logger:
   wandb:
-    group: sample_uncapped_2AA
+    group: sample_capped_2AA

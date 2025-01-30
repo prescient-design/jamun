@@ -1028,7 +1028,6 @@ analysis = [
     { name = "plotly" },
     { name = "posebusters" },
     { name = "py3dmol" },
-    { name = "pyemma" },
     { name = "rdkit" },
     { name = "statsmodels", version = "0.14.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "statsmodels", version = "0.14.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },

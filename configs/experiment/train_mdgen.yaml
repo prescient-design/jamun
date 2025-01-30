@@ -1,6 +1,9 @@
 # @package _global_
 
+compute_average_squared_distance_from_data: false
+
 model:
+  average_squared_distance: 0.332
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
@@ -18,24 +21,25 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/train/"
-        traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
+        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/train/"
+        traj_pattern: "^(....)_.*.xtc"
+        pdb_pattern: "^(....).pdb"
         as_iterable: true
+        subsample: 100
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/val/"
-        traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
+        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/val/"
+        traj_pattern: "^(....)_.*.xtc"
+        pdb_pattern: "^(....).pdb"
         as_iterable: true
         subsample: 100
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/test/"
-        traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
+        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/test/"
+        traj_pattern: "^(....)_.*.xtc"
+        pdb_pattern: "^(....).pdb"
         as_iterable: true
         subsample: 100
 
@@ -49,6 +53,6 @@ logger:
     group: train_mdgen
 
 
-resume_from_checkpoint:
-  wandb_train_run_path: prescient-design/jamun/zrlnc4a6
-  checkpoint_type: last
+# resume_from_checkpoint:
+#   wandb_train_run_path: prescient-design/jamun/zrlnc4a6
+#   checkpoint_type: last

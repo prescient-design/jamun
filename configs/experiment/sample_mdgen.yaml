@@ -12,10 +12,10 @@ repeat_init_samples: 1
 continue_chain: true
 
 # MDGen
-wandb_train_run_path: prescient-design/jamun/i7rciumh
+wandb_train_run_path: prescient-design/jamun/lmnf3vyu
 
 
-checkpoint_type: last
+checkpoint_type: best_so_far
 sigma: 0.04
 M: 1.0
 delta: 0.04
@@ -36,4 +36,4 @@ sampler:
 
 logger:
   wandb:
-    group: sample_custom
+    group: sample_mdgen
