@@ -82,8 +82,6 @@ if __name__ == "__main__":
         split_dir = os.path.join(args.output_dir, split)
         os.makedirs(split_dir, exist_ok=True)
 
-        df = df[:10]  # Limit to first 10 peptides for testing
-
         # Run analyses in parallel.
         preprocess_args = list(
             zip(

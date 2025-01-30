@@ -131,7 +131,6 @@ def plot_ramachandran_animation(
 def compute_ramachandran_histogram(trajectory: md.Trajectory, bins: int):
     """Computes the Ramachandran histogram from a trajectory."""
     phi_angles, psi_angles = get_ramachandran_angles(trajectory)
-    print(phi_angles.shape, psi_angles.shape)
     hist, _, _ = np.histogram2d(
         phi_angles.flatten(), psi_angles.flatten(), bins=bins, range=((-np.pi, np.pi), (-np.pi, np.pi))
     )

@@ -6,7 +6,7 @@ import argparse
 import shutil
 
 
-def split_trajectory(input_traj_file: str, input_top_file: str, chunk_size: int, output_dir: str):
+def split_trajectory(input_traj_file: str, input_top_file: str, chunk_size: int, output_dir: str) -> None:
     """
     Split an MD trajectory into smaller chunks.
     
@@ -23,7 +23,13 @@ def split_trajectory(input_traj_file: str, input_top_file: str, chunk_size: int,
     """
     # Create output directory if it doesn't exist.
     os.makedirs(output_dir, exist_ok=True)
-    
+
+    # Output topology path.
+    base_name = os.path.splitext(os.path.basename(input_traj_file))[0]
+    out_top_path = os.path.join(output_dir, f"{base_name}.pdb")
+    if os.path.exists(out_top_path):
+        return
+
     # Load trajectory.
     traj = md.load(input_traj_file, top=input_top_file)
     
@@ -42,14 +48,12 @@ def split_trajectory(input_traj_file: str, input_top_file: str, chunk_size: int,
         chunk = traj[start_idx:end_idx]
         
         # Generate output filename.
-        base_name = os.path.splitext(os.path.basename(input_traj_file))[0]
         out_path = os.path.join(output_dir, f"{base_name}_chunk_{i+1}.xtc")
         
         # Save chunk.
         chunk.save_xtc(out_path)
     
     # Save topology file.
-    out_top_path = os.path.join(output_dir, f"{base_name}.pdb")
     shutil.copy(input_top_file, out_top_path)
 
 

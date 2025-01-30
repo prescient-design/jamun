@@ -242,16 +242,6 @@ def save_results(results, args):
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
 
-    # Print size of each object in results
-    # def print_size(d, name):
-    #     for k, v in d.items():
-    #         if isinstance(v, dict):
-    #             print_size(v, f"{name}.{k}")
-    #         else:
-    #             py_logger.info(f"{name}.{k}: {sys.getsizeof(v)} bytes")
-
-    # print_size(results, "results")
-
     with open(output_path, "wb") as f:
         pickle.dump({"results": results, "args": vars(args)}, f)
 
