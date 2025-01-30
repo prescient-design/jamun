@@ -152,6 +152,10 @@ def compute_PMFs(
             "pmf_all": compute_PMF(ref_traj, feats, internal_angles=False),
             "pmf_internal": compute_PMF(ref_traj, feats, internal_angles=True),
         },
+        "ref_traj_upto_T": {
+            "pmf_all": compute_PMF(ref_traj[:T], feats, internal_angles=False),
+            "pmf_internal": compute_PMF(ref_traj[:T], feats, internal_angles=True),
+        },
     }
 
 

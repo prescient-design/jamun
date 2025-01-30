@@ -83,7 +83,7 @@ def load_trajectories_by_name(
     name: str,
     args: argparse.Namespace,
 ):
-    # Set up data path
+    """Load trajectories based on name and command line arguments."""
     if args.data_path:
         JAMUN_DATA_PATH = args.data_path
     else:
@@ -211,6 +211,11 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     )
     py_logger.info(f"MSM stats computed.")
 
+    # Compute subsampled reference.
+    results["subsampled_reference"] = analysis_utils.compute_subsampled_reference(
+        ref_traj_tica,
+    )
+
     # Compute TICA stats.
     results["TICA_stats"] = analysis_utils.compute_TICA_stats(
         traj_tica,
@@ -228,7 +233,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     return results
 
 
-def save_results(results, args):
+def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
     """Save analysis results to pickle file."""
 
     # Delete intermediate results, to reduce memory usage.
@@ -251,16 +256,16 @@ def save_results(results, args):
 def main():
     args = parse_args()
 
-    # Load trajectories
+    # Load trajectories.
     traj, ref_traj = load_trajectories(args)
     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
     py_logger.info(f"{args.trajectory} trajectory loaded: {traj}")
     py_logger.info(f"{args.reference} reference trajectory loaded: {ref_traj}")
 
-    # Run analysis
+    # Run analysis.
     results = analyze_trajectories(traj, ref_traj)
 
-    # Save results
+    # Save results.
     save_results(results, args)
 
 
