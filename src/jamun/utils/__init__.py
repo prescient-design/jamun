@@ -10,7 +10,9 @@ from .rdkit import to_rdkit_mols
 from .residue_metadata import (
     ResidueMetadata,
     convert_to_one_letter_code,
+    convert_to_one_letter_codes,
     convert_to_three_letter_code,
+    convert_to_three_letter_codes,
     encode_atom_code,
     encode_atom_type,
     encode_residue,

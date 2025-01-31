@@ -98,6 +98,13 @@ def convert_to_three_letter_code(aa: str) -> str:
         raise ValueError(f"Invalid amino acid code length: {aa}")
 
 
+def convert_to_three_letter_codes(peptide: str) -> str:
+    """Convert peptides with one-letter amino acid codes to peptides with three-letter codes."""
+    if "_" in peptide:
+        return peptide
+    return "_".join([convert_to_three_letter_code(aa) for aa in peptide])
+
+
 def convert_to_one_letter_code(aa: str) -> str:
     """Convert three-letter amino acid code to one-letter code."""
     aa = aa.upper()
@@ -111,3 +118,10 @@ def convert_to_one_letter_code(aa: str) -> str:
         return ResidueMetadata.AA_1CODES[aa]
     else:
         raise ValueError(f"Invalid amino acid code length: {aa}")
+
+
+def convert_to_one_letter_codes(peptide: str) -> str:
+    """Convert peptides with three-letter amino acid codes to peptides with one-letter codes."""
+    if "_" not in peptide:
+        return peptide
+    return "".join([convert_to_one_letter_code(aa) for aa in peptide.split("_")])
