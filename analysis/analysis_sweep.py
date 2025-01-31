@@ -14,7 +14,7 @@ import load_trajectory
 
 def run_analysis(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
     """Run analysis for a single peptide."""
-    peptide, trajectory, reference, run_path, experiment, output_dir = args
+    peptide, trajectory, reference, run_path, experiment, output_dir, same_sampling_time = args
 
     cmd = []
     if use_srun:
@@ -29,6 +29,8 @@ def run_analysis(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
         f"--experiment={experiment}",
         f"--output-dir={output_dir}",
     ]
+    if same_sampling_time:
+        cmd += ["--same-sampling-time"]
     print(f"Running command: {' '.join(cmd)}")
     try:
         subprocess.run(cmd, check=True)
@@ -72,6 +74,7 @@ def main():
             df["run_path"],
             [args.experiment] * len(df),
             [args.output_dir] * len(df),
+            [args.same_sampling_time] * len(df),
         )
     )
 

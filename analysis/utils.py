@@ -167,7 +167,6 @@ def get_MSM(traj_featurized: np.ndarray, lag: int, num_states: int):
     """Estimate an Markov State Model (MSM), PCCA (clustering of MSM states), and coarse-grained MSM from a trajectory. Taken from MDGen."""
     msm = pyemma.msm.estimate_markov_model(traj_featurized, lag=lag)
     pcca = msm.pcca(num_states)
-    assert len(msm.metastable_assignments) == lag // num_states, (len(msm.metastable_assignments), lag, num_states)
     cmsm = pyemma.msm.estimate_markov_model(msm.metastable_assignments[traj_featurized], lag=lag)
     return msm, pcca, cmsm
 

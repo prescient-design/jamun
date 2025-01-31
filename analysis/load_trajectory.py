@@ -10,7 +10,7 @@ from jamun import utils
 
 def find_project_root() -> str:
     """Returns the path to the root of the project."""
-    current_dir = os.path.dirname(os.path.abspath(""))
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     while not os.path.exists(os.path.join(current_dir, "pyproject.toml")):
         current_dir = os.path.dirname(current_dir)
     return current_dir

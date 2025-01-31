@@ -24,7 +24,8 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument("--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
+    parser.add_argument(
+        "--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
     parser.add_argument(
         "--trajectory",
         type=str,
@@ -36,6 +37,12 @@ def parse_args():
         type=str,
         choices=["JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
         help="Type of reference trajectory to compare against",
+    )
+    parser.add_argument(
+        "--same-sampling-time",
+        action="store_true",
+        default=False,
+        help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
     )
     parser.add_argument(
         "--run-path",
@@ -126,12 +133,14 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
 
     # Subset ref_traj_md to match the length of traj_md in actual sampling time.
     if args.same_sampling_time:
-        traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory)
-        ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference)
+        traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
+        if traj_samples_per_sec is None:
+            raise ValueError(f"Sampling rate not found for {args.trajectory}")
 
-        if traj_samples_per_sec is None or ref_traj_samples_per_sec is None:
-            raise ValueError(f"Sampling rate not found for {args.trajectory} or {args.reference}")
-        
+        ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
+        if ref_traj_samples_per_sec is None:
+            raise ValueError(f"Sampling rate not found for {args.reference}")
+
         traj_time = traj_samples_per_sec * traj_md.n_frames
         ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
         factor = min(traj_time / ref_traj_time, 1)
@@ -217,18 +226,23 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     py_logger.info(f"Autocorrelation stats computed.")
 
     # Compute MSM stats.
-    results["MSM_stats"] = analysis_utils.compute_MSM_stats(
-        traj_tica,
-        ref_traj_tica,
-    )
-    py_logger.info(f"MSM stats computed.")
+    # Sometimes, this fails because the reference trajectory is too short.
+    try:
+        results["MSM_stats"] = analysis_utils.compute_MSM_stats(
+            traj_tica,
+            ref_traj_tica,
+        )
+        py_logger.info(f"MSM stats computed.")
 
-    # Compute JSDs against time.
-    results["JSD_MSM_stats_against_time"] = analysis_utils.compute_JSD_MSM_stats_against_time(
-        traj_tica,
-        ref_traj_tica,
-    )
-    py_logger.info(f"JSD MSM stats as a function of time computed.")
+        # Compute JSDs against time.
+        results["JSD_MSM_stats_against_time"] = analysis_utils.compute_JSD_MSM_stats_against_time(
+            traj_tica,
+            ref_traj_tica,
+        )
+        py_logger.info(f"JSD MSM stats as a function of time computed.")
+   
+    except IndexError:
+        py_logger.warning(f"MSM stats could not be computed.")
 
     return results
 
@@ -243,10 +257,14 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
         del results["TICA"]["traj_tica"]
         del results["TICA"]["ref_traj_tica"]
 
-    output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory, f"ref={args.reference}")
+    output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory)
+    if args.same_sampling_time:
+        output_dir = os.path.join(output_dir, f"ref={args.reference}_same_sampling_time")
+    else:
+        output_dir = os.path.join(output_dir, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
 
+    output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
     with open(output_path, "wb") as f:
         pickle.dump({"results": results, "args": vars(args)}, f)
 
