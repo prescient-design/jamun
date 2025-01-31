@@ -49,8 +49,8 @@ def featurize_trajectory_with_torsions(
 def featurize_trajectory_with_distances(traj: md.Trajectory) -> Tuple[pyemma.coordinates.featurizer, np.ndarray]:
     """Featurize an MDTraj trajectory with pairwise distances using pyEMMA."""
     feats = pyemma.coordinates.featurizer(traj.topology)
-    heavy_atom_distance_pairs = feats.pairs(feats.select_Heavy())
-    feats.add_distances(heavy_atom_distance_pairs, periodic=False)
+    alpha_carbon_distance_pairs = feats.pairs(feats.select_Ca())
+    feats.add_distances(alpha_carbon_distance_pairs, periodic=False)
     traj_featurized = feats.transform(traj)
     return feats, traj_featurized
 
@@ -76,7 +76,7 @@ def featurize_trajectory(traj: md.Trajectory) -> Dict[str, np.ndarray]:
     }
 
 
-def featurize(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Dict[str, np.ndarray]]:
+def featurize_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Dict[str, np.ndarray]]:
     """Featurize MDTraj trajectories with backbone, and sidechain torsion angles and distances using pyEMMA."""
     return {
         "traj": featurize_trajectory(traj_md),

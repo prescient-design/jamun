@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Sequence
 import os
 import mdtraj as md
 import tqdm
+import pandas as pd
 
 from jamun import data
 from jamun import utils
@@ -54,9 +55,20 @@ def search_for_JAMUN_files(root_path: str) -> List[str]:
     return run_paths
 
 
-def get_sampling_times():
-    """Returns the sampling times for each peptide in a JAMUN run."""
-    raise NotImplementedError("Sampling times not implemented yet.")
+def get_sampling_rate(name: str, peptide: str, experiment: str) -> float:
+    """Returns the sampling rates."""
+
+    if name == "JAMUN":
+        rates_csv = os.path.join(find_project_root(), "analysis", "JAMUN_sampling_times.csv")
+        df = pd.read_csv(rates_csv)
+        ms_per_sample = df[(df["experiment"] == experiment)]["ms_per_sample"].values[0]
+        return ms_per_sample / 1000
+
+    if name == "JAMUNReference_2AA":
+        rates_csv = os.path.join(find_project_root(), "analysis", "JAMUNReference_2AA_sampling_times.csv")
+        df = pd.read_csv(rates_csv)
+        seconds_per_10_samples = df[(df["peptide"] == peptide)]["seconds_per_10_samples"].values[0]
+        return seconds_per_10_samples / 10
 
 
 def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, str]]:

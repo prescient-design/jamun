@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 import os
 import dotenv
 import logging
@@ -121,16 +121,33 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
     if not ref_trajs_md:
         raise ValueError(f"No {args.reference} trajectories found for peptide {args.peptide}")
 
-    return trajs_md[args.peptide], ref_trajs_md[args.peptide]
+    traj_md = trajs_md[args.peptide]
+    ref_traj_md = ref_trajs_md[args.peptide]
+
+    # Subset ref_traj_md to match the length of traj_md in actual sampling time.
+    if args.same_sampling_time:
+        traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory)
+        ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference)
+
+        if traj_samples_per_sec is None or ref_traj_samples_per_sec is None:
+            raise ValueError(f"Sampling rate not found for {args.trajectory} or {args.reference}")
+        
+        traj_time = traj_samples_per_sec * traj_md.n_frames
+        ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
+        factor = min(traj_time / ref_traj_time, 1)
+        ref_traj_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
+
+    return traj_md, ref_traj_md
 
 
 def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Any]:
     """Run analysis on the trajectories and return results dictionary."""
-    results = {}
 
     # Featurize trajectories.
-    results["featurization"] = analysis_utils.featurize(traj_md, ref_traj_md)
+    results = {}
+    results["featurization"] = analysis_utils.featurize_trajectories(traj_md, ref_traj_md)
 
+    py_logger.info(f"Featurization complete.")
     traj_results = results["featurization"]["traj"]
     traj_feats = traj_results["feats"]["torsions"]
     traj_featurized_dict = traj_results["traj_featurized"]
