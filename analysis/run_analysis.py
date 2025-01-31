@@ -131,22 +131,28 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
     traj_md = trajs_md[args.peptide]
     ref_traj_md = ref_trajs_md[args.peptide]
 
-    # Subset ref_traj_md to match the length of traj_md in actual sampling time.
-    if args.same_sampling_time:
-        traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
-        if traj_samples_per_sec is None:
-            raise ValueError(f"Sampling rate not found for {args.trajectory}")
-
-        ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
-        if ref_traj_samples_per_sec is None:
-            raise ValueError(f"Sampling rate not found for {args.reference}")
-
-        traj_time = traj_samples_per_sec * traj_md.n_frames
-        ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
-        factor = min(traj_time / ref_traj_time, 1)
-        ref_traj_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
-
     return traj_md, ref_traj_md
+
+
+def subset_reference_trajectory(
+    traj_md: md.Trajectory,
+    ref_traj_md: md.Trajectory,
+    args: argparse.Namespace,
+) -> md.Trajectory:
+    """Subset reference trajectory to match the length of the trajectory in actual sampling time."""
+    traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
+    if traj_samples_per_sec is None:
+        raise ValueError(f"Sampling rate not found for {args.trajectory}")
+
+    ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
+    if ref_traj_samples_per_sec is None:
+        raise ValueError(f"Sampling rate not found for {args.reference}")
+
+    traj_time = traj_samples_per_sec * traj_md.n_frames
+    ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
+    factor = min(traj_time / ref_traj_time, 1)
+    ref_traj_subset_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
+    return ref_traj_subset_md
 
 
 def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Any]:
@@ -247,7 +253,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     return results
 
 
-def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
+def save_results(results: Dict[str, Any], args: argparse.Namespace, is_benchmark_reference: bool) -> None:
     """Save analysis results to pickle file."""
 
     # Delete intermediate results, to reduce memory usage.
@@ -257,14 +263,14 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
         del results["TICA"]["traj_tica"]
         del results["TICA"]["ref_traj_tica"]
 
-    output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory)
-    if args.same_sampling_time:
-        output_dir = os.path.join(output_dir, f"ref={args.reference}_same_sampling_time")
-    else:
-        output_dir = os.path.join(output_dir, f"ref={args.reference}")
+    output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
 
-    output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
+    if is_benchmark_reference:
+        output_path = os.path.join(output_dir, f"{args.peptide}_benchmark.pkl")
+    else:
+        output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
+
     with open(output_path, "wb") as f:
         pickle.dump({"results": results, "args": vars(args)}, f)
 
@@ -284,7 +290,17 @@ def main():
     results = analyze_trajectories(traj, ref_traj)
 
     # Save results.
-    save_results(results, args)
+    save_results(results, args, is_benchmark_reference=False)
+
+    if args.run_reference_benchmark:
+        ref_traj_subset = subset_reference_trajectory(traj, ref_traj, args)
+        py_logger.info(f"Reference trajectory subsetting complete.")
+
+        # Run analysis again, this time with the subsetted reference trajectory.
+        results = analyze_trajectories(ref_traj_subset, ref_traj)
+
+        # Save results again.
+        save_results(results, args, is_benchmark_reference=True)
 
 
 if __name__ == "__main__":
