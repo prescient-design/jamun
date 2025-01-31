@@ -375,7 +375,7 @@ def compute_JSD_MSM_stats_against_time_for_trajectory(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, precomputed_MSM_data: Dict[str, Any]
 ) -> Dict[int, Dict[str, float]]:
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
-    steps = np.logspace(0, np.log10(len(traj_featurized)), num=10, dtype=int)
+    steps = np.logspace(0, np.log10(len(traj_featurized)), num=50, dtype=int)
     return {
         step: compute_MSM_stats(
             traj_featurized[:step],

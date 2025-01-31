@@ -6,7 +6,6 @@ import argparse
 import sys
 import pickle
 
-import pandas as pd
 import mdtraj as md
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
@@ -138,7 +137,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     traj_featurized = traj_featurized_dict["torsions"]
 
     ref_traj_results = results["featurization"]["ref_traj"]
-    ref_traj_feats = ref_traj_results["feats"]["torsions"]
     ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
     ref_traj_featurized = ref_traj_featurized_dict["torsions"]
     py_logger.info(f"Featurization complete.")
