@@ -43,10 +43,14 @@ def main():
     parser = argparse.ArgumentParser(description="Run analysis for multiple peptides")
     parser.add_argument("--csv", type=str, required=True, help="CSV file containing wandb runs")
     parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
+    parser.add_argument(
+        "--same-sampling-time", action="store_true", help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
+    )
     parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
     parser.add_argument(
         "--num-workers", type=int, default=multiprocessing.cpu_count(), help="Number of parallel workers"
     )
+
     args = parser.parse_args()
 
     # Make output directory if it doesn't exist.
