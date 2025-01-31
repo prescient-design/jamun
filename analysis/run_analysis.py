@@ -25,12 +25,7 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--peptide",
-        type=str,
-        required=True,
-        help="Peptide sequence to analyze (e.g., FAFG)"
-    )
+    parser.add_argument("--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
     parser.add_argument(
         "--trajectory",
         type=str,
@@ -54,22 +49,10 @@ def parse_args():
         help="Weights & Biases run paths for JAMUN sampling run. Can be used instead of --run-path",
     )
     parser.add_argument(
-        "--data-path",
-        type=str,
-        help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
+        "--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
     )
-    parser.add_argument(
-        "--experiment",
-        type=str,
-        default="",
-        help="Experiment name for saving results"
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="analysis_results",
-        help="Directory to save analysis results"
-    )
+    parser.add_argument("--experiment", type=str, default="", help="Experiment name for saving results")
+    parser.add_argument("--output-dir", type=str, default="analysis_results", help="Directory to save analysis results")
     parser.add_argument(
         "--no-delete-intermediates",
         action="store_true",
@@ -148,7 +131,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
 
     # Featurize trajectories.
     results["featurization"] = analysis_utils.featurize(traj_md, ref_traj_md)
-    
+
     traj_results = results["featurization"]["traj"]
     traj_feats = traj_results["feats"]["torsions"]
     traj_featurized_dict = traj_results["traj_featurized"]
@@ -176,20 +159,20 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     py_logger.info(f"PMFs computed.")
 
     # Compute JSDs.
-    results["JSD_stats"] = analysis_utils.compute_JSD_stats(
+    results["JSD_torsion_stats"] = analysis_utils.compute_JSD_torsion_stats(
         traj_featurized,
         ref_traj_featurized,
         traj_feats,
     )
-    py_logger.info(f"JSD stats computed.")
+    py_logger.info(f"JSD torsion stats computed.")
 
-    # Compute JSDs.
-    results["JSD_stats_against_time"] = analysis_utils.compute_JSDs_stats_against_time(
+    # Compute JSDs of torsions against time.
+    results["JSD_torsion_stats_against_time"] = analysis_utils.compute_JSD_torsion_stats_against_time(
         traj_featurized,
         ref_traj_featurized,
         traj_feats,
     )
-    py_logger.info(f"JSD stats as a function of time computed.")
+    py_logger.info(f"JSD torsion stats as a function of time computed.")
 
     traj_featurized_cossin = traj_featurized_dict["torsions_cossin"]
     ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
@@ -204,18 +187,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     traj_tica = results["TICA"]["traj_tica"]
     ref_traj_tica = results["TICA"]["ref_traj_tica"]
 
-    # Compute MSM stats.
-    results["MSM_stats"] = analysis_utils.compute_MSM_stats(
-        traj_tica,
-        ref_traj_tica,
-    )
-    py_logger.info(f"MSM stats computed.")
-
-    # Compute subsampled reference.
-    results["subsampled_reference"] = analysis_utils.compute_subsampled_reference(
-        ref_traj_tica,
-    )
-
     # Compute TICA stats.
     results["TICA_stats"] = analysis_utils.compute_TICA_stats(
         traj_tica,
@@ -229,6 +200,20 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
         ref_traj_tica,
     )
     py_logger.info(f"Autocorrelation stats computed.")
+
+    # Compute MSM stats.
+    results["MSM_stats"] = analysis_utils.compute_MSM_stats(
+        traj_tica,
+        ref_traj_tica,
+    )
+    py_logger.info(f"MSM stats computed.")
+
+    # Compute JSDs against time.
+    results["JSD_MSM_stats_against_time"] = analysis_utils.compute_JSD_MSM_stats_against_time(
+        traj_tica,
+        ref_traj_tica,
+    )
+    py_logger.info(f"JSD MSM stats as a function of time computed.")
 
     return results
 

@@ -54,6 +54,11 @@ def search_for_JAMUN_files(root_path: str) -> List[str]:
     return run_paths
 
 
+def get_sampling_times():
+    """Returns the sampling times for each peptide in a JAMUN run."""
+    raise NotImplementedError("Sampling times not implemented yet.")
+
+
 def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, str]]:
     """Returns a dictionary mapping peptide names to the path of the PDB file containing the predicted structure."""
 
@@ -175,10 +180,6 @@ def get_JAMUNReference_2AA_trajectories(
     data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to our reference 2AA MDTraj trajectory."""
-    three_letter_filter_codes = [
-        "_".join([utils.convert_to_three_letter_code(aa) for aa in code]) for code in filter_codes
-    ]
-    assert len(set(three_letter_filter_codes)) == len(three_letter_filter_codes), "Filter codes must be unique"
 
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
@@ -186,7 +187,7 @@ def get_JAMUNReference_2AA_trajectories(
             root=f"{data_path}/capped_diamines/timewarp_splits/{split}",
             traj_pattern="^(.*).xtc",
             pdb_pattern="^(.*).pdb",
-            filter_codes=three_letter_filter_codes,
+            filter_codes=filter_codes,
         )
 
     if split in ["train", "val", "test"]:
@@ -195,7 +196,7 @@ def get_JAMUNReference_2AA_trajectories(
         datasets = get_datasets_for_split("train") + get_datasets_for_split("val") + get_datasets_for_split("test")
 
     # Remap keys.
-    filter_codes_map = dict(zip(three_letter_filter_codes, filter_codes))
+    filter_codes_map = dict(zip(filter_codes, filter_codes))
     return {filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
 
 
@@ -214,7 +215,7 @@ def get_JAMUNReference_5AA_trajectories(
 
     # Remove prefix.
     three_letter_filter_codes = [
-        "_".join([utils.convert_to_three_letter_code(aa) for aa in code]) for code[len(prefix):] in filter_codes
+        "_".join([utils.convert_to_three_letter_code(aa) for aa in code]) for code[len(prefix) :] in filter_codes
     ]
     assert len(set(three_letter_filter_codes)) == len(three_letter_filter_codes), "Filter codes must be unique"
 
