@@ -56,16 +56,16 @@ def search_for_JAMUN_files(root_path: str) -> List[str]:
 
 
 def get_sampling_rate(name: str, peptide: str, experiment: str) -> float:
-    """Returns the sampling rates."""
+    """Returns (approximate) sampling rates in seconds per sample."""
 
     if name == "JAMUN":
-        rates_csv = os.path.join(find_project_root(), "analysis", "JAMUN_sampling_times.csv")
+        rates_csv = os.path.join(find_project_root(), "analysis", "sampling_times", "JAMUN.csv")
         df = pd.read_csv(rates_csv)
         ms_per_sample = df[(df["experiment"] == experiment)]["ms_per_sample"].values[0]
         return ms_per_sample / 1000
 
     if name == "JAMUNReference_2AA":
-        rates_csv = os.path.join(find_project_root(), "analysis", "JAMUNReference_2AA_sampling_times.csv")
+        rates_csv = os.path.join(find_project_root(), "analysis", "sampling_times", "JAMUNReference_2AA.csv")
         df = pd.read_csv(rates_csv)
         seconds_per_10_samples = df[(df["peptide"] == peptide)]["seconds_per_10_samples"].values[0]
         return seconds_per_10_samples / 10

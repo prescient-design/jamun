@@ -39,12 +39,6 @@ def parse_args():
         help="Type of reference trajectory to compare against",
     )
     parser.add_argument(
-        "--same-sampling-time",
-        action="store_true",
-        default=False,
-        help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
-    )
-    parser.add_argument(
         "--run-path",
         type=str,
         help="Path to JAMUN run directory containing trajectory files",
@@ -137,19 +131,12 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
 def subset_reference_trajectory(
     traj_md: md.Trajectory,
     ref_traj_md: md.Trajectory,
-    args: argparse.Namespace,
+    traj_seconds_per_sample: float,
+    ref_traj_seconds_per_sample: float,
 ) -> md.Trajectory:
     """Subset reference trajectory to match the length of the trajectory in actual sampling time."""
-    traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
-    if traj_samples_per_sec is None:
-        raise ValueError(f"Sampling rate not found for {args.trajectory}")
-
-    ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
-    if ref_traj_samples_per_sec is None:
-        raise ValueError(f"Sampling rate not found for {args.reference}")
-
-    traj_time = traj_samples_per_sec * traj_md.n_frames
-    ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
+    traj_time = traj_seconds_per_sample * traj_md.n_frames
+    ref_traj_time = ref_traj_seconds_per_sample * ref_traj_md.n_frames
     factor = min(traj_time / ref_traj_time, 1)
     ref_traj_subset_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
     return ref_traj_subset_md
@@ -292,9 +279,13 @@ def main():
     # Save results.
     save_results(results, args, is_benchmark_reference=False)
 
-    if args.run_reference_benchmark:
-        ref_traj_subset = subset_reference_trajectory(traj, ref_traj, args)
-        py_logger.info(f"Reference trajectory subsetting complete.")
+    # Compute sampling rates.
+    traj_seconds_per_sample = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
+    ref_traj_seconds_per_sample = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
+
+    if traj_seconds_per_sample is not None and ref_traj_seconds_per_sample is not None:
+        ref_traj_subset = subset_reference_trajectory(traj, ref_traj, traj_seconds_per_sample, ref_traj_seconds_per_sample)
+        py_logger.info(f"Running analysis on subsetted reference trajectory.")
 
         # Run analysis again, this time with the subsetted reference trajectory.
         results = analyze_trajectories(ref_traj_subset, ref_traj)
