@@ -14,7 +14,7 @@ sys.path.append("./")
 import load_trajectory
 
 
-def run_analysis(args) -> Tuple[str, Optional[str]]:
+def run_analysis(args) -> Tuple[str, Optional[str], Optional[str]]:
     """Run analysis for a single peptide."""
     peptide, trajectory, reference, run_path, experiment, output_dir, use_sbatch = args
 
@@ -34,13 +34,13 @@ def run_analysis(args) -> Tuple[str, Optional[str]]:
     try:
         launched = subprocess.run(cmd, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
-        return (peptide, str(e))
+        return (peptide, None, e.stderr)
 
     if use_sbatch:
         job_id = launched.stdout.strip().split()[-1]
-        return (peptide, job_id)
+        return (peptide, job_id, None)
     else:
-        return (peptide, None)
+        return (peptide, None, None)
 
 
 def wait_for_jobs(job_ids: List[str], poll_interval: int = 60):
@@ -148,15 +148,17 @@ def main():
 
     # Process results.
     if not args.no_use_sbatch:
-        for peptide, job_id in results:
+
+        job_ids = []
+        for peptide, job_id, _ in results:
             print(f"Job {job_id} launched for peptide {peptide}.")
+            job_ids.append(job_id)
 
         # Check job status.
-        job_ids = [job_id for _, job_id in results]
         wait_for_jobs(job_ids)
         
     else:
-        for peptide, error in results:
+        for peptide, _, error in results:
             if error:
                 print(f"Error processing peptide {peptide}: {error}")
             else:
