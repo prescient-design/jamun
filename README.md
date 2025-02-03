@@ -166,7 +166,7 @@ Finally, run `analysis/make_plots.ipynb` to make plots.
 
 ## Data Generation
 
-We also provide scripts for generating the MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with the NVT and NPT ensembles.
+We also provide scripts for generating the MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with NVT and NPT ensembles.
 
 ```bash
 python scripts/generate_data/run_simulation.py [INIT_PDB]
