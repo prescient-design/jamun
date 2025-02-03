@@ -88,7 +88,7 @@ class E3Conv(torch.nn.Module):
         self,
         data: torch_geometric.data.Batch,
         c_noise: torch.Tensor,
-        effective_radial_cutoff: Optional[torch.Tensor] = None,
+        effective_radial_cutoff: float,
     ) -> torch_geometric.data.Batch:
         # Test equivariance on the first forward pass.
         if self.test_equivariance:
@@ -96,7 +96,7 @@ class E3Conv(torch.nn.Module):
             def forward_wrapped(pos: torch.Tensor):
                 data_copy = data.clone()
                 data_copy.pos = pos
-                return self.forward(data_copy, c_noise, effective_radial_cutoff).pos
+                return self.forward(data_copy, c_noise).pos
 
             self.test_equivariance = False
             e3nn.util.test.assert_equivariant(
@@ -106,23 +106,10 @@ class E3Conv(torch.nn.Module):
                 irreps_out=[self.irreps_out],
             )
 
-        # Add edges to the input, based on the radial cutoff.
+        # Extract edge attributes.
         pos = data.pos
-        if "batch" in data:
-            batch = data["batch"]
-        else:
-            batch = torch.zeros(data.num_nodes, dtype=torch.long, device=pos.device)
-        radial_edge_index = torch_geometric.nn.radius_graph(pos, effective_radial_cutoff, batch)
-
-        bonded_edge_index = data.edge_index
-        edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
-        bond_mask = torch.cat(
-            (
-                torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
-                torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
-            ),
-            dim=0,
-        )
+        edge_index = data.edge_index
+        bond_mask = data.bond_mask
 
         src, dst = edge_index
         edge_vec = pos[src] - pos[dst]
@@ -139,7 +126,6 @@ class E3Conv(torch.nn.Module):
         )
         edge_attr = torch.cat((bonded_edge_attr, radial_edge_attr), dim=-1)
 
-        c_noise = c_noise.unsqueeze(0)
         node_attr = self.atom_embedder(data)
         node_attr = self.initial_noise_scaling(node_attr, c_noise)
         node_attr = self.initial_projector(node_attr, edge_index, edge_attr, edge_sh)

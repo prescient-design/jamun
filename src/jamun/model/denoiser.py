@@ -113,47 +113,58 @@ class Denoiser(pl.LightningModule):
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
     @classmethod
-    def _A(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        return torch.as_tensor(average_squared_distance)
+    def normalization_factors(cls, sigma: float, average_squared_distance: float, D: int = 3) -> Tuple[float, float]:
+        """Normalization factors for the input and output."""
+        A = torch.as_tensor(average_squared_distance)
+        B = torch.as_tensor(2 * D * sigma**2)
 
-    @classmethod
-    def _B(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        return torch.as_tensor(2 * D * sigma**2)
-
-    @classmethod
-    def c_in(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Input scaling factor."""
-        # return torch.as_tensor(1., device=sigma.device)
-        A = cls._A(sigma, average_squared_distance, D)
-        B = cls._B(sigma, average_squared_distance, D)
-        return 1.0 / torch.sqrt(A + B)
-
-    @classmethod
-    def c_skip(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Skip connection weight."""
-        A = cls._A(sigma, average_squared_distance, D)
-        B = cls._B(sigma, average_squared_distance, D)
-        return A / (A + B)
-
-    @classmethod
-    def c_out(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Output scaling factor."""
-        A = cls._A(sigma, average_squared_distance, D)
-        B = cls._B(sigma, average_squared_distance, D)
-        return torch.sqrt((A * B) / (A + B))
-
-    @classmethod
-    def c_noise(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Noise scaling factor."""
-        return torch.log(sigma) / 4
+        c_in = 1.0 / torch.sqrt(A + B)
+        c_skip = A / (A + B)
+        c_out = torch.sqrt((A * B) / (A + B))
+        c_noise = torch.log(sigma) / 4
+        return c_in, c_skip, c_out, c_noise
 
     @classmethod
     def loss_weight(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        return 1 / (cls.c_out(sigma, average_squared_distance, D) ** 2)
+        """Loss weight for this graph."""
+        _, _, c_out, _ = cls.normalization_factors(sigma, average_squared_distance, D)
+        return 1 / (c_out**2)
 
     def effective_radial_cutoff(self, sigma: Union[float, torch.Tensor]) -> torch.Tensor:
         """Compute the effective radial cutoff for the noise level."""
         return torch.sqrt((self.max_radius**2) + 6 * (sigma**2))
+
+    def add_edges(self, y: torch_geometric.data.Batch, radial_cutoff: float) -> torch_geometric.data.Batch:
+        """Add edges to the graph based on the effective radial cutoff."""
+        pos = y.pos
+        if "batch" in y:
+            batch = y["batch"]
+        else:
+            batch = torch.zeros(y.num_nodes, dtype=torch.long, device=pos.device)
+
+        # Our dataloader already adds the bonded edges.
+        bonded_edge_index = y.edge_index
+        radial_edge_index = torch_geometric.nn.radius_graph(pos, radial_cutoff, batch)
+
+        edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
+        bond_mask = torch.cat(
+            (
+                torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
+                torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
+            ),
+            dim=0,
+        )
+        y.edge_index = edge_index
+        y.bond_mask = bond_mask
+        return y
+
+    def pad(self, y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
+        """Add padding to the graph."""
+        return y
+
+    def unpad(self, y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
+        """Remove padding from the graph."""
+        return y
 
     def xhat_normalized(
         self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor], save_prefix: str = ""
@@ -163,21 +174,35 @@ class Denoiser(pl.LightningModule):
         assert y.pos.shape[-1] == 3
         D = y.pos.shape[-1]
         sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
-        c_in = self.c_in(sigma, self.average_squared_distance, D)
-        c_out = self.c_out(sigma, self.average_squared_distance, D)
-        c_skip = self.c_skip(sigma, self.average_squared_distance, D)
-        c_noise = self.c_noise(sigma, self.average_squared_distance, D)
 
+        c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
+
+        radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
+        print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
+    
+        # Adjust dimensions.
         c_in = unsqueeze_trailing(c_in, y.pos.ndim - 1)
-        c_out = unsqueeze_trailing(c_out, y.pos.ndim - 1)
         c_skip = unsqueeze_trailing(c_skip, y.pos.ndim - 1)
+        c_out = unsqueeze_trailing(c_out, y.pos.ndim - 1)
+        c_noise = c_noise.unsqueeze(0)
 
+        # Add edges to the graph.
+        y = self.add_edges(y, radial_cutoff)
+
+        # Pad here.
+        y = self.pad(y)
+        print("shapes", y.pos.shape, y.edge_index.shape)
+    
         y_scaled = y.clone()
         y_scaled.pos = y.pos * c_in
 
         xhat = y.clone()
-        g_pred = self.g(y_scaled, c_noise, self.effective_radial_cutoff(sigma))
+        g_pred = self.g(y_scaled, c_noise, radial_cutoff)
         xhat.pos = c_skip * y.pos + c_out * g_pred.pos
+
+        # Unpad here.
+        xhat = self.unpad(xhat)
+
         return xhat
 
     def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor], save_prefix: str = ""):
