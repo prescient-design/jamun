@@ -4,6 +4,8 @@ import torch.nn as nn
 
 from jamun.utils import unsqueeze_trailing
 
+# TODO: fix
+torch._dynamo.config.capture_dynamic_output_shape_ops = True
 
 class NoiseEmbedding(nn.Module):
     """Noise embedding for tensors."""

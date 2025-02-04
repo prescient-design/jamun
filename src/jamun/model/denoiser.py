@@ -34,6 +34,9 @@ class Denoiser(pl.LightningModule):
         self.save_hyperparameters(logger=False)
         self.g = arch()
 
+        self.g = arch()
+        self.g = torch.compile(self.g, fullgraph=True, dynamic=False)
+
         py_logger = logging.getLogger("jamun")
         py_logger.info(self.g)
 

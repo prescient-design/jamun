@@ -27,8 +27,6 @@ class Conv(torch.nn.Module):
         edge_attr_dim: int,
         radial_nn: Optional[Callable[..., torch.nn.Module]] = None,
         tensor_product: Optional[Callable[..., torch.nn.Module]] = None,
-        use_torch_compile: bool = True,
-        torch_compile_kwargs: dict | None = None,
     ):
         """
         Parameters
@@ -67,8 +65,6 @@ class Conv(torch.nn.Module):
                 )
                 ```
             is used.
-        use_torch_compile: bool = True
-            Use torch.compile to compile the tensor product instead of torch script
         """
 
         super().__init__()
@@ -76,8 +72,6 @@ class Conv(torch.nn.Module):
         self.irreps_in = o3.Irreps(irreps_in)
         self.irreps_out = o3.Irreps(irreps_out)
         self.irreps_sh = o3.Irreps(irreps_sh)
-        self.use_torch_compile = use_torch_compile
-        self.torch_compile_kwargs = torch_compile_kwargs if torch_compile_kwargs is not None else {}
 
         if tensor_product is None:
             tensor_product = functools.partial(
@@ -86,18 +80,7 @@ class Conv(torch.nn.Module):
                 internal_weights=False,
             )
 
-        if self.use_torch_compile:
-            e3nn.set_optimization_defaults(jit_script_fx=False)
-
         self.tp = tensor_product(irreps_in, irreps_sh, irreps_out)
-
-        if self.use_torch_compile:
-            self.tp = torch.compile(
-                self.tp,
-                **self.torch_compile_kwargs,
-            )
-            e3nn.set_optimization_defaults(jit_script_fx=True)
-
         if radial_nn is None:
             radial_nn = functools.partial(
                 ScalarMLP,

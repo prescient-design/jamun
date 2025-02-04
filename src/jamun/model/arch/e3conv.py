@@ -39,6 +39,7 @@ class E3Conv(torch.nn.Module):
         self.n_layers = n_layers
         self.edge_attr_dim = edge_attr_dim
 
+        self.sh = o3.SphericalHarmonics(irreps_out=self.irreps_sh, normalize=True, normalization="component")
         self.bonded_edge_attr_dim, self.radial_edge_attr_dim = self.edge_attr_dim // 2, (self.edge_attr_dim + 1) // 2
         self.embed_bondedness = torch.nn.Embedding(2, self.bonded_edge_attr_dim)
 
@@ -107,13 +108,13 @@ class E3Conv(torch.nn.Module):
             )
 
         # Extract edge attributes.
-        pos = data.pos
-        edge_index = data.edge_index
-        bond_mask = data.bond_mask
+        pos = data['pos']
+        edge_index = data['edge_index']
+        bond_mask = data['bond_mask']
 
         src, dst = edge_index
         edge_vec = pos[src] - pos[dst]
-        edge_sh = o3.spherical_harmonics(self.irreps_sh, edge_vec, normalize=True, normalization="component")
+        edge_sh = self.sh(edge_vec)
 
         bonded_edge_attr = self.embed_bondedness(bond_mask)
         radial_edge_attr = e3nn.math.soft_one_hot_linspace(
@@ -134,5 +135,5 @@ class E3Conv(torch.nn.Module):
         node_attr = self.output_head(node_attr)
         node_attr = node_attr * self.output_gain
 
-        data.pos = node_attr
+        data['pos'] = node_attr
         return data
