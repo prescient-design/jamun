@@ -20,7 +20,7 @@ jamun_sample = "jamun.cmdline.sample:main"
 where = ["src"]
 
 [build-system]
-requires = ["setuptools >= 65", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools >= 65"]
 build-backend = 'setuptools.build_meta'
 
 [tool.setuptools_scm]

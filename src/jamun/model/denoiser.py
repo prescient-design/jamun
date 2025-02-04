@@ -9,6 +9,8 @@ import torch_scatter
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 
+from ctypes import cdll
+libcudart = cdll.LoadLibrary('libcudart.so')
 
 class Denoiser(pl.LightningModule):
     """The main denoiser model."""
@@ -35,7 +37,7 @@ class Denoiser(pl.LightningModule):
         self.g = arch()
 
         self.g = arch()
-        self.g = torch.compile(self.g, fullgraph=True, dynamic=False)
+        self.g = torch.compile(self.g, fullgraph=True, dynamic=True)
 
         py_logger = logging.getLogger("jamun")
         py_logger.info(self.g)
@@ -181,7 +183,7 @@ class Denoiser(pl.LightningModule):
         c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
 
         radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
-        print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
+        # print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
     
         # Adjust dimensions.
         c_in = unsqueeze_trailing(c_in, y.pos.ndim - 1)
@@ -194,7 +196,7 @@ class Denoiser(pl.LightningModule):
 
         # Pad here.
         y = self.pad(y)
-        print("shapes", y.pos.shape, y.edge_index.shape)
+        # print("shapes", y.pos.shape, y.edge_index.shape)
     
         y_scaled = y.clone()
         y_scaled.pos = y.pos * c_in
@@ -293,6 +295,16 @@ class Denoiser(pl.LightningModule):
 
         xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input, save_prefix=save_prefix)
         return self.compute_loss(x, xhat, sigma)
+
+    def on_train_epoch_start(self):
+        # start profiler
+        libcudart.cudaProfilerStart()
+
+    def on_train_epoch_end(self):
+        self.epochs += 1
+        if self.epochs == 10:
+            # stop profiler
+            libcudart.cudaProfilerStop()
 
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         sigma = self.sigma_distribution.sample().to(batch.pos.device)
