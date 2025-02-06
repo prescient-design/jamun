@@ -103,19 +103,28 @@ device = torch.device("cuda:0")
 denoiser = denoiser.to(device)
 opt = denoiser.configure_optimizers()["optimizer"]
 
+# Warmup.
 n_warmup = 10
 for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_warmup, desc="Warmup"):
-    batch = batch.to(device)
+    if i == n_warmup:
+        break
 
+    batch = batch.to(device)
     out = denoiser.training_step(batch, i)
     loss = out["loss"]
     loss.backward()
     opt.step()
     opt.zero_grad()
 
-n_total = 1000
+        
+# Actual training.
+n_actual = 1000
 torch.cuda.cudart().cudaProfilerStart()
-for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_total, desc="Training"):
+
+for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_actual, desc="Training"):
+    if i == n_actual:
+        break
+
     batch = batch.to(device)
 
     torch.cuda.nvtx.range_push(f"iter_{i}")
