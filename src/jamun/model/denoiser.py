@@ -9,9 +9,6 @@ import torch_scatter
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 
-from ctypes import cdll
-libcudart = cdll.LoadLibrary('libcudart.so')
-
 class Denoiser(pl.LightningModule):
     """The main denoiser model."""
 
@@ -298,18 +295,6 @@ class Denoiser(pl.LightningModule):
 
         xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
         return self.compute_loss(x, xhat, sigma)
-
-    def on_train_epoch_start(self):
-        pass
-        # start profiler
-        # libcudart.cudaProfilerStart()
-
-    def on_train_epoch_end(self):
-        pass
-        # self.epochs += 1
-        # if self.epochs == 10:
-        #     # stop profiler
-        #     libcudart.cudaProfilerStop()
 
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during training."""
