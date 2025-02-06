@@ -118,7 +118,7 @@ for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_warm
 
         
 # Actual training.
-n_actual = 1000
+n_actual = 20
 torch.cuda.cudart().cudaProfilerStart()
 
 for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_actual, desc="Training"):
@@ -128,13 +128,11 @@ for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_actu
     batch = batch.to(device)
 
     torch.cuda.nvtx.range_push(f"iter_{i}")
-
     out = denoiser.training_step(batch, i)
     loss = out["loss"]
     loss.backward()
     opt.step()
     opt.zero_grad()
-
     torch.cuda.nvtx.range_pop()
 
 torch.cuda.cudart().cudaProfilerStop()
