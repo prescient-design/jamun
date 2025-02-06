@@ -257,7 +257,7 @@ class MDtrajDataModule(pl.LightningDataModule):
         self,
         datasets: Dict[str, Sequence[MDtrajDataset]],
         batch_size: int,
-        num_workers: int = 8,
+        num_workers: int,
     ):
         super().__init__()
 
