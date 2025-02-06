@@ -97,7 +97,7 @@ class E3Conv(torch.nn.Module):
             def forward_wrapped(pos: torch.Tensor):
                 data_copy = data.clone()
                 data_copy.pos = pos
-                return self.forward(data_copy, c_noise).pos
+                return self.forward(data_copy, c_noise, effective_radial_cutoff).pos
 
             self.test_equivariance = False
             e3nn.util.test.assert_equivariant(
