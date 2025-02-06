@@ -8,7 +8,7 @@
 #SBATCH --time 72:00:00
 
 eval "$(conda shell.bash hook)"
-conda activate jamun-extras
+conda activate jamun
 
 set -eux
 

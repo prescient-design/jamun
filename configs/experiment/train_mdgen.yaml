@@ -7,7 +7,7 @@ model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
-  max_radius: 1.0
+  max_radius: 1000.0
   optim:
     lr: 0.002
 
@@ -17,7 +17,7 @@ callbacks:
 
 data:
   datamodule:
-    batch_size: 16
+    batch_size: 32
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -25,7 +25,7 @@ data:
         traj_pattern: "^(....)_.*.xtc"
         pdb_pattern: "^(....).pdb"
         as_iterable: true
-        subsample: 100
+        subsample: 5
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
