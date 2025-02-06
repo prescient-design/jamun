@@ -14,7 +14,7 @@ model:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
   arch:
-    n_layers: 1
+    n_layers: 5
   max_radius: 1.0
   optim:
     lr: 0.002
@@ -32,28 +32,54 @@ data:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
           trajfiles:
-            - EI-traj-arrays.npz
-          pdbfile: EI-traj-state0.pdb
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
           subsample: 100
-          label: GLU_ILE
+          label: "AA"
+        
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - DC-traj-arrays.npz
+          pdbfile: DC-traj-state0.pdb
+          subsample: 100
+          label: "DC"
 
       val:
         - _target_: jamun.data.MDtrajDataset
-          root: "${paths.data_path}/timewarp/2AA-1-large/val/"
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
           trajfiles:
-            - KL-traj-arrays.npz
-          pdbfile: KL-traj-state0.pdb
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
           subsample: 100
-          label: LYS_LEU
+          label: "AA"
+        
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - DC-traj-arrays.npz
+          pdbfile: DC-traj-state0.pdb
+          subsample: 100
+          label: "DC"
+
 
       test:
         - _target_: jamun.data.MDtrajDataset
-          root: "${paths.data_path}/timewarp/2AA-1-large/test/"
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
           trajfiles:
-            - CK-traj-arrays.npz
-          pdbfile: CK-traj-state0.pdb
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
           subsample: 100
-          label: CYS_LYS
+          label: "AA"
+        
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - DC-traj-arrays.npz
+          pdbfile: DC-traj-state0.pdb
+          subsample: 100
+          label: "DC"
+
 
 trainer:
   val_check_interval: 0.5

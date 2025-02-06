@@ -37,7 +37,6 @@ conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
 
 The remaining dependencies can be installed via `pip` or [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (recommended).
 ```bash
-uv pip install -r env/requirements.txt
 uv pip install -e .[dev]
 ```
 

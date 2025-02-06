@@ -9,6 +9,8 @@ import torch_scatter
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 
+from ctypes import cdll
+libcudart = cdll.LoadLibrary('libcudart.so')
 
 class Denoiser(pl.LightningModule):
     """The main denoiser model."""
@@ -29,13 +31,14 @@ class Denoiser(pl.LightningModule):
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
         lr_scheduler_config: Optional[dict] = None,
+        use_torch_compile: bool = True,
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)
         self.g = arch()
 
-        self.g = arch()
-        self.g = torch.compile(self.g, fullgraph=True, dynamic=False)
+        if use_torch_compile:
+            self.g = torch.compile(self.g, fullgraph=True, dynamic=True)
 
         py_logger = logging.getLogger("jamun")
         py_logger.info(self.g)
@@ -170,19 +173,19 @@ class Denoiser(pl.LightningModule):
         return y
 
     def xhat_normalized(
-        self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor], save_prefix: str = ""
+        self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]
     ) -> torch_geometric.data.Batch:
-        """Compute the denoised prediction using the normalized parametrization."""
+        """Compute the denoised prediction using the normalization factors from JAMUN."""
         # Output, noise and skip scale
-        assert y.pos.shape[-1] == 3
         D = y.pos.shape[-1]
+        assert D == 3
         sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
 
+        # Compute the normalization factors.
         c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
-
         radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
-        print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
-    
+        # print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
+
         # Adjust dimensions.
         c_in = unsqueeze_trailing(c_in, y.pos.ndim - 1)
         c_skip = unsqueeze_trailing(c_skip, y.pos.ndim - 1)
@@ -194,8 +197,8 @@ class Denoiser(pl.LightningModule):
 
         # Pad here.
         y = self.pad(y)
-        print("shapes", y.pos.shape, y.edge_index.shape)
-    
+        # print("shapes", y.pos.shape, y.edge_index.shape)
+
         y_scaled = y.clone()
         y_scaled.pos = y.pos * c_in
 
@@ -208,11 +211,12 @@ class Denoiser(pl.LightningModule):
 
         return xhat
 
-    def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor], save_prefix: str = ""):
+    def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor]):
+        """Compute the denoised prediction."""
         if self.mean_center_input:
             y = mean_center(y)
 
-        xhat = self.xhat_normalized(y, sigma, save_prefix=save_prefix)
+        xhat = self.xhat_normalized(y, sigma)
 
         # Mean center the prediction.
         if self.mean_center_output:
@@ -225,8 +229,8 @@ class Denoiser(pl.LightningModule):
         x: torch_geometric.data.Batch,
         sigma: Union[float, torch.Tensor],
         align_noisy_input: bool,
-        save_prefix: str = "",
     ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
+        """Add noise to the input and denoise it."""
         with torch.no_grad():
             y = self.add_noise(x, sigma)
             if self.mean_center_input:
@@ -236,7 +240,7 @@ class Denoiser(pl.LightningModule):
             if align_noisy_input:
                 y = align_A_to_B_batched(y, x)
 
-        xhat = self.xhat(y, sigma, save_prefix=save_prefix)
+        xhat = self.xhat(y, sigma)
         return xhat, y
 
     def compute_loss(
@@ -245,6 +249,7 @@ class Denoiser(pl.LightningModule):
         xhat: torch.Tensor,
         sigma: Union[float, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Compute the loss."""
         # If we mean center the output, we should also mean center the target.
         if self.mean_center_output:
             x = mean_center(x)
@@ -286,18 +291,31 @@ class Denoiser(pl.LightningModule):
         x: torch_geometric.data.Batch,
         sigma: Union[float, torch.Tensor],
         align_noisy_input: bool,
-        save_prefix: str = "",
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Add noise to the input and compute the loss."""
         if self.mean_center_input:
             x = mean_center(x)
 
-        xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input, save_prefix=save_prefix)
+        xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
         return self.compute_loss(x, xhat, sigma)
 
+    def on_train_epoch_start(self):
+        pass
+        # start profiler
+        # libcudart.cudaProfilerStart()
+
+    def on_train_epoch_end(self):
+        pass
+        # self.epochs += 1
+        # if self.epochs == 10:
+        #     # stop profiler
+        #     libcudart.cudaProfilerStop()
+
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
+        """Called during training."""
         sigma = self.sigma_distribution.sample().to(batch.pos.device)
         loss, aux = self.noise_and_compute_loss(
-            batch, sigma, align_noisy_input=self.align_noisy_input_during_training, save_prefix="train"
+            batch, sigma, align_noisy_input=self.align_noisy_input_during_training,
         )
 
         # Average the loss and other metrics over all graphs.
@@ -312,9 +330,10 @@ class Denoiser(pl.LightningModule):
         }
 
     def validation_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
+        """Called during validation."""
         sigma = self.sigma_distribution.sample().to(batch.pos.device)
         loss, aux = self.noise_and_compute_loss(
-            batch, sigma, align_noisy_input=self.align_noisy_input_during_training, save_prefix="val"
+            batch, sigma, align_noisy_input=self.align_noisy_input_during_training
         )
 
         # Average the loss and other metrics over all graphs.
@@ -331,6 +350,7 @@ class Denoiser(pl.LightningModule):
         }
 
     def configure_optimizers(self):
+        """Set up the optimizer and learning rate scheduler."""
         optimizer = self.optim_factory(params=self.parameters())
 
         out = {"optimizer": optimizer}

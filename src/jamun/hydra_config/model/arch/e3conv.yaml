@@ -17,13 +17,13 @@ hidden_layer_factory:
   conv:
     _target_: jamun.e3tools.nn.Conv
     _partial_: true
-    use_torch_compile: true
-    torch_compile_kwargs:
-        fullgraph: true
-        dynamic: true
-        options:
-          trace.enabled: false
-          trace.fx_graph: false
+    # use_torch_compile: true
+    # torch_compile_kwargs:
+    #     fullgraph: true
+    #     dynamic: true
+    #     options:
+    #       trace.enabled: false
+    #       trace.fx_graph: false
 output_head_factory:
   _target_: jamun.e3tools.nn.EquivariantMLP
   _partial_: true
