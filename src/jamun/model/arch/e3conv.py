@@ -6,8 +6,7 @@ import torch_geometric
 from e3nn import o3
 
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
-from jamun.model.noise_conditioning import NoiseConditionalScaling
-from jamun.model.skip_connection import NoiseConditionalSkipConnection
+from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
 
 
 class E3Conv(torch.nn.Module):

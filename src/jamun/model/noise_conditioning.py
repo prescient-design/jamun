@@ -1,11 +1,10 @@
 import e3nn.o3
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from jamun.utils import unsqueeze_trailing
 
-# TODO: fix
-torch._dynamo.config.capture_dynamic_output_shape_ops = True
 
 class NoiseEmbedding(nn.Module):
     """Noise embedding for tensors."""
@@ -44,15 +43,31 @@ class NoiseConditionalScaling(nn.Module):
 
         self.irreps_in = irreps_in
         self.irreps_out = irreps_in
-        self.repeats = torch.concatenate([torch.as_tensor(ir.dim).repeat(mul) for mul, ir in self.irreps_out])
-
-    def compute_scales(self, c_noise: torch.Tensor) -> torch.Tensor:
-        scales = self.scale_predictor(c_noise)
-        scales = scales.repeat_interleave(self.repeats.to(scales.device), dim=-1)
-        return scales
+        self.tp = e3nn.o3.ElementwiseTensorProduct(
+            self.irreps_in, f"{self.irreps_in.num_irreps}x0e",
+        )
 
     def forward(self, x: torch.Tensor, c_noise: torch.Tensor) -> torch.Tensor:
         c_noise = unsqueeze_trailing(c_noise, x.ndim - c_noise.ndim)
-        scales = self.compute_scales(c_noise)
-        x = x * scales
+        scales = self.scale_predictor(c_noise)
+        x = self.tp(x, scales)
         return x
+
+
+class NoiseConditionalSkipConnection(nn.Module):
+    """Noise-conditional skip connection for tensors."""
+
+    def __init__(self, irreps_in: e3nn.o3.Irreps, noise_input_dims: int = 1):
+        super().__init__()
+        self.weights = NoiseConditionalScaling(irreps_in, noise_input_dims=noise_input_dims)
+        self.irreps_in = irreps_in
+        self.irreps_out = irreps_in
+        self.tp = e3nn.o3.ElementwiseTensorProduct(
+            self.irreps_in, f"{self.irreps_in.num_irreps}x0e",
+        )
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor, c_noise: torch.Tensor) -> torch.Tensor:
+        weights = self.weights.scale_predictor(c_noise)
+        weights = F.sigmoid(weights)
+        x1 = self.tp(x1, weights) + self.tp(x2, 1 - weights)
+        return x1

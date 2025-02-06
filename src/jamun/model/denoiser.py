@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union, Dict
 
 import lightning.pytorch as pl
 import torch
@@ -27,15 +27,19 @@ class Denoiser(pl.LightningModule):
         mean_center_output: bool,
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
-        lr_scheduler_config: Optional[dict] = None,
+        lr_scheduler_config: Optional[Dict] = None,
         use_torch_compile: bool = True,
+        torch_compile_kwargs: Optional[Dict] = None,
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)
-        self.g = arch()
 
+        self.g = arch()
         if use_torch_compile:
-            self.g = torch.compile(self.g, fullgraph=True, dynamic=True)
+            if torch_compile_kwargs is None:
+                torch_compile_kwargs = {}
+
+            self.g = torch.compile(self.g, **torch_compile_kwargs)
 
         py_logger = logging.getLogger("jamun")
         py_logger.info(self.g)
@@ -307,7 +311,7 @@ class Denoiser(pl.LightningModule):
         aux["loss"] = loss
         for key in aux:
             aux[key] = aux[key].mean()
-            self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=True)
+            self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=False)
 
         return {
             "sigma": sigma,
@@ -326,7 +330,7 @@ class Denoiser(pl.LightningModule):
         for key in aux:
             aux[key] = aux[key].mean()
             self.log(
-                f"val/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=True
+                f"val/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=False
             )
 
         return {

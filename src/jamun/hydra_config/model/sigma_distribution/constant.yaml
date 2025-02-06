@@ -1,2 +1,2 @@
 _target_: jamun.distributions.ConstantSigma
-sigma: 0.02
+sigma: 0.04

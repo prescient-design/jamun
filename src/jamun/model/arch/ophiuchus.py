@@ -10,8 +10,7 @@ from torch import nn
 
 from jamun import utils
 from jamun.e3tools.nn import AxisToMul, Gate, MulToAxis
-from jamun.model.noise_conditioning import NoiseConditionalScaling
-from jamun.model.skip_connection import NoiseConditionalSkipConnection
+from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
 
 
 def dprint(*args):
