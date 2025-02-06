@@ -11,6 +11,9 @@ import torch_geometric
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
+import e3nn
+e3nn.set_optimization_defaults(jit_script_fx=False)
+
 import jamun
 from jamun.data import MDtrajDataModule, MDtrajDataset
 from jamun.hydra import instantiate_dict_cfg

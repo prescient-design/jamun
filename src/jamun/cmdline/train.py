@@ -11,6 +11,9 @@ import wandb
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
+import e3nn
+e3nn.set_optimization_defaults(jit_script_fx=False)
+
 import jamun
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
@@ -18,9 +21,6 @@ from jamun.utils import compute_average_squared_distance_from_data, dist_log, fi
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
-
-import e3nn
-e3nn.set_optimization_defaults(jit_script_fx=False)
 
 
 def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
