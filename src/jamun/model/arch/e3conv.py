@@ -39,6 +39,7 @@ class E3Conv(torch.nn.Module):
         self.n_layers = n_layers
         self.edge_attr_dim = edge_attr_dim
 
+        self.sh = o3.SphericalHarmonics(irreps_out=self.irreps_sh, normalize=True, normalization="component")
         self.bonded_edge_attr_dim, self.radial_edge_attr_dim = self.edge_attr_dim // 2, (self.edge_attr_dim + 1) // 2
         self.embed_bondedness = torch.nn.Embedding(2, self.bonded_edge_attr_dim)
 
@@ -88,7 +89,7 @@ class E3Conv(torch.nn.Module):
         self,
         data: torch_geometric.data.Batch,
         c_noise: torch.Tensor,
-        effective_radial_cutoff: Optional[torch.Tensor] = None,
+        effective_radial_cutoff: float,
     ) -> torch_geometric.data.Batch:
         # Test equivariance on the first forward pass.
         if self.test_equivariance:
@@ -106,27 +107,14 @@ class E3Conv(torch.nn.Module):
                 irreps_out=[self.irreps_out],
             )
 
-        # Add edges to the input, based on the radial cutoff.
-        pos = data.pos
-        if "batch" in data:
-            batch = data["batch"]
-        else:
-            batch = torch.zeros(data.num_nodes, dtype=torch.long, device=pos.device)
-        radial_edge_index = torch_geometric.nn.radius_graph(pos, effective_radial_cutoff, batch)
-
-        bonded_edge_index = data.edge_index
-        edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
-        bond_mask = torch.cat(
-            (
-                torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
-                torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
-            ),
-            dim=0,
-        )
+        # Extract edge attributes.
+        pos = data['pos']
+        edge_index = data['edge_index']
+        bond_mask = data['bond_mask']
 
         src, dst = edge_index
         edge_vec = pos[src] - pos[dst]
-        edge_sh = o3.spherical_harmonics(self.irreps_sh, edge_vec, normalize=True, normalization="component")
+        edge_sh = self.sh(edge_vec)
 
         bonded_edge_attr = self.embed_bondedness(bond_mask)
         radial_edge_attr = e3nn.math.soft_one_hot_linspace(
@@ -139,7 +127,6 @@ class E3Conv(torch.nn.Module):
         )
         edge_attr = torch.cat((bonded_edge_attr, radial_edge_attr), dim=-1)
 
-        c_noise = c_noise.unsqueeze(0)
         node_attr = self.atom_embedder(data)
         node_attr = self.initial_noise_scaling(node_attr, c_noise)
         node_attr = self.initial_projector(node_attr, edge_index, edge_attr, edge_sh)
@@ -148,5 +135,5 @@ class E3Conv(torch.nn.Module):
         node_attr = self.output_head(node_attr)
         node_attr = node_attr * self.output_gain
 
-        data.pos = node_attr
+        data['pos'] = node_attr
         return data

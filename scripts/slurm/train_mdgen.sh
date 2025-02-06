@@ -5,11 +5,11 @@
 #SBATCH --ntasks-per-node 2
 #SBATCH --gpus-per-node 2
 #SBATCH --cpus-per-task 8
-#SBATCH --time 3-0
+#SBATCH --time 1-0
 #SBATCH --mem 128G
 
 eval "$(conda shell.bash hook)"
-conda activate jamun-extras
+conda activate jamun
 
 set -eux
 

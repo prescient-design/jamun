@@ -9,6 +9,8 @@ import torch_scatter
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 
+from ctypes import cdll
+libcudart = cdll.LoadLibrary('libcudart.so')
 
 class Denoiser(pl.LightningModule):
     """The main denoiser model."""
@@ -29,10 +31,14 @@ class Denoiser(pl.LightningModule):
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
         lr_scheduler_config: Optional[dict] = None,
+        use_torch_compile: bool = True,
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)
         self.g = arch()
+
+        if use_torch_compile:
+            self.g = torch.compile(self.g, fullgraph=True, dynamic=True)
 
         py_logger = logging.getLogger("jamun")
         py_logger.info(self.g)
@@ -113,78 +119,104 @@ class Denoiser(pl.LightningModule):
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
     @classmethod
-    def _A(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        return torch.as_tensor(average_squared_distance)
+    def normalization_factors(cls, sigma: float, average_squared_distance: float, D: int = 3) -> Tuple[float, float]:
+        """Normalization factors for the input and output."""
+        A = torch.as_tensor(average_squared_distance)
+        B = torch.as_tensor(2 * D * sigma**2)
 
-    @classmethod
-    def _B(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        return torch.as_tensor(2 * D * sigma**2)
-
-    @classmethod
-    def c_in(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Input scaling factor."""
-        # return torch.as_tensor(1., device=sigma.device)
-        A = cls._A(sigma, average_squared_distance, D)
-        B = cls._B(sigma, average_squared_distance, D)
-        return 1.0 / torch.sqrt(A + B)
-
-    @classmethod
-    def c_skip(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Skip connection weight."""
-        A = cls._A(sigma, average_squared_distance, D)
-        B = cls._B(sigma, average_squared_distance, D)
-        return A / (A + B)
-
-    @classmethod
-    def c_out(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Output scaling factor."""
-        A = cls._A(sigma, average_squared_distance, D)
-        B = cls._B(sigma, average_squared_distance, D)
-        return torch.sqrt((A * B) / (A + B))
-
-    @classmethod
-    def c_noise(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        """Noise scaling factor."""
-        return torch.log(sigma) / 4
+        c_in = 1.0 / torch.sqrt(A + B)
+        c_skip = A / (A + B)
+        c_out = torch.sqrt((A * B) / (A + B))
+        c_noise = torch.log(sigma) / 4
+        return c_in, c_skip, c_out, c_noise
 
     @classmethod
     def loss_weight(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
-        return 1 / (cls.c_out(sigma, average_squared_distance, D) ** 2)
+        """Loss weight for this graph."""
+        _, _, c_out, _ = cls.normalization_factors(sigma, average_squared_distance, D)
+        return 1 / (c_out**2)
 
     def effective_radial_cutoff(self, sigma: Union[float, torch.Tensor]) -> torch.Tensor:
         """Compute the effective radial cutoff for the noise level."""
         return torch.sqrt((self.max_radius**2) + 6 * (sigma**2))
 
-    def xhat_normalized(
-        self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor], save_prefix: str = ""
-    ) -> torch_geometric.data.Batch:
-        """Compute the denoised prediction using the normalized parametrization."""
-        # Output, noise and skip scale
-        assert y.pos.shape[-1] == 3
-        D = y.pos.shape[-1]
-        sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
-        c_in = self.c_in(sigma, self.average_squared_distance, D)
-        c_out = self.c_out(sigma, self.average_squared_distance, D)
-        c_skip = self.c_skip(sigma, self.average_squared_distance, D)
-        c_noise = self.c_noise(sigma, self.average_squared_distance, D)
+    def add_edges(self, y: torch_geometric.data.Batch, radial_cutoff: float) -> torch_geometric.data.Batch:
+        """Add edges to the graph based on the effective radial cutoff."""
+        pos = y.pos
+        if "batch" in y:
+            batch = y["batch"]
+        else:
+            batch = torch.zeros(y.num_nodes, dtype=torch.long, device=pos.device)
 
+        # Our dataloader already adds the bonded edges.
+        bonded_edge_index = y.edge_index
+        radial_edge_index = torch_geometric.nn.radius_graph(pos, radial_cutoff, batch)
+
+        edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
+        bond_mask = torch.cat(
+            (
+                torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
+                torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
+            ),
+            dim=0,
+        )
+        y.edge_index = edge_index
+        y.bond_mask = bond_mask
+        return y
+
+    def pad(self, y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
+        """Add padding to the graph."""
+        return y
+
+    def unpad(self, y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
+        """Remove padding from the graph."""
+        return y
+
+    def xhat_normalized(
+        self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]
+    ) -> torch_geometric.data.Batch:
+        """Compute the denoised prediction using the normalization factors from JAMUN."""
+        # Output, noise and skip scale
+        D = y.pos.shape[-1]
+        assert D == 3
+        sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
+
+        # Compute the normalization factors.
+        c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
+        radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
+        # print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
+
+        # Adjust dimensions.
         c_in = unsqueeze_trailing(c_in, y.pos.ndim - 1)
-        c_out = unsqueeze_trailing(c_out, y.pos.ndim - 1)
         c_skip = unsqueeze_trailing(c_skip, y.pos.ndim - 1)
+        c_out = unsqueeze_trailing(c_out, y.pos.ndim - 1)
+        c_noise = c_noise.unsqueeze(0)
+
+        # Add edges to the graph.
+        y = self.add_edges(y, radial_cutoff)
+
+        # Pad here.
+        y = self.pad(y)
+        # print("shapes", y.pos.shape, y.edge_index.shape)
 
         y_scaled = y.clone()
         y_scaled.pos = y.pos * c_in
 
         xhat = y.clone()
-        g_pred = self.g(y_scaled, c_noise, self.effective_radial_cutoff(sigma))
+        g_pred = self.g(y_scaled, c_noise, radial_cutoff)
         xhat.pos = c_skip * y.pos + c_out * g_pred.pos
+
+        # Unpad here.
+        xhat = self.unpad(xhat)
+
         return xhat
 
-    def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor], save_prefix: str = ""):
+    def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor]):
+        """Compute the denoised prediction."""
         if self.mean_center_input:
             y = mean_center(y)
 
-        xhat = self.xhat_normalized(y, sigma, save_prefix=save_prefix)
+        xhat = self.xhat_normalized(y, sigma)
 
         # Mean center the prediction.
         if self.mean_center_output:
@@ -197,8 +229,8 @@ class Denoiser(pl.LightningModule):
         x: torch_geometric.data.Batch,
         sigma: Union[float, torch.Tensor],
         align_noisy_input: bool,
-        save_prefix: str = "",
     ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
+        """Add noise to the input and denoise it."""
         with torch.no_grad():
             y = self.add_noise(x, sigma)
             if self.mean_center_input:
@@ -208,7 +240,7 @@ class Denoiser(pl.LightningModule):
             if align_noisy_input:
                 y = align_A_to_B_batched(y, x)
 
-        xhat = self.xhat(y, sigma, save_prefix=save_prefix)
+        xhat = self.xhat(y, sigma)
         return xhat, y
 
     def compute_loss(
@@ -217,6 +249,7 @@ class Denoiser(pl.LightningModule):
         xhat: torch.Tensor,
         sigma: Union[float, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Compute the loss."""
         # If we mean center the output, we should also mean center the target.
         if self.mean_center_output:
             x = mean_center(x)
@@ -258,18 +291,31 @@ class Denoiser(pl.LightningModule):
         x: torch_geometric.data.Batch,
         sigma: Union[float, torch.Tensor],
         align_noisy_input: bool,
-        save_prefix: str = "",
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Add noise to the input and compute the loss."""
         if self.mean_center_input:
             x = mean_center(x)
 
-        xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input, save_prefix=save_prefix)
+        xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
         return self.compute_loss(x, xhat, sigma)
 
+    def on_train_epoch_start(self):
+        pass
+        # start profiler
+        # libcudart.cudaProfilerStart()
+
+    def on_train_epoch_end(self):
+        pass
+        # self.epochs += 1
+        # if self.epochs == 10:
+        #     # stop profiler
+        #     libcudart.cudaProfilerStop()
+
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
+        """Called during training."""
         sigma = self.sigma_distribution.sample().to(batch.pos.device)
         loss, aux = self.noise_and_compute_loss(
-            batch, sigma, align_noisy_input=self.align_noisy_input_during_training, save_prefix="train"
+            batch, sigma, align_noisy_input=self.align_noisy_input_during_training,
         )
 
         # Average the loss and other metrics over all graphs.
@@ -284,9 +330,10 @@ class Denoiser(pl.LightningModule):
         }
 
     def validation_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
+        """Called during validation."""
         sigma = self.sigma_distribution.sample().to(batch.pos.device)
         loss, aux = self.noise_and_compute_loss(
-            batch, sigma, align_noisy_input=self.align_noisy_input_during_training, save_prefix="val"
+            batch, sigma, align_noisy_input=self.align_noisy_input_during_training
         )
 
         # Average the loss and other metrics over all graphs.
@@ -303,6 +350,7 @@ class Denoiser(pl.LightningModule):
         }
 
     def configure_optimizers(self):
+        """Set up the optimizer and learning rate scheduler."""
         optimizer = self.optim_factory(params=self.parameters())
 
         out = {"optimizer": optimizer}

@@ -37,7 +37,6 @@ conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
 
 The remaining dependencies can be installed via `pip` or [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (recommended).
 ```bash
-uv pip install -r env/requirements.txt
 uv pip install -e .[dev]
 ```
 
@@ -156,7 +155,6 @@ Our sampling scripts produce visualizations and some simple analysis in the Weig
 For more in-depth exploration, we provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
 
 First, add the details of the sampling runs to `analysis/wandb_runs.csv`.
-
 Then, precompute analysis results with:
 ```bash
 python analysis/analysis_sweep.py --csv analysis/wandb_runs.csv --experiment Timewarp_2AA --output-dir /data/bucket/kleinhej/jamun-analysis/

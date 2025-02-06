@@ -6,7 +6,7 @@ model:
     sigma: 0.04
   arch:
     n_layers: 2
-  max_radius: 1.0
+  max_radius: 1000.0
   optim:
     lr: 0.002
 
@@ -23,28 +23,29 @@ data:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
           trajfiles:
-            - EI-traj-arrays.npz
-          pdbfile: EI-traj-state0.pdb
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
           subsample: 100
-          label: GLU_ILE
+          label: "AA"
 
       val:
         - _target_: jamun.data.MDtrajDataset
-          root: "${paths.data_path}/timewarp/2AA-1-large/val/"
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
           trajfiles:
-            - KL-traj-arrays.npz
-          pdbfile: KL-traj-state0.pdb
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
           subsample: 100
-          label: LYS_LEU
+          label: "AA"
 
       test:
         - _target_: jamun.data.MDtrajDataset
-          root: "${paths.data_path}/timewarp/2AA-1-large/test/"
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
           trajfiles:
-            - CK-traj-arrays.npz
-          pdbfile: CK-traj-state0.pdb
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
           subsample: 100
-          label: CYS_LYS
+          label: "AA"
+
 
 trainer:
   val_check_interval: 0.5

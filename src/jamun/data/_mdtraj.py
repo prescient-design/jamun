@@ -299,7 +299,6 @@ class MDtrajDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
-            prefetch_factor=10,
         )
 
     def val_dataloader(self):

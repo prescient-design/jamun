@@ -17,7 +17,7 @@ callbacks:
 
 data:
   datamodule:
-    batch_size: 16
+    batch_size: 32
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -25,7 +25,7 @@ data:
         traj_pattern: "^(....)_.*.xtc"
         pdb_pattern: "^(....).pdb"
         as_iterable: true
-        subsample: 100
+        subsample: 5
 
       val:
         _target_: jamun.data.parse_datasets_from_directory

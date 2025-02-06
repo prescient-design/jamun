@@ -11,6 +11,9 @@ import wandb
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
+import e3nn
+e3nn.set_optimization_defaults(jit_script_fx=False)
+
 import jamun
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
