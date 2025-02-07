@@ -31,7 +31,7 @@ datasets = {
         pdb_pattern="^(....).pdb",
         as_iterable=True,
         subsample=5,
-        max_datasets=1,
+        max_datasets=10,
     )
 }
 
@@ -81,7 +81,7 @@ denoiser = jamun.model.Denoiser(
     optim=optim,
     sigma_distribution=sigma_distribution,
     lr_scheduler_config=None,
-    max_radius=1000.0,
+    max_radius=1.0,
     average_squared_distance=0.332,
     add_fixed_noise=False,
     add_fixed_ones=False,
@@ -94,7 +94,7 @@ denoiser = jamun.model.Denoiser(
     torch_compile_kwargs=dict(
         fullgraph=True,
         dynamic=True,
-        mode="reduce-overhead",
+        mode="max-autotune-no-cudagraphs",
     ),
 )
 
@@ -128,11 +128,21 @@ for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_actu
     batch = batch.to(device)
 
     torch.cuda.nvtx.range_push(f"iter_{i}")
+
+    torch.cuda.nvtx.range_push("forward")
     out = denoiser.training_step(batch, i)
+    torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("backward")
     loss = out["loss"]
     loss.backward()
+    torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("step")
     opt.step()
     opt.zero_grad()
+    torch.cuda.nvtx.range_pop()
+
     torch.cuda.nvtx.range_pop()
 
 torch.cuda.cudart().cudaProfilerStop()
