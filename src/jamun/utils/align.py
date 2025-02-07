@@ -1,7 +1,69 @@
 from typing import Tuple
 
+import einops
 import torch
 import torch_geometric
+from torch import Tensor
+
+
+def _weighted_mean(input: Tensor, weights: Tensor, dim: int = 0, keepdim: bool = False):
+    a = torch.sum(input * weights, dim=dim, keepdim=keepdim)
+    b = torch.sum(weights, dim=dim, keepdim=keepdim)
+    out = a / b
+    out[b == 0.0] = 0.0  # avoid nans for zero weights because they cause error in svd
+    return out
+
+
+def kabsch(x: Tensor, y: Tensor, *, weights: Tensor | None = None, driver: str | None = None) -> tuple[Tensor, Tensor]:
+    """Compute the optimal rigid transformation between two sets of points.
+
+    Given tensors `x` and `y` find the rigid transformation `T = (t, r)` which minimizes the RMSD between x and T(y).
+
+    Parameters
+    ----------
+    x : Tensor
+        Shape (*, N, D)
+    y : Tensor
+        Shape (*, N, D)
+    weights : Tensor | None = None
+        Shape (*, N)
+
+    Returns
+    -------
+    t: Tensor
+        Optimal translation. Shape (*, D).
+    r: Tensor
+        Optimal rotation matrix. Shape (*, D, D).
+    """
+    _, D = x.shape[-2:]
+    assert y.shape == x.shape
+
+    if weights is None:
+        weights = torch.ones(*x.shape, dtype=x.dtype, device=x.device)
+    else:
+        weights = einops.repeat(weights, "... n -> ... n d", d=D)
+
+    x_mu = _weighted_mean(x, weights, dim=-2, keepdim=True)
+    y_mu = _weighted_mean(y, weights, dim=-2, keepdim=True)
+
+    x_c = x - x_mu
+    y_c = y - y_mu
+
+    H = torch.einsum("...mi,...mj,...mj->...ij", y_c, x_c, weights)
+    u, _, vh = torch.linalg.svd(H, driver=driver)
+
+    r = torch.einsum("...ki,...jk->...ij", vh, u)  # V U^T
+
+    # remove reflections
+    # we adjust the last row because this corresponds to smallest singular value
+    sign = torch.cat(
+        [torch.ones(*x.shape[:-2], D - 1, device=x.device, dtype=x.dtype), torch.linalg.det(r).unsqueeze(-1)], dim=-1
+    )
+    r = torch.einsum("...ki,...k,...jk->...ij", vh, sign, u)  # V S U^T
+
+    t = x_mu.squeeze(-2) - torch.einsum("...ij,...j->...i", r, y_mu.squeeze(-2))
+
+    return t, r
 
 
 def find_rigid_alignment(A: torch.Tensor, B: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
