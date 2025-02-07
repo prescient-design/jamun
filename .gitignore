@@ -20,3 +20,4 @@ extras
 build
 outputs
 torch_compile_debug
+*.profile.*
