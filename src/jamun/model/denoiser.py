@@ -267,7 +267,7 @@ class Denoiser(pl.LightningModule):
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
             scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
-            scaled_loss *= self.loss_weight(sigma, self.average_squared_distance, D)
+            scaled_coordinate_loss *= self.loss_weight(sigma, self.average_squared_distance, D)
 
         return scaled_coordinate_loss, {
             "coordinate_loss": scaled_coordinate_loss,
