@@ -86,7 +86,6 @@ class Denoiser(pl.LightningModule):
 
     def add_noise(self, x: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
         # pos [B, ...]
-        sigma = torch.as_tensor(sigma, device=x.pos.device, dtype=x.pos.dtype)
         sigma = unsqueeze_trailing(sigma, x.pos.ndim)
 
         y = x.clone("pos")
@@ -110,7 +109,7 @@ class Denoiser(pl.LightningModule):
         return y
 
     def score(self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
-        sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
+        sigma = torch.as_tensor(sigma).to(y)
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
     @classmethod
@@ -137,24 +136,23 @@ class Denoiser(pl.LightningModule):
 
     def add_edges(self, y: torch_geometric.data.Batch, radial_cutoff: float) -> torch_geometric.data.Batch:
         """Add edges to the graph based on the effective radial cutoff."""
-        pos = y.pos
         if "batch" in y:
             batch = y["batch"]
         else:
-            batch = torch.zeros(y.num_nodes, dtype=torch.long, device=pos.device)
+            batch = torch.zeros(y.num_nodes, dtype=torch.long, device=self.device)
 
         # Our dataloader already adds the bonded edges.
         bonded_edge_index = y.edge_index
         
         with torch.cuda.nvtx.range("radial_graph"):
-            radial_edge_index = torch_geometric.nn.radius_graph(pos, radial_cutoff, batch)
+            radial_edge_index = torch_geometric.nn.radius_graph(y.pos, radial_cutoff, batch)
 
         with torch.cuda.nvtx.range("concatenate_edges"):    
             edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
             bond_mask = torch.cat(
                 (
-                    torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
-                    torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
+                    torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device),
+                    torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=self.device),
                 ),
                 dim=0,
             )
@@ -169,7 +167,7 @@ class Denoiser(pl.LightningModule):
         """Compute the denoised prediction using the normalization factors from JAMUN."""
         # Output, noise and skip scale
         D = y.pos.shape[-1]
-        sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
+        sigma = torch.as_tensor(sigma).to(y)
 
         # Compute the normalization factors.
         with torch.cuda.nvtx.range("normalization_factors"):

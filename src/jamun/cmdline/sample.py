@@ -48,8 +48,8 @@ def run(cfg):
         dist_log(f"{os.sched_getaffinity(0)=}")
 
     if matmul_prec := cfg.get("float32_matmul_precision"):
+        dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
-        dist_log(f"setting float_32_matmul_precision to {matmul_prec}")
 
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
     wandb_logger = None

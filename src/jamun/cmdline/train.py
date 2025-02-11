@@ -53,7 +53,7 @@ def run(cfg):
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     model = hydra.utils.instantiate(cfg.model)
     if matmul_prec := cfg.get("float32_matmul_precision"):
-        dist_log(f"setting float_32_matmul_precision to {matmul_prec}")
+        dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
 
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
