@@ -114,7 +114,7 @@ class Denoiser(pl.LightningModule):
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
     @classmethod
-    def normalization_factors(cls, sigma: float, average_squared_distance: float, D: int = 3) -> Tuple[float, float]:
+    def normalization_factors(cls, sigma: float, average_squared_distance: float, D: int = 3) -> Tuple[float, float, float, float]:
         """Normalization factors for the input and output."""
         A = torch.as_tensor(average_squared_distance)
         B = torch.as_tensor(2 * D * sigma**2)
@@ -161,14 +161,6 @@ class Denoiser(pl.LightningModule):
 
         y.edge_index = edge_index
         y.bond_mask = bond_mask
-        return y
-
-    def pad(self, y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
-        """Add padding to the graph."""
-        return y
-
-    def unpad(self, y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
-        """Remove padding from the graph."""
         return y
 
     def xhat_normalized(
@@ -275,7 +267,7 @@ class Denoiser(pl.LightningModule):
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
             scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
-        # scaled_loss *= self.loss_weight(sigma, self.average_squared_distance, D).to(device)
+            scaled_loss *= self.loss_weight(sigma, self.average_squared_distance, D)
 
         return scaled_coordinate_loss, {
             "coordinate_loss": scaled_coordinate_loss,
@@ -300,7 +292,7 @@ class Denoiser(pl.LightningModule):
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during training."""
         with torch.cuda.nvtx.range("sample_sigma"):
-            sigma = self.sigma_distribution.sample().to(batch.pos.device)
+            sigma = self.sigma_distribution.sample().to(self.device)
 
         loss, aux = self.noise_and_compute_loss(
             batch, sigma, align_noisy_input=self.align_noisy_input_during_training,
@@ -320,7 +312,7 @@ class Denoiser(pl.LightningModule):
 
     def validation_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during validation."""
-        sigma = self.sigma_distribution.sample().to(batch.pos.device)
+        sigma = self.sigma_distribution.sample().to(self.device)
         loss, aux = self.noise_and_compute_loss(
             batch, sigma, align_noisy_input=self.align_noisy_input_during_training
         )
