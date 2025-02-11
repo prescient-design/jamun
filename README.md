@@ -83,9 +83,9 @@ JAMUN_ROOT_PATH=...
 Once you have downloaded the data and set the appropriate variables correctly,
 you can start training on Timewarp.
 
-We recommend first running our test config to check that installation was successful:
+We recommend first running our test config (on one GPU) to check that installation was successful:
 ```bash
-jamun_train --config-dir=configs experiment=train_test.yaml
+CUDA_VISIBLE_DEVICES=0 jamun_train --config-dir=configs experiment=train_test.yaml
 ```
 
 Then, you can train on the uncapped 2AA peptides dataset:

@@ -1,6 +1,6 @@
 datamodule:
   _target_: jamun.data.MDtrajDataModule
   batch_size: 32
-  num_workers: 4
+  num_workers: 2
 
 use_residue_information: true

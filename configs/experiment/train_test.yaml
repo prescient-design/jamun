@@ -9,7 +9,7 @@ model:
   max_radius: 1.0
   optim:
     lr: 0.002
-
+  use_torch_compile: false
 
 callbacks:
   viz:

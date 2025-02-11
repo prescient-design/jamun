@@ -299,6 +299,7 @@ class MDtrajDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
+            pin_memory=True,
         )
 
     def val_dataloader(self):
@@ -306,6 +307,7 @@ class MDtrajDataModule(pl.LightningDataModule):
             self.concatenated_datasets["val"],
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            pin_memory=True,
         )
 
     def test_dataloader(self):
@@ -313,4 +315,5 @@ class MDtrajDataModule(pl.LightningDataModule):
             self.concatenated_datasets["test"],
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            pin_memory=True,
         )
