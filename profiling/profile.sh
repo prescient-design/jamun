@@ -8,7 +8,7 @@ nsys profile \
   -t cuda,nvtx,osrt,cudnn,cublas \
   -s cpu  \
   -x true \
-  -o profiling/nsys.profile \
+  -o nsys.profile \
   --force-overwrite true \
   --capture-range=cudaProfilerApi \
   --capture-range-end=stop \

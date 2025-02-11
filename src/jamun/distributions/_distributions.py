@@ -84,10 +84,10 @@ class UniformPlusNormal(torch.distributions.Distribution):
 
 
 class ConstantSigma(torch.distributions.Distribution):
-    def __init__(self, sigma):
+    def __init__(self, sigma: float):
         self.sigma = torch.tensor(sigma)
 
-    def sample(self, sample_shape=torch.Size([])):
+    def sample(self, sample_shape: torch.Size = torch.Size([])):
         return self.sigma.expand(sample_shape)
 
     def __repr__(self):

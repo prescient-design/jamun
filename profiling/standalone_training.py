@@ -21,8 +21,11 @@ import jamun.e3tools
 import jamun.distributions
 
 
-dotenv.load_dotenv(".env", verbose=True)
+dotenv.load_dotenv("../.env", verbose=True)
 JAMUN_DATA_PATH = os.getenv("JAMUN_DATA_PATH")
+
+# Device.
+device = torch.device("cuda:0")
 
 datasets = {
    "train": jamun.data.parse_datasets_from_directory(
@@ -37,7 +40,7 @@ datasets = {
 
 datamodule = jamun.data.MDtrajDataModule(
     datasets=datasets,
-    batch_size=64,
+    batch_size=32,
     num_workers=4,
 )
 datamodule.setup(None)
@@ -73,7 +76,7 @@ optim = functools.partial(
 )
 
 sigma_distribution = jamun.distributions.ConstantSigma(
-    sigma=0.04
+    sigma=0.04,
 )
 
 denoiser = jamun.model.Denoiser(
@@ -87,8 +90,7 @@ denoiser = jamun.model.Denoiser(
     add_fixed_ones=False,
     align_noisy_input_during_training=True,
     align_noisy_input_during_evaluation=True,
-    mean_center_input=True,
-    mean_center_output=True,
+    mean_center=True,
     mirror_augmentation_rate=0.0,
     use_torch_compile=True,
     torch_compile_kwargs=dict(
@@ -99,17 +101,25 @@ denoiser = jamun.model.Denoiser(
 )
 
 # Transfer to device.
-device = torch.device("cuda:0")
 denoiser = denoiser.to(device)
 opt = denoiser.configure_optimizers()["optimizer"]
 
-# Warmup.
-n_warmup = 10
-for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_warmup, desc="Warmup"):
-    if i == n_warmup:
+# Prepare batches.
+batches = []
+for i, batch in enumerate(datamodule.train_dataloader()):
+    if i == 1000:
         break
 
     batch = batch.to(device)
+    batches.append(batch)
+
+# Warmup.
+n_warmup = 10
+
+for i, batch in tqdm.tqdm(enumerate(batches), total=n_warmup, desc="Warmup"):
+    if i == n_warmup:
+        break
+
     out = denoiser.training_step(batch, i)
     loss = out["loss"]
     loss.backward()
@@ -118,14 +128,12 @@ for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_warm
 
         
 # Actual training.
-n_actual = 20
+n_actual = 100
 torch.cuda.cudart().cudaProfilerStart()
 
-for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_actual, desc="Training"):
+for i, batch in tqdm.tqdm(enumerate(batches), total=n_actual, desc="Training"):
     if i == n_actual:
         break
-
-    batch = batch.to(device)
 
     torch.cuda.nvtx.range_push(f"iter_{i}")
 

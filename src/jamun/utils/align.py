@@ -1,75 +1,64 @@
+import functools
 from typing import Tuple
 
-import einops
 import torch
 import torch_geometric
-from torch import Tensor
+import torch_scatter
 
 
-def _weighted_mean(input: Tensor, weights: Tensor, dim: int = 0, keepdim: bool = False):
-    a = torch.sum(input * weights, dim=dim, keepdim=keepdim)
-    b = torch.sum(weights, dim=dim, keepdim=keepdim)
-    out = a / b
-    out[b == 0.0] = 0.0  # avoid nans for zero weights because they cause error in svd
-    return out
-
-
-def kabsch(x: Tensor, y: Tensor, *, weights: Tensor | None = None, driver: str | None = None) -> tuple[Tensor, Tensor]:
+def kabsch_algorithm(y: torch.Tensor, x: torch.Tensor, batch: torch.Tensor, num_graphs: int) -> torch.Tensor:
     """Compute the optimal rigid transformation between two sets of points.
 
-    Given tensors `x` and `y` find the rigid transformation `T = (t, r)` which minimizes the RMSD between x and T(y).
+    Given tensors `y` and `x` find the rigid transformation `T = (t, R)` which minimizes the RMSD between x and T(y).
+    Returns the aligned points y.
+    See https://en.wikipedia.org/wiki/Kabsch_algorithm.
 
     Parameters
     ----------
-    x : Tensor
-        Shape (*, N, D)
     y : Tensor
-        Shape (*, N, D)
-    weights : Tensor | None = None
-        Shape (*, N)
+        Shape (N, D)
+    x : Tensor
+        Shape (N, D)
+    batch : Tensor | None
+        Shape (N,)
 
     Returns
     -------
-    t: Tensor
-        Optimal translation. Shape (*, D).
-    r: Tensor
-        Optimal rotation matrix. Shape (*, D, D).
+    Tensor
+        Aligned points y.
     """
-    _, D = x.shape[-2:]
-    assert y.shape == x.shape
+    # Mean centering.
+    x_mu = torch_scatter.scatter_mean(x, batch, dim=-2, dim_size=num_graphs)
+    y_mu = torch_scatter.scatter_mean(y, batch, dim=-2, dim_size=num_graphs)
 
-    if weights is None:
-        weights = torch.ones(*x.shape, dtype=x.dtype, device=x.device)
-    else:
-        weights = einops.repeat(weights, "... n -> ... n d", d=D)
+    x_c = x - x_mu[batch]
+    y_c = y - y_mu[batch]
 
-    x_mu = _weighted_mean(x, weights, dim=-2, keepdim=True)
-    y_mu = _weighted_mean(y, weights, dim=-2, keepdim=True)
+    # Compute batch covariance matrix.
+    batch_one_hot = torch.nn.functional.one_hot(batch, num_classes=num_graphs).float()
+    H = torch.einsum("Ni,Nj,NG->Gij", y_c, x_c, batch_one_hot)
+    
+    # SVD to get rotation.
+    U, _, VH = torch.linalg.svd(H)
+    R = torch.einsum("Gki,Gjk->Gij", VH, U)  # V U^T
 
-    x_c = x - x_mu
-    y_c = y - y_mu
+    # Remove reflections.
+    dets = torch.linalg.det(R)
+    signs = torch.eye(3, device=dets.device).repeat(num_graphs, 1, 1)  # repeat the identity matrix
+    signs[:, 2, 2] = dets
+    R = torch.einsum("Gki,Gkk,Gjk->Gij", VH, signs, U)  # V S U^T
 
-    H = torch.einsum("...mi,...mj,...mj->...ij", y_c, x_c, weights)
-    u, _, vh = torch.linalg.svd(H, driver=driver)
+    # Align y to x.
+    Ry_mu = torch.einsum("Gij,Gj->Gi", R, y_mu)
+    t = x_mu - Ry_mu
 
-    r = torch.einsum("...ki,...jk->...ij", vh, u)  # V U^T
-
-    # remove reflections
-    # we adjust the last row because this corresponds to smallest singular value
-    sign = torch.cat(
-        [torch.ones(*x.shape[:-2], D - 1, device=x.device, dtype=x.dtype), torch.linalg.det(r).unsqueeze(-1)], dim=-1
-    )
-    r = torch.einsum("...ki,...k,...jk->...ij", vh, sign, u)  # V S U^T
-
-    t = x_mu.squeeze(-2) - torch.einsum("...ij,...j->...i", r, y_mu.squeeze(-2))
-
-    return t, r
+    y_aligned = torch.einsum("Nij,Nj->Ni", R[batch], y) + t[batch]
+    return y_aligned
 
 
 def find_rigid_alignment(A: torch.Tensor, B: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Taken from https://gist.github.com/bougui505/e392a371f5bab095a3673ea6f4976cc8
-    See https://en.wikipedia.org/wiki/Kabsch_algorithm.
 
     2-D or 3-D registration with known correspondences.
     Registration occurs in the zero centered coordinate system, and then
@@ -132,9 +121,12 @@ def align_A_to_B(A: torch.Tensor, B: torch.Tensor) -> torch.Tensor:
 
 
 def align_A_to_B_batched(A: torch_geometric.data.Batch, B: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
-    """Aligns each batch of A to corresponding batch in B."""
-    num_batches = A.batch.max().item() + 1
-    for i in range(num_batches):
-        mask = A.batch == i
-        A.pos[mask] = align_A_to_B(A.pos[mask], B.pos[mask])
+    """Aligns each graph of A to corresponding graph in B."""
+    A.pos = kabsch_algorithm(A.pos, B.pos, A.batch, A.num_graphs)
     return A
+
+    # num_batches = A.batch.max().item() + 1
+    # for i in range(num_batches):
+    #     mask = A.batch == i
+    #     A.pos[mask] = align_A_to_B(A.pos[mask], B.pos[mask])
+    # return A

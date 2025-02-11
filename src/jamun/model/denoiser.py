@@ -2,6 +2,7 @@ import logging
 from typing import Callable, Optional, Tuple, Union, Dict
 
 import lightning.pytorch as pl
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch_geometric
@@ -23,8 +24,7 @@ class Denoiser(pl.LightningModule):
         add_fixed_ones: bool,
         align_noisy_input_during_training: bool,
         align_noisy_input_during_evaluation: bool,
-        mean_center_input: bool,
-        mean_center_output: bool,
+        mean_center: bool,
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
         lr_scheduler_config: Optional[Dict] = None,
@@ -73,17 +73,11 @@ class Denoiser(pl.LightningModule):
         else:
             py_logger.info("Not aligning noisy input during evaluation.")
 
-        self.mean_center_input = mean_center_input
-        if self.mean_center_input:
-            py_logger.info("Mean centering input.")
+        self.mean_center = mean_center
+        if self.mean_center:
+            py_logger.info("Mean centering input and output.")
         else:
-            py_logger.info("Not mean centering input.")
-
-        self.mean_center_output = mean_center_output
-        if self.mean_center_output:
-            py_logger.info("Mean centering output.")
-        else:
-            py_logger.info("Not mean centering output.")
+            py_logger.info("Not mean centering input and output.")
 
         self.mirror_augmentation_rate = mirror_augmentation_rate
         py_logger.info(f"Mirror augmentation rate: {self.mirror_augmentation_rate}")
@@ -95,7 +89,7 @@ class Denoiser(pl.LightningModule):
         sigma = torch.as_tensor(sigma, device=x.pos.device, dtype=x.pos.dtype)
         sigma = unsqueeze_trailing(sigma, x.pos.ndim)
 
-        y = x.clone()
+        y = x.clone("pos")
         if self.add_fixed_ones:
             noise = torch.ones_like(x.pos)
         elif self.add_fixed_noise:
@@ -151,16 +145,20 @@ class Denoiser(pl.LightningModule):
 
         # Our dataloader already adds the bonded edges.
         bonded_edge_index = y.edge_index
-        radial_edge_index = torch_geometric.nn.radius_graph(pos, radial_cutoff, batch)
+        
+        with torch.cuda.nvtx.range("radial_graph"):
+            radial_edge_index = torch_geometric.nn.radius_graph(pos, radial_cutoff, batch)
 
-        edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
-        bond_mask = torch.cat(
-            (
-                torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
-                torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
-            ),
-            dim=0,
-        )
+        with torch.cuda.nvtx.range("concatenate_edges"):    
+            edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
+            bond_mask = torch.cat(
+                (
+                    torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=pos.device),
+                    torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=pos.device),
+                ),
+                dim=0,
+            )
+
         y.edge_index = edge_index
         y.bond_mask = bond_mask
         return y
@@ -177,71 +175,51 @@ class Denoiser(pl.LightningModule):
         self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]
     ) -> torch_geometric.data.Batch:
         """Compute the denoised prediction using the normalization factors from JAMUN."""
-        torch.cuda.nvtx.range_push("compute_normalization_factors")
         # Output, noise and skip scale
         D = y.pos.shape[-1]
-        assert D == 3
         sigma = torch.as_tensor(sigma, device=y.pos.device, dtype=y.pos.dtype)
 
         # Compute the normalization factors.
-        c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
+        with torch.cuda.nvtx.range("normalization_factors"):
+            c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
         radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
-        # print("radial_cutoff", radial_cutoff, self.effective_radial_cutoff(sigma), c_in)
 
         # Adjust dimensions.
         c_in = unsqueeze_trailing(c_in, y.pos.ndim - 1)
         c_skip = unsqueeze_trailing(c_skip, y.pos.ndim - 1)
         c_out = unsqueeze_trailing(c_out, y.pos.ndim - 1)
         c_noise = c_noise.unsqueeze(0)
-        torch.cuda.nvtx.range_pop()
 
         # Add edges to the graph.
-        torch.cuda.nvtx.range_push("add_edges")
-        y = self.add_edges(y, radial_cutoff)
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("add_edges"):
+            y = self.add_edges(y, radial_cutoff)
 
-        torch.cuda.nvtx.range_push("actual_xhat")
-        # Pad here.
-        y = self.pad(y)
-        # print("shapes", y.pos.shape, y.edge_index.shape)
+        with torch.cuda.nvtx.range("scale_y"):
+            y_scaled = y.clone("pos")
+            y_scaled.pos = y.pos * c_in
 
-        torch.cuda.nvtx.range_push("scale_y")
-        y_scaled = y.clone()
-        y_scaled.pos = y.pos * c_in
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("clone_y"):
+            xhat = y.clone("pos")
 
-        torch.cuda.nvtx.range_push("clone_y")
-        xhat = y.clone()
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("g"):
+            g_pred = self.g(y_scaled, c_noise, radial_cutoff)
 
-        torch.cuda.nvtx.range_push("g")
-        g_pred = self.g(y_scaled, c_noise, radial_cutoff)
-        torch.cuda.nvtx.range_pop()
         xhat.pos = c_skip * y.pos + c_out * g_pred.pos
-
-        # Unpad here.
-        xhat = self.unpad(xhat)
-
-        torch.cuda.nvtx.range_pop()
         return xhat
 
     def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor]):
         """Compute the denoised prediction."""
-        if self.mean_center_input:
-            torch.cuda.nvtx.range_push("mean_center_y")
-            y = mean_center(y)
-            torch.cuda.nvtx.range_pop()
+        if self.mean_center:
+            with torch.cuda.nvtx.range("mean_center_y"):
+                y = mean_center(y)
 
-
-        torch.cuda.nvtx.range_push("xhat_normalized")
-        xhat = self.xhat_normalized(y, sigma)
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("xhat_normalized"):
+            xhat = self.xhat_normalized(y, sigma)
 
         # Mean center the prediction.
-        if self.mean_center_output:
-            torch.cuda.nvtx.range_push("mean_center_xhat")
-            xhat = mean_center(xhat)
-            torch.cuda.nvtx.range_pop()
+        if self.mean_center:
+            with torch.cuda.nvtx.range("mean_center_xhat"):
+                xhat = mean_center(xhat)
 
         return xhat
 
@@ -253,27 +231,24 @@ class Denoiser(pl.LightningModule):
     ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
         """Add noise to the input and denoise it."""
         with torch.no_grad():
-            torch.cuda.nvtx.range_push("add_noise")
-            y = self.add_noise(x, sigma)
-            torch.cuda.nvtx.range_pop()
-
-
-            torch.cuda.nvtx.range_push("mean_center_y")
-            if self.mean_center_input:
-                y = mean_center(y)
-            torch.cuda.nvtx.range_pop()
+            with torch.cuda.nvtx.range("add_noise"):
+                y = self.add_noise(x, sigma)
+    
+            if self.mean_center:
+                with torch.cuda.nvtx.range("mean_center_y"):
+                    y = mean_center(y)
 
             # Aligning each batch.
             if align_noisy_input:
-                torch.cuda.nvtx.range_push("align_y")
-                y = align_A_to_B_batched(y, x)
-                torch.cuda.nvtx.range_pop()
+                with torch.cuda.nvtx.range("align_A_to_B_batched"):
+                    y = align_A_to_B_batched(y, x)
 
-        torch.cuda.nvtx.range_push("xhat")
-        xhat = self.xhat(y, sigma)
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("xhat"):
+            xhat = self.xhat(y, sigma)
+
         return xhat, y
 
+    @torch.compile
     def compute_loss(
         self,
         x: torch_geometric.data.Batch,
@@ -281,42 +256,28 @@ class Denoiser(pl.LightningModule):
         sigma: Union[float, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute the loss."""
-        # If we mean center the output, we should also mean center the target.
-        if self.mean_center_output:
-            torch.cuda.nvtx.range_push("mean_center_x_in_loss")
-            x = mean_center(x)
-            torch.cuda.nvtx.range_pop()
-
-        device = xhat.pos.device
         D = xhat.pos.shape[-1]
-        assert D == 3
-        D = torch.tensor(D, device=device)
 
-        def coordinate_loss():
-            """Standard l2 loss on atom coordinates."""
-            # Compute the raw loss.
-            raw_loss = F.mse_loss(xhat.pos, x.pos, reduction="none")
-            raw_loss = raw_loss.sum(dim=-1)
+        # Compute the raw loss.
+        with torch.cuda.nvtx.range("raw_coordinate_loss"):
+            raw_coordinate_loss = F.mse_loss(xhat.pos, x.pos, reduction="none")
+            raw_coordinate_loss = raw_coordinate_loss.sum(dim=-1)
 
-            # Compute the scaled RMSD.
-            scaled_rmsd = torch.sqrt(raw_loss) / (sigma * torch.sqrt(D))
+        # Compute the scaled RMSD.
+        with torch.cuda.nvtx.range("scaled_rmsd"):
+            scaled_rmsd = torch.sqrt(raw_coordinate_loss) / (sigma * np.sqrt(D))
+    
+        # Take the mean over each graph.
+        with torch.cuda.nvtx.range("mean_over_graphs"):
+            raw_coordinate_loss = torch_scatter.scatter_mean(raw_coordinate_loss, x.batch, dim_size=x.num_graphs)
+            scaled_rmsd = torch_scatter.scatter_mean(scaled_rmsd, x.batch, dim_size=x.num_graphs)
+    
+        # Account for the loss weight across graphs and noise levels.
+        with torch.cuda.nvtx.range("loss_weight"):
+            scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
+        # scaled_loss *= self.loss_weight(sigma, self.average_squared_distance, D).to(device)
 
-            # Take the mean over each graph.
-            raw_loss = torch_scatter.scatter_mean(raw_loss, x.batch)
-            scaled_rmsd = torch_scatter.scatter_mean(scaled_rmsd, x.batch)
-
-            # Account for the loss weight across graphs and noise levels.
-            scaled_loss = raw_loss * x.loss_weight
-            scaled_loss *= self.loss_weight(sigma, self.average_squared_distance, D).to(device)
-
-            return scaled_loss, raw_loss, scaled_rmsd
-
-        torch.cuda.nvtx.range_push("coordinate_loss")
-        scaled_coordinate_loss, raw_coordinate_loss, scaled_rmsd = coordinate_loss()
-        torch.cuda.nvtx.range_pop()
-
-        total_loss = scaled_coordinate_loss
-        return total_loss, {
+        return scaled_coordinate_loss, {
             "coordinate_loss": scaled_coordinate_loss,
             "raw_coordinate_loss": raw_coordinate_loss,
             "scaled_rmsd": scaled_rmsd,
@@ -329,31 +290,28 @@ class Denoiser(pl.LightningModule):
         align_noisy_input: bool,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Add noise to the input and compute the loss."""
-        if self.mean_center_input:
-            torch.cuda.nvtx.range_push("mean_center_x")
-            x = mean_center(x)
-            torch.cuda.nvtx.range_pop()
+        if self.mean_center:
+            with torch.cuda.nvtx.range("mean_center_x"):
+                x = mean_center(x)
 
         xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
         return self.compute_loss(x, xhat, sigma)
 
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during training."""
-        torch.cuda.nvtx.range_push("sigma_sample")
-        sigma = self.sigma_distribution.sample().to(batch.pos.device)
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("sample_sigma"):
+            sigma = self.sigma_distribution.sample().to(batch.pos.device)
 
         loss, aux = self.noise_and_compute_loss(
             batch, sigma, align_noisy_input=self.align_noisy_input_during_training,
         )
 
         # Average the loss and other metrics over all graphs.
-        torch.cuda.nvtx.range_push("mean over graphs")
-        aux["loss"] = loss
-        for key in aux:
-            aux[key] = aux[key].mean()
-            self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=False)
-        torch.cuda.nvtx.range_pop()
+        with torch.cuda.nvtx.range("mean_over_graphs"):
+            aux["loss"] = loss
+            for key in aux:
+                aux[key] = aux[key].mean()
+                self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=False)
 
         return {
             "sigma": sigma,
