@@ -330,7 +330,7 @@ class Denoiser(pl.LightningModule):
         for key in aux:
             aux[key] = aux[key].mean()
             self.log(
-                f"val/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=False
+                f"val/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=True
             )
 
         return {
