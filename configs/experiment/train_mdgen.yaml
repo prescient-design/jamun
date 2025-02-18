@@ -10,6 +10,11 @@ model:
   max_radius: 1.0
   optim:
     lr: 0.002
+  use_torch_compile: true
+  torch_compile_kwargs:
+    fullgraph: true
+    dynamic: true
+    mode: default
 
 callbacks:
   viz:
@@ -17,6 +22,7 @@ callbacks:
 
 data:
   datamodule:
+    num_workers: 4
     batch_size: 32
     datasets:
       train:
@@ -44,8 +50,8 @@ data:
         subsample: 100
 
 trainer:
-  val_check_interval: 30000
-  limit_val_batches: 1000
+  val_check_interval: 100
+  limit_val_batches: 100
   max_epochs: 10
 
 logger:

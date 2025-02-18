@@ -4,9 +4,9 @@ import torch_scatter
 import torch
 
 
-@functools.partial(torch.compile, dynamic=True)
-def mean_center(y: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
+def mean_center(x: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
     """Mean centers the positions."""
-    mean_pos = torch_scatter.scatter_mean(y.pos, y.batch, dim=0, dim_size=y.num_graphs)
-    y.pos -= mean_pos[y.batch]
-    return y
+    x = x.clone("pos")
+    mean_pos = torch_scatter.scatter_mean(x.pos, x.batch, dim=0, dim_size=x.num_graphs)
+    x.pos -= mean_pos[x.batch]
+    return x

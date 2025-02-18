@@ -109,7 +109,8 @@ class Denoiser(pl.LightningModule):
         return y
 
     def score(self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
-        sigma = torch.as_tensor(sigma).to(y)
+        """Compute the score function."""
+        sigma = torch.as_tensor(sigma).to(y.pos)
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
     @classmethod
@@ -167,7 +168,6 @@ class Denoiser(pl.LightningModule):
         """Compute the denoised prediction using the normalization factors from JAMUN."""
         # Output, noise and skip scale
         D = y.pos.shape[-1]
-        sigma = torch.as_tensor(sigma).to(y)
 
         # Compute the normalization factors.
         with torch.cuda.nvtx.range("normalization_factors"):
@@ -221,6 +221,13 @@ class Denoiser(pl.LightningModule):
     ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
         """Add noise to the input and denoise it."""
         with torch.no_grad():
+
+            if self.mean_center:
+                with torch.cuda.nvtx.range("mean_center_x"):
+                    x = mean_center(x)
+
+            sigma = torch.as_tensor(sigma).to(x.pos)
+
             with torch.cuda.nvtx.range("add_noise"):
                 y = self.add_noise(x, sigma)
     
@@ -246,6 +253,10 @@ class Denoiser(pl.LightningModule):
         sigma: Union[float, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute the loss."""
+        if self.mean_center:
+            with torch.cuda.nvtx.range("mean_center_x"):
+                x = mean_center(x)
+
         D = xhat.pos.shape[-1]
 
         # Compute the raw loss.
@@ -280,10 +291,6 @@ class Denoiser(pl.LightningModule):
         align_noisy_input: bool,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Add noise to the input and compute the loss."""
-        if self.mean_center:
-            with torch.cuda.nvtx.range("mean_center_x"):
-                x = mean_center(x)
-
         xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
         return self.compute_loss(x, xhat, sigma)
 
@@ -301,6 +308,7 @@ class Denoiser(pl.LightningModule):
             aux["loss"] = loss
             for key in aux:
                 aux[key] = aux[key].mean()
+
                 self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=False)
 
         return {

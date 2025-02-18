@@ -42,6 +42,9 @@ def run(cfg):
     dist_log(f"{torch.__config__.parallel_info()}")
     dist_log(f"{os.sched_getaffinity(0)=}")
 
+    # Set the start method to spawn to avoid issues with the default fork method.
+    torch.multiprocessing.set_start_method("spawn", force=True)
+
     # Compute data normalization.
     if cfg.get("compute_average_squared_distance_from_data"):
         average_squared_distance = compute_average_squared_distance_from_config(cfg)

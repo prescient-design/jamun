@@ -118,7 +118,7 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
             xhat -= xhat.mean(dim=0, keepdim=True)
             x -= x.mean(dim=0, keepdim=True)
 
-            scaled_rmsd_per_sigma[sigma] = utils.scaled_rmsd(xhat, x, sigma)
+            scaled_rmsd_per_sigma[sigma] = utils.scaled_rmsd(x, xhat, sigma)
         return trajectories, scaled_rmsd_per_sigma
 
     def log(
