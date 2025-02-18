@@ -9,7 +9,7 @@
 #SBATCH --mem 128G
 
 eval "$(conda shell.bash hook)"
-conda activate jamun-extras
+conda activate jamun
 
 set -eux
 
