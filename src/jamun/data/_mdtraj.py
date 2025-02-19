@@ -103,7 +103,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         subsample: Optional[int] = None,
         loss_weight: float = 1.0,
         chunk_size: int = 100,
-        start_at_random_frame: bool = True,
+        start_at_random_frame: bool = False,
         verbose: bool = False,
     ):
         self.root = root
