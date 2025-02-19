@@ -154,10 +154,23 @@ Our sampling scripts produce visualizations and some simple analysis in the Weig
 
 For more in-depth exploration, we provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
 
-First, add the details of the sampling runs to `analysis/wandb_runs.csv`.
+First, add the details of the sampling runs to a CSV file `SAMPLE_RUNS_CSV`. 
 Then, precompute analysis results with:
 ```bash
-python analysis/analysis_sweep.py --csv analysis/wandb_runs.csv --experiment Timewarp_2AA --output-dir /data/bucket/kleinhej/jamun-analysis/
+python analysis/analysis_sweep.py --csv [SAMPLE_RUNS_CSV] --experiment [EXPERIMENT] --output-dir [ANALYSIS_OUTPUT_DIR]
+```
+For example, we have details for our sampling runs at `analysis/sample_runs.csv`:
+```txt
+experiment,wandb_sample_run_path,reference,trajectory
+Our_2AA,prescient-design/jamun/sc3roq1e,JAMUNReference_2AA,JAMUN
+Our_2AA,prescient-design/jamun/ur17v6od,JAMUNReference_2AA,JAMUN
+Timewarp_2AA,prescient-design/jamun/jls6fodw,TimewarpReference,JAMUN
+...
+```
+
+We can run the analysis for `Timewarp_2AA` with:
+```bash
+python analysis/analysis_sweep.py --csv analysis/sample_runs.csv --experiment Timewarp_2AA --output-dir ./jamun-analysis/
 ```
 
 Finally, run `analysis/make_plots.ipynb` to make plots.
