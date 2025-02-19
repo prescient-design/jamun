@@ -159,6 +159,9 @@ Then, precompute analysis results with:
 ```bash
 python analysis/analysis_sweep.py --csv [SAMPLE_RUNS_CSV] --experiment [EXPERIMENT] --output-dir [ANALYSIS_OUTPUT_DIR]
 ```
+
+Finally, run `analysis/make_plots.ipynb` to make plots for your chosen experiment.
+
 For example, we have details for our sampling runs at `analysis/sample_runs.csv`:
 ```txt
 experiment,wandb_sample_run_path,reference,trajectory
@@ -173,7 +176,6 @@ We can run the analysis for `Timewarp_2AA` with:
 python analysis/analysis_sweep.py --csv analysis/sample_runs.csv --experiment Timewarp_2AA --output-dir ./jamun-analysis/
 ```
 
-Finally, run `analysis/make_plots.ipynb` to make plots.
 
 ## Data Generation
 
