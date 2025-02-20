@@ -52,7 +52,7 @@ class AtomEmbeddingWithResidueInformation(nn.Module):
         self.residue_index_embedding = torch.nn.Embedding(max_sequence_length, residue_index_embedding_dim)
         self.use_residue_sequence_index = use_residue_sequence_index
         self.irreps_out = e3nn.o3.Irreps(
-            f"{atom_type_embedding_dim}x0e + {atom_type_embedding_dim}x0o + {residue_code_embedding_dim}x0e + {residue_index_embedding_dim}x0e"
+            f"{atom_type_embedding_dim}x0e + {atom_type_embedding_dim}x0e + {residue_code_embedding_dim}x0e + {residue_index_embedding_dim}x0e"
         )
 
     def forward(self, data: utils.DataWithResidueInformation) -> torch.Tensor:
