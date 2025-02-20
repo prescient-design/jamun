@@ -10,7 +10,7 @@ from ._gate import Gated
 from ._interaction import LinearSelfInteraction
 from ._mlp import ScalarMLP
 from ._tensor_product import ExperimentalTensorProduct, SeparableTensorProduct
-
+from ._scaling import ScaleIrreps
 
 class Conv(torch.nn.Module):
     """
@@ -76,8 +76,8 @@ class Conv(torch.nn.Module):
         if tensor_product is None:
             tensor_product = functools.partial(
                 o3.FullyConnectedTensorProduct,
-                shared_weights=False,
-                internal_weights=False,
+                shared_weights=True,
+                internal_weights=True,
             )
 
         self.tp = tensor_product(irreps_in, irreps_sh, irreps_out)
@@ -88,10 +88,19 @@ class Conv(torch.nn.Module):
                 activation_layer=torch.nn.SiLU,
             )
 
-        self.radial_nn = radial_nn(edge_attr_dim, self.tp.weight_numel)
+        self.radial_nn = radial_nn(edge_attr_dim, self.tp.irreps_out.num_irreps)
+        self.scale_irreps = ScaleIrreps(self.tp.irreps_out)
 
     def apply_per_edge(self, node_attr_src, edge_attr, edge_sh):
-        return self.tp(node_attr_src, edge_sh, self.radial_nn(edge_attr))
+        # torch.cuda.nvtx.range_push("radial_nn")
+        # torch.cuda.nvtx.range_pop()
+
+        # torch.cuda.nvtx.range_push("tensor_product")
+        tp = self.tp(node_attr_src, edge_sh)
+        edge_attr = self.radial_nn(edge_attr)
+        tp = self.scale_irreps(tp, edge_attr)
+        # torch.cuda.nvtx.range_pop()
+        return tp
 
     def forward(self, node_attr, edge_index, edge_attr, edge_sh):
         """
@@ -114,7 +123,10 @@ class Conv(torch.nn.Module):
 
         src, dst = edge_index
         out_ij = self.apply_per_edge(node_attr[src], edge_attr, edge_sh)
+
+        # torch.cuda.nvtx.range_push("scatter")
         out = scatter(out_ij, dst, dim=0, dim_size=N, reduce="mean")
+        # torch.cuda.nvtx.range_pop()
 
         return out
 

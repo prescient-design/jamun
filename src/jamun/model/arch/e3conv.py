@@ -107,6 +107,7 @@ class E3Conv(torch.nn.Module):
             )
 
         # Extract edge attributes.
+        # torch.cuda.nvtx.range_push("Edge Attr")
         pos = data['pos']
         edge_index = data['edge_index']
         bond_mask = data['bond_mask']
@@ -125,14 +126,35 @@ class E3Conv(torch.nn.Module):
             cutoff=True,
         )
         edge_attr = torch.cat((bonded_edge_attr, radial_edge_attr), dim=-1)
+        # torch.cuda.nvtx.range_pop()
 
+        # torch.cuda.nvtx.range_push("Initial")
         node_attr = self.atom_embedder(data)
         node_attr = self.initial_noise_scaling(node_attr, c_noise)
         node_attr = self.initial_projector(node_attr, edge_index, edge_attr, edge_sh)
-        for scaling, skip, layer in zip(self.noise_scalings, self.skip_connections, self.layers):
-            node_attr = skip(node_attr, layer(scaling(node_attr, c_noise), edge_index, edge_attr, edge_sh), c_noise)
+        # torch.cuda.nvtx.range_pop()
+
+        for index, (scaling, skip, layer) in enumerate(zip(self.noise_scalings, self.skip_connections, self.layers)):
+            # torch.cuda.nvtx.range_push(f"Layer {index}")
+
+            # torch.cuda.nvtx.range_push("Scaling")
+            next_node_attr = scaling(node_attr, c_noise)
+            # torch.cuda.nvtx.range_pop()
+
+            # torch.cuda.nvtx.range_push("Convolution")
+            next_node_attr = layer(next_node_attr, edge_index, edge_attr, edge_sh)
+            # torch.cuda.nvtx.range_pop()
+
+            # torch.cuda.nvtx.range_push("Skip")
+            node_attr = skip(node_attr, next_node_attr, c_noise)
+            # torch.cuda.nvtx.range_pop()
+
+            # torch.cuda.nvtx.range_pop()
+
+        # torch.cuda.nvtx.range_push("Output")
         node_attr = self.output_head(node_attr)
         node_attr = node_attr * self.output_gain
+        # torch.cuda.nvtx.range_pop()
 
         data['pos'] = node_attr
         return data
