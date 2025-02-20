@@ -41,7 +41,7 @@ datasets = {
 datamodule = jamun.data.MDtrajDataModule(
     datasets=datasets,
     batch_size=32,
-    num_workers=4,
+    num_workers=2,
 )
 datamodule.setup(None)
 
@@ -92,7 +92,7 @@ denoiser = jamun.model.Denoiser(
     align_noisy_input_during_evaluation=True,
     mean_center=True,
     mirror_augmentation_rate=0.0,
-    use_torch_compile=True,
+    use_torch_compile=False,
     torch_compile_kwargs=dict(
         fullgraph=True,
         dynamic=True,
@@ -104,22 +104,14 @@ denoiser = jamun.model.Denoiser(
 denoiser = denoiser.to(device)
 opt = denoiser.configure_optimizers()["optimizer"]
 
-# Prepare batches.
-batches = []
-for i, batch in enumerate(datamodule.train_dataloader()):
-    if i == 1000:
-        break
-
-    batch = batch.to(device)
-    batches.append(batch)
-
 # Warmup.
 n_warmup = 10
 
-for i, batch in tqdm.tqdm(enumerate(batches), total=n_warmup, desc="Warmup"):
+for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_warmup, desc="Warmup"):
     if i == n_warmup:
         break
 
+    batch = batch.to(device)
     out = denoiser.training_step(batch, i)
     loss = out["loss"]
     loss.backward()
@@ -131,11 +123,12 @@ for i, batch in tqdm.tqdm(enumerate(batches), total=n_warmup, desc="Warmup"):
 n_actual = 100
 torch.cuda.cudart().cudaProfilerStart()
 
-for i, batch in tqdm.tqdm(enumerate(batches), total=n_actual, desc="Training"):
+for i, batch in tqdm.tqdm(enumerate(datamodule.train_dataloader()), total=n_actual, desc="Training"):
     if i == n_actual:
         break
 
-    torch.cuda.nvtx.range_push(f"iter_{i}")
+    batch = batch.to(device)
+    torch.cuda.nvtx.range_push(f"iteration {i}")
 
     torch.cuda.nvtx.range_push("forward")
     out = denoiser.training_step(batch, i)
