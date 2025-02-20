@@ -96,7 +96,7 @@ denoiser = jamun.model.Denoiser(
     torch_compile_kwargs=dict(
         fullgraph=True,
         dynamic=True,
-        mode="max-autotune-no-cudagraphs",
+        mode="default",
     ),
 )
 
