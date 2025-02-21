@@ -34,7 +34,7 @@ datasets = {
         pdb_pattern="^(....).pdb",
         as_iterable=True,
         subsample=5,
-        max_datasets=10,
+        max_datasets=100,
     )
 }
 
@@ -92,7 +92,7 @@ denoiser = jamun.model.Denoiser(
     align_noisy_input_during_evaluation=True,
     mean_center=True,
     mirror_augmentation_rate=0.0,
-    use_torch_compile=False,
+    use_torch_compile=True,
     torch_compile_kwargs=dict(
         fullgraph=True,
         dynamic=True,
