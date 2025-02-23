@@ -245,7 +245,6 @@ class Denoiser(pl.LightningModule):
 
         return xhat, y
 
-    @torch.compile
     def compute_loss(
         self,
         x: torch_geometric.data.Batch,

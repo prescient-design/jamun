@@ -50,8 +50,6 @@ data:
         subsample: 100
 
 trainer:
-  val_check_interval: 100
-  limit_val_batches: 100
   max_epochs: 10
 
 logger:
