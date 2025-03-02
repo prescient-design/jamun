@@ -2,10 +2,8 @@
 
 from typing import Tuple, Optional
 import argparse
-import logging
 import os
 import requests
-import tqdm
 import multiprocessing
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
@@ -38,28 +36,26 @@ def run_preprocess(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
         return (name, str(e))
 
 
-def download_github_csv(url):
-    """
-    Download CSV file from GitHub. Works with both raw URLs and regular GitHub URLs.
-    Returns a pandas DataFrame.
-    """
+def download_github_csv(url: str) -> pd.DataFrame:
+    """Download CSV file from GitHub. Works with both raw URLs and regular GitHub URLs.Returns a pandas DataFrame."""
     # Convert regular GitHub URL to raw URL if needed
     if 'github.com' in url and 'raw' not in url:
         url = url.replace('github.com', 'raw.githubusercontent.com')
         url = url.replace('/blob/', '/')
     
     try:
-        # Download the CSV file
+        # Download the CSV file.
         response = requests.get(url)
         response.raise_for_status()  # Raise an exception for bad status codes
         
-        # Read CSV into pandas DataFrame
+        # Read CSV into pandas DataFrame.
         df = pd.read_csv(url)
         return df
         
     except requests.exceptions.RequestException as e:
         print(f"Error downloading file: {e}")
         return None
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create splits of .xtc files based on containing folder.')
@@ -76,7 +72,7 @@ if __name__ == "__main__":
     }
 
     for split, url in split_files.items():
-        # Download the split file
+        # Download the split file.
         df = download_github_csv(url)
     
         split_dir = os.path.join(args.output_dir, split)

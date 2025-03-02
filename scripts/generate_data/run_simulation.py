@@ -36,6 +36,7 @@ class SimulationConfig:
     negative_ion: str = "Cl-"
     output_frequency: int = 1000
     save_intermediate_files: bool = False
+    energy_minimization_only: bool = False
 
 
 def parse_args() -> SimulationConfig:
@@ -75,6 +76,11 @@ Examples:
 
     # Simulation parameters
     sim_group = parser.add_argument_group("Simulation Parameters")
+    sim_group.add_argument(
+        "--energy-minimization-only",
+        action="store_true",
+        help="Run only energy minimization (default: False)",
+    )
     sim_group.add_argument(
         "--dt", type=float, default=SimulationConfig.dt_ps, help="Timestep in ps (default: %(default)s)"
     )
@@ -151,6 +157,7 @@ Examples:
         nvt_equil_steps=args.nvt_equil_steps,
         npt_equil_steps=args.npt_equil_steps,
         save_intermediate_files=args.save_intermediate_files,
+        energy_minimization_only=args.energy_minimization_only,
     )
 
 
@@ -176,7 +183,7 @@ def setup_system(config: SimulationConfig) -> Tuple[op.Positions, Topology, Simu
     # Get a prefix for output files.
     output_file_prefix = get_output_file_prefix(config.init_pdb)
 
-    # Fix PDB and add hydrogens
+    # Fix PDB and add hydrogens.
     positions, topology = op.fix_pdb(
         config.init_pdb, output_file_prefix=f"{output_file_prefix}_fixed", save_file=config.save_intermediate_files
     )
@@ -189,7 +196,7 @@ def setup_system(config: SimulationConfig) -> Tuple[op.Positions, Topology, Simu
         save_file=config.save_intermediate_files,
     )
 
-    # Solvate system
+    # Solvate system.
     positions, topology = op.solvate(
         positions,
         topology,
@@ -202,7 +209,7 @@ def setup_system(config: SimulationConfig) -> Tuple[op.Positions, Topology, Simu
         save_file=config.save_intermediate_files,
     )
 
-    # Create and setup simulation
+    # Create and setup simulation.
     simulation = op.get_system_with_Langevin_integrator(topology, ff, config.temp_K, dt_ps=config.dt_ps)
 
     return positions, topology, simulation
@@ -225,7 +232,12 @@ def run_full_simulation(
         num_steps=config.energy_minimization_steps,
         output_file_prefix=f"{output_file_prefix}_minimized",
         save_file=config.save_intermediate_files,
+        save_protein_only_file=config.energy_minimization_only,
     )
+
+    if config.energy_minimization_only:
+        py_logger.info("Energy minimization completed, exiting.")
+        return
 
     # NVT with restraints.
     positions, velocities, simulation = op.run_simulation(
