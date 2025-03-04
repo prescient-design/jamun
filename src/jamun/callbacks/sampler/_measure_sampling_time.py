@@ -1,5 +1,6 @@
-from typing import Any, Dict, List, Optional
 import time
+import logging
+
 import torch
 import lightning.pytorch as pl
 
@@ -29,7 +30,7 @@ class MeasureSamplingTimeCallback(pl.Callback):
         self.batch_graph_counts = []
         self.start_time = None
         
-    def on_sample_start(self, trainer, pl_module):
+    def on_sample_start(self, sampler, pl_module):
         """Called when sampling starts."""
         self.reset()
         
@@ -65,16 +66,17 @@ class MeasureSamplingTimeCallback(pl.Callback):
         self.batch_graph_counts.append(num_graphs)
         
         # Log metrics
-        trainer = sampler.fabric
-        trainer.log("sampler/batch_sampling_time", time_elapsed)
-        trainer.log("sampler/batch_num_graphs", num_graphs)
-        trainer.log("sampler/batch_time_per_graph", time_elapsed / num_graphs)
-        trainer.log("sampler/total_sampling_time", self.total_sampling_time)
-        trainer.log("sampler/total_num_graphs", self.total_num_graphs)
-        trainer.log("sampler/avg_time_per_graph", self.total_sampling_time / self.total_num_graphs)
+        sampler = sampler.fabric
+        sampler.log("sampler/batch_sampling_time", time_elapsed)
+        sampler.log("sampler/batch_num_graphs", num_graphs)
+        sampler.log("sampler/batch_time_per_graph", time_elapsed / num_graphs)
+        sampler.log("sampler/total_sampling_time", self.total_sampling_time)
+        sampler.log("sampler/total_num_graphs", self.total_num_graphs)
+        sampler.log("sampler/avg_time_per_graph", self.total_sampling_time / self.total_num_graphs)
         
         # Log to console
-        trainer.logger.info(
+        py_logger = logging.getLogger("jamun")
+        py_logger.info(
             f"Sampled batch {batch_idx} with {num_graphs} samples in {time_elapsed:.4f} seconds "
             f"({time_elapsed / num_graphs:.4f} seconds per sample)."
         )
@@ -82,26 +84,28 @@ class MeasureSamplingTimeCallback(pl.Callback):
         # Reset start time
         self.start_time = None
         
-    def on_sample_end(self, trainer, pl_module):
+    def on_sample_end(self, sampler, pl_module):
         """Log final statistics when sampling is complete."""
         if self.total_num_graphs == 0:
             return
             
         avg_time = self.total_sampling_time / self.total_num_graphs
         
-        # Log final metrics
-        trainer.log("sampler/final_total_sampling_time", self.total_sampling_time)
-        trainer.log("sampler/final_total_num_graphs", self.total_num_graphs)
-        trainer.log("sampler/final_avg_time_per_graph", avg_time)
+        # Log final metrics.
+        sampler.log("sampler/final_total_sampling_time", self.total_sampling_time)
+        sampler.log("sampler/final_total_num_graphs", self.total_num_graphs)
+        sampler.log("sampler/final_avg_time_per_graph", avg_time)
         
-        # Calculate additional statistics
+        # Calculate additional statistics.
         if self.batch_times:
-            trainer.log("sampler/min_batch_time", min(self.batch_times))
-            trainer.log("sampler/max_batch_time", max(self.batch_times))
-            trainer.log("sampler/avg_batch_time", sum(self.batch_times) / len(self.batch_times))
+            sampler.log("sampler/min_batch_time", min(self.batch_times))
+            sampler.log("sampler/max_batch_time", max(self.batch_times))
+            sampler.log("sampler/avg_batch_time", sum(self.batch_times) / len(self.batch_times))
+            sampler.log("sampler/std_batch_time", torch.std(torch.tensor(self.batch_times)).item())
         
-        # Log to console
-        trainer.logger.info(
+        # Log to console.
+        py_logger = logging.getLogger("jamun")
+        py_logger.info(
             f"Total sampling time: {self.total_sampling_time:.4f} seconds "
             f"for {self.total_num_graphs} samples "
             f"({avg_time:.4f} seconds per sample)."
