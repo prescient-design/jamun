@@ -1,5 +1,3 @@
-import logging
-import time
 from typing import Any, Iterable, Optional, Union
 
 import lightning
@@ -60,7 +58,6 @@ class Sampler:
         init_graphs: torch_geometric.data.Data,
         continue_chain: bool = False,
     ):
-        py_logger = logging.getLogger("jamun")
         self.fabric.launch()
         self.fabric.setup(model)
         model.eval()
@@ -80,30 +77,12 @@ class Sampler:
         batches = torch.arange(num_batches)
         iterable = self.progbar_wrapper(batches, desc="Sampling", total=len(batches), leave=False)
 
-        total_sampling_time = 0.0
-        total_num_graphs = 0
-
         with torch.inference_mode():
             for batch_idx in iterable:
                 self.global_step = batch_idx
 
-                # Keep track of time taken to sample a batch.
-                start_time = time.perf_counter()
-
                 out = batch_sampler.sample(model=model_wrapped, y_init=y_init, v_init=v_init)
                 samples = model_wrapped.unbatch_samples(out)
-
-                end_time = time.perf_counter()
-                time_elapsed = end_time - start_time
-                num_graphs = sum(sample["xhat_traj"].shape[1] for sample in samples)
-                py_logger.info(
-                    f"Sampled batch {batch_idx} with {num_graphs} samples in {time_elapsed:0.4f} seconds "
-                    f"({time_elapsed / num_graphs:0.4f} seconds per sample)."
-                )
-                total_sampling_time += time_elapsed
-                total_num_graphs += num_graphs
-                self.fabric.log("sampler/total_sampling_time", total_sampling_time)
-                self.fabric.log("sampler/total_num_graphs", total_num_graphs)
 
                 # Start next chain from the end state of the previous chain?
                 if continue_chain:
@@ -117,8 +96,3 @@ class Sampler:
                 self.fabric.log("sampler/global_step", batch_idx)
 
         self.fabric.call("on_sample_end", sampler=self)
-        py_logger.info(
-            f"Total sampling time: {total_sampling_time:0.4f} seconds "
-            f"for {total_num_graphs} samples "
-            f"({total_sampling_time / total_num_graphs:0.4f} seconds per sample)."
-        )

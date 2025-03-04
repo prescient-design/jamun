@@ -1,4 +1,5 @@
 defaults:
+  - sampler/measure_sampling_time.yaml
   - sampler/chemical_validity.yaml
   - sampler/ramachandran.yaml
   - sampler/trajectory_visualizer.yaml
