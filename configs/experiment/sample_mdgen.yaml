@@ -24,9 +24,9 @@ score_fn_clip: 100.0
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/test/"
-  traj_pattern: "^(.*).xtc"
-  pdb_pattern: "^(.*).pdb"
+  root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/test/"
+  traj_pattern: "^(....)_.*.xtc"
+  pdb_pattern: "^(....).pdb"
   as_iterable: false
 
 sampler:
