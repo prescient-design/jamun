@@ -34,7 +34,7 @@ def find_checkpoint_in_directory(checkpoint_dir: str, checkpoint_type: str) -> s
         # Assumes that the checkpoints are saved when the validation loss is lower.
         best_epoch = 0
         checkpoint_path = None
-        for file in os.listdir(checkpoint_dir):
+        for file in sorted(os.listdir(checkpoint_dir)):
             if not file.endswith(".ckpt") or not file.startswith("epoch="):
                 continue
 
