@@ -166,7 +166,7 @@ class Denoiser(pl.LightningModule):
         self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]
     ) -> torch_geometric.data.Batch:
         """Compute the denoised prediction using the normalization factors from JAMUN."""
-        # Output, noise and skip scale
+        sigma = torch.as_tensor(sigma).to(y.pos)
         D = y.pos.shape[-1]
 
         # Compute the normalization factors.
