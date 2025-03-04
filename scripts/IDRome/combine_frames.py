@@ -12,9 +12,8 @@ py_logger = logging.getLogger("process_IDRome")
 
 
 
-def combine_frames(args, use_srun: bool = True) -> None:
+def combine_frames(name: str, input_dir: str, original_traj_dir: str, output_dir: str) -> None:
     """Combine relaxed IDRome v4 all-atom frames."""
-    name, input_dir, original_traj_dir, output_dir = args
 
     traj_AA = None
     frames = sorted(os.listdir(os.path.join(input_dir, name)),
@@ -39,33 +38,25 @@ def combine_frames(args, use_srun: bool = True) -> None:
             top_AA.add_atom(atom.name, element=atom.element, residue=res)
     top_AA.create_standard_bonds()
 
-    traj = md.load_xtc(os.path.join(original_traj_dir, f'{name}.xtc'), top=os.path.join(original_traj_dir, f'{name}.pdb'))
-    traj_AA = md.Trajectory(traj_AA.xyz, top_AA, traj.time, traj.unitcell_lengths, traj.unitcell_angles)
-    traj_AA[0].save_pdb(os.path.join(output_dir, f"{name}.pdb"))
-    traj_AA.save_xtc(os.path.join(output_dir, f"{name}.xtc"))
+    original_traj_path = os.path.join(original_traj_dir, name, 'traj.xtc')
+    original_top_path = os.path.join(original_traj_dir, name, 'top.pdb')
+    original_traj = md.load_xtc(original_traj_path, top=original_top_path)
+    original_traj = original_traj[0:traj_AA.n_frames]
 
+    os.makedirs(os.path.join(output_dir, name), exist_ok=True)
+    traj_AA = md.Trajectory(traj_AA.xyz, top_AA, original_traj.time, original_traj.unitcell_lengths, original_traj.unitcell_angles)
+    traj_AA[0].save_pdb(os.path.join(output_dir, name, 'top.pdb'))
+    traj_AA.save_xtc(os.path.join(output_dir, name, 'traj.xtc'))
+
+    py_logger.info(f"Successfully processed {name}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert IDRome v4 data to all-atom.')
+    parser.add_argument('--name', help='Name of the trajectory.', type=str, required=True)
     parser.add_argument('--input-dir', help='Directory of relaxed all-atom trajectories (stored in each folder).', type=str, required=True)
     parser.add_argument('--original-traj-dir', help='Directory of original coarse-grained trajectories (stored in each folder).', type=str, required=True)
     parser.add_argument('--output-dir', '-o', help='Output directory to save combined relaxed all-atom trajectories (stored in each folder).', type=str, required=True)
-    parser.add_argument('--num-workers', type=int, default=multiprocessing.cpu_count(),
-                      help='Number of parallel workers')
     args = parser.parse_args()
 
-    # Run in parallel.
-    names = sorted(os.listdir(args.input_dir))
-    preprocess_args = list(
-        zip(
-            names,
-            [args.input_dir] * len(names),
-            [args.original_traj_dir] * len(names),
-            [args.output_dir] * len(names),
-        )
-    )
-    with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
-        results = list(executor.map(combine_frames, preprocess_args))
-
-
+    combine_frames(args.name, args.input_dir, args.original_traj_dir, args.output_dir)

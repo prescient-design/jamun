@@ -33,6 +33,7 @@ This is because certain dependencies are tricky to install directly.
 conda create --name jamun python=3.11 -y
 conda activate jamun
 conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
+conda install pulchra -c bioconda -y
 ```
 
 The remaining dependencies can be installed via `pip` or [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (recommended).
@@ -191,7 +192,10 @@ Please run this script with the `-h` flag to see all simulation parameters.
 ## Preprocessing
 
 ```bash
-python scripts/process_mdgen.py  --input-dir /data/bucket/kleinhej/mdgen --output-dir /data/bucket/kleinhej/mdgen/data/4AA_sims_partitioned_chunked
+source .env
+python scripts/process_mdgen.py \
+  --input-dir ${JAMUN_DATA_PATH}/mdgen \
+  --output-dir ${JAMUN_DATA_PATH}/mdgen/data/4AA_sims_partitioned_chunked
 ```
 
 ## Citation

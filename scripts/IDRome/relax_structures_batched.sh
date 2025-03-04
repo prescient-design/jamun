@@ -52,7 +52,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
             continue
         fi
 
-        python ../generate_data/run_simulation.py "${INPUT_PATH}" \
+        python scripts/generate_data/run_simulation.py "${INPUT_PATH}" \
         --output-dir "${BASE_OUTPUT_DIR}/${NAME}" \
         --energy-minimization-only \
         --energy-minimization-steps=1000

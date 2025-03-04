@@ -27,30 +27,23 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/train/"
-        traj_pattern: "^(....)_.*.xtc"
-        pdb_pattern: "^(....).pdb"
-        as_iterable: true
-        subsample: 5
-        start_at_random_frame: true
+        root: "${paths.data_path}/IDRome_v4_preprocessed/all_atom_relaxed_combined/"
+        traj_pattern: "^(.*)/traj.xtc"
+        pdb_pattern: "^(.*)/top.pdb"
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/val/"
-        traj_pattern: "^(....)_.*.xtc"
-        pdb_pattern: "^(....).pdb"
-        as_iterable: true
+        root: "${paths.data_path}/IDRome_v4_preprocessed/all_atom_relaxed_combined/"
+        traj_pattern: "^(.*)/traj.xtc"
+        pdb_pattern: "^(.*)/top.pdb"
         subsample: 100
-        start_at_random_frame: true
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/test/"
-        traj_pattern: "^(....)_.*.xtc"
-        pdb_pattern: "^(....).pdb"
-        as_iterable: true
+        root: "${paths.data_path}/IDRome_v4_preprocessed/all_atom_relaxed_combined/"
+        traj_pattern: "^(.*)/traj.xtc"
+        pdb_pattern: "^(.*)/top.pdb"
         subsample: 100
-        start_at_random_frame: true
 
 trainer:
   val_check_interval: 30000
@@ -59,9 +52,5 @@ trainer:
 
 logger:
   wandb:
-    group: train_mdgen
+    group: train_idrome
 
-
-# resume_from_checkpoint:
-#   wandb_train_run_path: prescient-design/jamun/zrlnc4a6
-#   checkpoint_type: last

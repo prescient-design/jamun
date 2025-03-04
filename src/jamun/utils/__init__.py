@@ -20,3 +20,4 @@ from .residue_metadata import (
 from .sampling_wrapper import ModelSamplingWrapper
 from .scaled_rmsd import scaled_rmsd
 from .unsqueeze_trailing import unsqueeze_trailing
+from .slurm import wait_for_jobs

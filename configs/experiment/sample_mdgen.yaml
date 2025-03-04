@@ -12,8 +12,7 @@ repeat_init_samples: 1
 continue_chain: true
 
 # MDGen
-wandb_train_run_path: prescient-design/jamun/lmnf3vyu
-
+wandb_train_run_path: prescient-design/jamun/brd51ln4
 
 checkpoint_type: best_so_far
 sigma: 0.04

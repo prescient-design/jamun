@@ -42,7 +42,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
     fi
     
     # Run frame extraction script
-    python extract_frames.py --input-dir "${BASE_INPUT_DIR}" --name "${NAME}" --output-dir "${BASE_FRAMES_DIR}"
+    python scripts/IDRome/extract_frames.py --input-dir "${BASE_INPUT_DIR}" --name "${NAME}" --output-dir "${BASE_FRAMES_DIR}"
 
     # Process all frames in the directory
     for FRAME in $(seq 0 $((N_FRAMES-1))); do
