@@ -10,6 +10,8 @@ import torch
 import torch.utils.data
 import torch_geometric
 
+from rdkit import Chem
+
 from jamun import utils
 from jamun.data._random_chain_dataset import StreamingRandomChainDataset
 
@@ -51,7 +53,6 @@ def singleton(cls):
 
     cls.__init__ = __init__
     return cls
-
 
 def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Data, md.Topology, md.Topology]:
     """Preprocess the MDtraj topology, returning a PyTorch Geometric graph, the topology with protein only, and the topology with hydrogenated protein."""
@@ -315,3 +316,4 @@ class MDtrajDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
         )
+

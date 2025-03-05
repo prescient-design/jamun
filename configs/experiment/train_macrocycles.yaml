@@ -1,0 +1,50 @@
+# @package _global_
+
+compute_average_squared_distance_from_data: false
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  max_radius: 1.0
+  optim:
+    lr: 0.002
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
+
+
+data:
+  datamodule:
+    _target_: jamun.data.sdfMDtrajDataModule  # Explicitly set the correct datamodule class here
+    batch_size: 16
+    datasets:
+      train:
+        _target_: jamun.data.MDtrajSDFDataset
+        root: "/data/davidsd5/cremp/sdf_and_json/"
+        sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
+        trajfiles: ["F.C.K.D.sdf"]  # Example trajectory files
+        label: fckd
+      val:
+        _target_: jamun.data.MDtrajSDFDataset
+        root: "/data/davidsd5/cremp/sdf_and_json/"
+        sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
+        trajfiles: ["F.C.K.D.sdf"]  # Example trajectory files
+        label: fckd
+      test:
+        _target_: jamun.data.MDtrajSDFDataset
+        root: "/data/davidsd5/cremp/sdf_and_json/"
+        sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
+        trajfiles: ["F.C.K.D.sdf"]  # Example trajectory files
+        label: fckd
+
+
+trainer:
+  val_check_interval: 0.1
+  max_epochs: 100
+
+
+logger:
+  wandb:
+    group: train_macrocycles

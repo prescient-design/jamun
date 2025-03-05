@@ -19,38 +19,18 @@ from jamun.utils import compute_average_squared_distance_from_data, dist_log, fi
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
 
-
-# def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
-#     """Computes the average squared distance for normalization from the data."""
-#     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
-#     datamodule.setup("compute_normalization")
-#     train_dataloader = datamodule.train_dataloader()
-#     cutoff = cfg.model.max_radius
-#     average_squared_distance = compute_average_squared_distance_from_data(train_dataloader, cutoff)
-#     average_squared_distance = float(average_squared_distance)
-#     return average_squared_distance
-
 def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     """Computes the average squared distance for normalization from the data."""
-    print("Instantiating datamodule...")
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
-    print(datamodule)
-    print("Setting up datamodule...")
     datamodule.setup("compute_normalization")
-    print("Creating train dataloader...")
     train_dataloader = datamodule.train_dataloader()
-    print(train_dataloader)
-    print(f"Train dataloader created with {len(train_dataloader)} batches.")
     cutoff = cfg.model.max_radius
-    print(f"Computing average squared distance with cutoff {cutoff}...")
     average_squared_distance = compute_average_squared_distance_from_data(train_dataloader, cutoff)
     average_squared_distance = float(average_squared_distance)
-    print(f"Computed average squared distance: {average_squared_distance}")
     return average_squared_distance
 
 def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
-
     dist_log(f"{OmegaConf.to_yaml(log_cfg)}")
     dist_log(f"{os.getcwd()=}")
     dist_log(f"{torch.__config__.parallel_info()}")
@@ -76,42 +56,10 @@ def run(cfg):
         if isinstance(logger, lightning.pytorch.loggers.WandbLogger):
             wandb_logger = logger
 
-    if wandb_logger:
-        dist_log(f"{wandb_logger.experiment.name=}")
-
-    callbacks = instantiate_dict_cfg(cfg.get("callbacks"), verbose=(rank_zero_only.rank == 0))
-
-    trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=loggers)
-
-    # TODO support wandb notes/description
-    if rank_zero_only.rank == 0 and wandb_logger:
-        wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
-
-    # Load training checkpoint, if provided.
-    if resume_checkpoint_cfg := cfg.get("resume_from_checkpoint"):
-        # Load the checkpoint either given the wandb run path or the checkpoint path.
-        checkpoint_path = find_checkpoint(
-            wandb_train_run_path=resume_checkpoint_cfg.get("wandb_train_run_path"),
-            checkpoint_dir=resume_checkpoint_cfg.get("checkpoint_dir"),
-            checkpoint_type=resume_checkpoint_cfg["checkpoint_type"],
-        )
-    else:
-        checkpoint_path = None
-
-    trainer.fit(model, datamodule=datamodule, ckpt_path=checkpoint_path)
-
-    if wandb_logger and isinstance(trainer.profiler, lightning.pytorch.profilers.PyTorchProfiler):
-        profile_art = wandb.Artifact("trace", type="profile")
-        for trace in pathlib.Path(trainer.profiler.dirpath).glob("*.pt.trace.json"):
-            profile_art.add_file(trace)
-        profile_art.save()
-
-    if rank_zero_only.rank == 0:
-        dist_log(f"{torch.cuda.max_memory_allocated()=:0.2e}")
-
-    if wandb_logger:
-        wandb.finish()
-
+    # Train the model
+    trainer = lightning.Trainer(logger=loggers, **cfg.trainer)
+    trainer.fit(model, datamodule=datamodule)
+    trainer.test(model, datamodule=datamodule)
 
 # Needed for submitit error output.
 # See https://github.com/facebookresearch/hydra/issues/2664
@@ -122,3 +70,8 @@ def main(cfg):
     except Exception:
         traceback.print_exc(file=sys.stderr)
         raise
+
+
+# if __name__ == "__main__":
+#     cfg = OmegaConf.load("/homefs/home/davidsd5/jamun/jamun/configs/experiment/train_macrocycle.yaml")
+#     run(cfg)

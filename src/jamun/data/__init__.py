@@ -1,3 +1,7 @@
 from ._mdtraj import MDtrajDataModule, MDtrajDataset, MDtrajIterableDataset
 from ._utils import concatenate_datasets, create_dataset_from_pdbs, dloader_map_reduce, parse_datasets_from_directory
+from ._mcutils import parse_sdf_datasets_from_directory, concatenate_sdf_datasets, create_dataset_from_sdf_jsons#, parse_pickle_datasets_from_directory, concatenate_pickle_datasets, create_dataset_from_pickle_files
+#from ._mcutils import parse_sdf_datasets_from_directory, concatenate_sdf_datasets, create_dataset_from_sdf_jsons, parse_pickle_datasets_from_directory, concatenate_pickle_datasets, create_dataset_from_pickle_files
+from ._cremp import MDtrajSDFDataset, MDtrajIterableSDFDataset, sdfMDtrajDataModule
+#from ._cremp import MDtrajPickleDataset, MDtrajSDFDataset, MDtrajIterableSDFDataset, MDtrajIterablePickleDataset, sdfMDtrajDataModule
 from ._random_chain_dataset import StreamingRandomChainDataset
