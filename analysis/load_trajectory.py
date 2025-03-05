@@ -140,9 +140,9 @@ def get_MDGenReference_trajectories(
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
         return data.parse_datasets_from_directory(
-            root=f"{data_path}/mdgen/data/4AA_sims_partitioned/{split}/",
-            traj_pattern="^(.*).xtc",
-            pdb_pattern="^(.*).pdb",
+            root=f"{data_path}/mdgen/data/4AA_sims_partitioned_chunked/{split}/",
+            traj_pattern="^(....)_.*.xtc",
+            pdb_pattern="^(....).pdb",
             filter_codes=filter_codes,
         )
 

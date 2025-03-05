@@ -30,22 +30,21 @@ class MeasureSamplingTimeCallback(pl.Callback):
         self.batch_graph_counts = []
         self.start_time = None
         
-    def on_sample_start(self, sampler, pl_module):
+    def on_sample_start(self, sampler):
         """Called when sampling starts."""
         self.reset()
         
-    def on_before_sample_batch(self, sampler, batch_idx, **kwargs):
+    def on_before_sample_batch(self, sample, sampler):
         """Mark the start time before sampling a batch."""
         self.start_time = time.perf_counter()
         
-    def on_after_sample_batch(self, sampler, sample, batch_idx, **kwargs):
+    def on_after_sample_batch(self, sample, sampler):
         """
         Calculate and log sampling time after a batch is sampled.
         
         Args:
-            sampler: The sampler object
             sample: List of sample dictionaries
-            batch_idx: Current batch index
+            sampler: The sampler object
         """
         if self.start_time is None:
             return
@@ -76,6 +75,7 @@ class MeasureSamplingTimeCallback(pl.Callback):
         
         # Log to console
         py_logger = logging.getLogger("jamun")
+        batch_idx = sampler.global_step
         py_logger.info(
             f"Sampled batch {batch_idx} with {num_graphs} samples in {time_elapsed:.4f} seconds "
             f"({time_elapsed / num_graphs:.4f} seconds per sample)."
@@ -84,7 +84,7 @@ class MeasureSamplingTimeCallback(pl.Callback):
         # Reset start time
         self.start_time = None
         
-    def on_sample_end(self, sampler, pl_module):
+    def on_sample_end(self, sampler):
         """Log final statistics when sampling is complete."""
         if self.total_num_graphs == 0:
             return
