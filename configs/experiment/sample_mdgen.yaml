@@ -2,6 +2,7 @@
 
 defaults:
   - override /callbacks:
+    - sampler/measure_sampling_time.yaml
     - sampler/save_trajectory.yaml
   - _self_
 
@@ -12,7 +13,7 @@ repeat_init_samples: 1
 continue_chain: true
 
 # MDGen
-wandb_train_run_path: prescient-design/jamun/brd51ln4
+wandb_train_run_path: prescient-design/jamun/fl0mbm3c
 
 checkpoint_type: best_so_far
 sigma: 0.04

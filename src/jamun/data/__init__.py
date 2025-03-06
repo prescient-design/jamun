@@ -1,3 +1,3 @@
 from ._mdtraj import MDtrajDataModule, MDtrajDataset, MDtrajIterableDataset
-from ._utils import concatenate_datasets, create_dataset_from_pdbs, dloader_map_reduce, parse_datasets_from_directory
+from ._utils import concatenate_datasets, create_dataset_from_pdbs, dloader_map_reduce, parse_datasets_from_directory, parse_datasets_from_directory_new
 from ._random_chain_dataset import StreamingRandomChainDataset

@@ -20,7 +20,7 @@ from jamun.metrics._utils import validate_sample
 
 def plot_ramachandran_grid(trajs: Dict[str, md.Trajectory], dataset_label: str):
     """Plot a grid of Ramachandran plots for each trajectory."""
-    # Create the figure and subplots
+    # Create the figure and subplots.
     num_dihedrals = md.compute_phi(trajs["x"], periodic=False)[1].shape[1]
     fig, axes = plt.subplots(nrows=3, ncols=num_dihedrals, figsize=(5 * num_dihedrals, 15), squeeze=False)
     fig.suptitle(f"Ramachandran Plots for Dataset {dataset_label}")
@@ -125,35 +125,35 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
         self,
         trajectories: Optional[Dict[str, md.Trajectory]] = None,
         scaled_rmsd_per_sigma: Optional[Dict[float, float]] = None,
-    ) -> Tuple[Dict[float, plt.Figure], py3Dmol.view]:
+    ) -> None:
         if trajectories is None:
             trajectories, _ = self.compute()
 
-        figs, views = {}, {}
         for sigma, sigma_trajs in trajectories.items():
-            figs[sigma], _ = plot_ramachandran_grid(sigma_trajs, self.dataset.label())
-
             # Convert the trajectories to RDKit mols.
             mols = {key: utils.to_rdkit_mols(traj[:5]) for key, traj in sigma_trajs.items()}
 
             # Plot with py3Dmol.
-            views[sigma] = utils.plot_molecules_with_py3Dmol(mols)
+            view = utils.plot_molecules_with_py3Dmol(mols)
 
             # Log the HTML file to Weights & Biases.
             temp_html = tempfile.NamedTemporaryFile(suffix=".html").name
-            views[sigma].write_html(temp_html)
+            view.write_html(temp_html)
             with open(temp_html) as f:
                 utils.wandb_dist_log({f"{self.dataset.label()}/visualize_denoise/3D_view/sigma={sigma}": wandb.Html(f)})
             os.remove(temp_html)
 
-        for sigma, fig in figs.items():
-            utils.wandb_dist_log(
-                {f"{self.dataset.label()}/visualize_denoise/ramachandran_plots_static/sigma={sigma}": wandb.Image(fig)}
-            )
-            plt.close(fig)
+        try:
+            for sigma, sigma_trajs in trajectories.items():
+                fig, _ = plot_ramachandran_grid(sigma_trajs, self.dataset.label())
+
+                utils.wandb_dist_log(
+                    {f"{self.dataset.label()}/visualize_denoise/ramachandran_plots_static/sigma={sigma}": wandb.Image(fig)}
+                )
+                plt.close(fig)
+        except ValueError as e:
+            print(f"Error plotting Ramachandran plots: {e}")
 
         if scaled_rmsd_per_sigma is not None:
             for sigma, scaled_rmsd in scaled_rmsd_per_sigma.items():
                 utils.wandb_dist_log({f"{self.dataset.label()}/scaled_rmsd_per_dataset/sigma={sigma}": scaled_rmsd})
-
-        return figs, views

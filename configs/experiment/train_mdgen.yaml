@@ -31,7 +31,7 @@ data:
         traj_pattern: "^(....)_.*.xtc"
         pdb_pattern: "^(....).pdb"
         as_iterable: true
-        subsample: 5
+        subsample: 100
         start_at_random_frame: true
 
       val:
@@ -62,6 +62,6 @@ logger:
     group: train_mdgen
 
 
-# resume_from_checkpoint:
-#   wandb_train_run_path: prescient-design/jamun/zrlnc4a6
-#   checkpoint_type: last
+resume_from_checkpoint:
+  wandb_train_run_path: prescient-design/jamun/brd51ln4
+  checkpoint_type: last

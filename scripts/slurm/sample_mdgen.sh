@@ -6,7 +6,7 @@
 #SBATCH --gpus-per-node 1
 #SBATCH --cpus-per-task 8
 #SBATCH --time 72:00:00
-#SBATCH --array 0-5
+#SBATCH --array 0-4
 
 eval "$(conda shell.bash hook)"
 conda activate jamun

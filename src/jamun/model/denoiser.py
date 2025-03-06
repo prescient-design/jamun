@@ -150,13 +150,16 @@ class Denoiser(pl.LightningModule):
 
         with torch.cuda.nvtx.range("concatenate_edges"):    
             edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
-            bond_mask = torch.cat(
-                (
-                    torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device),
-                    torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=self.device),
-                ),
-                dim=0,
-            )
+            if bonded_edge_index.numel() == 0:
+                bond_mask = torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device)
+            else:
+                bond_mask = torch.cat(
+                    (
+                        torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device),
+                        torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=self.device),
+                    ),
+                    dim=0,
+                )
 
         y.edge_index = edge_index
         y.bond_mask = bond_mask
