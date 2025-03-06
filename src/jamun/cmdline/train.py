@@ -29,7 +29,7 @@ def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     datamodule.setup("compute_normalization")
     train_dataloader = datamodule.train_dataloader()
     cutoff = cfg.model.max_radius
-    average_squared_distance = compute_average_squared_distance_from_data(train_dataloader, cutoff)
+    average_squared_distance = compute_average_squared_distance_from_data(train_dataloader, cutoff, cfg.trainer)
     average_squared_distance = float(average_squared_distance)
     return average_squared_distance
 
