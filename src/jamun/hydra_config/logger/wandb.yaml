@@ -3,3 +3,4 @@ wandb:
   project: jamun
   entity: null
   offline: false
+  log_model: all
