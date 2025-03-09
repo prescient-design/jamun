@@ -32,5 +32,5 @@ srun --cpus-per-task 8 --cpu-bind=cores,verbose \
     experiment=train_idrome.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
-    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","mdgen"] \
+    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","idrome"] \
     ++run_key=$RUN_KEY
