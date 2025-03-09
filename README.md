@@ -162,7 +162,9 @@ We provide scripts for analysing JAMUN and original MD trajectories in [https://
 
 ## Data Generation
 
-We also provide scripts for generating the MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with NVT and NPT ensembles.
+### Running Molecular Dynamics with OpenMM
+
+We provide scripts for generating MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with NVT and NPT ensembles.
 
 ```bash
 python scripts/generate_data/run_simulation.py [INIT_PDB]
@@ -171,7 +173,9 @@ python scripts/generate_data/run_simulation.py [INIT_PDB]
 The defaults correspond to our setup for the capped diamines.
 Please run this script with the `-h` flag to see all simulation parameters.
 
-## Preprocessing
+### Preprocessing
+
+Some of the datasets require some preprocessing for easier consumption, for eg. the MDGen data:
 
 ```bash
 source .env

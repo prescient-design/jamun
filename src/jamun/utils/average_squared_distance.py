@@ -112,45 +112,6 @@ class ComputeNormalizationModule(pl.LightningModule):
         return average_squared_distance
 
 
-def compute_average_squared_distance_from_data(
-    datamodule: pl.LightningDataModule,
-    cutoff: float,
-    trainer_cfg: Dict[str, Any],
-    num_estimation_graphs: int = 5000, 
-    verbose: bool = False
-):
-    """Compute normalization using a Lightning trainer.
-    
-    Args:
-        datamodule: The Lightning datamodule
-        cutoff (float): The radius cutoff for distance calculations
-        compute_average_squared_distance_fn (callable): Function to compute average
-                                                     squared distance for a graph
-        trainer_cfg: Configuration for the Lightning trainer
-        num_estimation_graphs (int): Maximum number of graphs to process
-        verbose (bool): Whether to print detailed statistics
-        
-    Returns:
-        float: The computed average squared distance
-    """
-    
-    # Create the normalization module
-    norm_module = ComputeNormalizationModule(
-        cutoff=cutoff,
-        num_estimation_graphs=num_estimation_graphs,
-        verbose=verbose
-    )
-    
-    # Create the trainer
-    trainer = hydra.utils.instantiate(trainer_cfg)
-    
-    # Fit without any callbacks or loggers
-    trainer.fit(norm_module, datamodule=datamodule)
-    
-    # Compute and return the final statistics
-    return norm_module.compute_final_statistics()
-
-
 def compute_distance_matrix(x: np.ndarray, cutoff: Optional[float] = None) -> np.ndarray:
     """Computes the distance matrix between points in x, ignoring self-distances."""
     if x.shape[-1] != 3:
@@ -177,42 +138,36 @@ def compute_average_squared_distance(x: np.ndarray, cutoff: Optional[float] = No
     return np.mean(dist_x**2)
 
 
-# def compute_average_squared_distance_from_data(
-#     dataloader: torch.utils.data.DataLoader,
-#     cutoff: float,
-#     num_estimation_graphs: int = 5000,
-#     verbose: bool = False,
-# ) -> float:
-#     """Computes the average squared distance for normalization."""
-#     avg_sq_dists = collections.defaultdict(list)
-#     num_graphs = 0
-#     for batch in dataloader:
-#         for graph in batch.to_data_list():
-#             pos = np.asarray(graph.pos)
-#             avg_sq_dist = compute_average_squared_distance(pos, cutoff=cutoff)
-#             avg_sq_dists[graph.dataset_label].append(avg_sq_dist)
-#             num_graphs += 1
+def compute_average_squared_distance_from_datasets(
+    datasets: Sequence[torch.utils.data.Dataset],
+    cutoff: float,
+    num_estimation_datasets: int = 50,
+    num_estimation_graphs_per_dataset: int = 100,
+    verbose: bool = False,
+) -> float:
+    """Computes the average squared distance for normalization."""
+    avg_sq_dists = collections.defaultdict(list)
+    
+    for dataset in datasets[:num_estimation_datasets]:
+        num_graphs = 0
+        
+        for graph in dataset:
+            pos = np.asarray(graph.pos)
+            avg_sq_dist = compute_average_squared_distance(pos, cutoff=cutoff)
+            avg_sq_dists[graph.dataset_label].append(avg_sq_dist)
+            num_graphs += 1
 
-#         if num_graphs >= num_estimation_graphs:
-#             break
+        if num_graphs >= num_estimation_graphs_per_dataset:
+            break
 
-#     mean_avg_sq_dist = sum(np.sum(avg_sq_dists[label]) for label in avg_sq_dists) / num_graphs
-#     utils.dist_log(f"Mean average squared distance = {mean_avg_sq_dist:0.3f} nm^2")
+    mean_avg_sq_dist = sum(np.sum(avg_sq_dists[label]) for label in avg_sq_dists) / num_graphs
+    utils.dist_log(f"Mean average squared distance = {mean_avg_sq_dist:0.3f} nm^2")
 
-#     if verbose:
-#         utils.dist_log(f"For cutoff {cutoff} nm:")
-#         for label in sorted(avg_sq_dists):
-#             utils.dist_log(
-#                 f"- Dataset {label}: Average squared distance = {np.mean(avg_sq_dists[label]):0.3f} +- {np.std(avg_sq_dists[label]):0.3f} nm^2"
-#             )
+    if verbose:
+        utils.dist_log(f"For cutoff {cutoff} nm:")
+        for label in sorted(avg_sq_dists):
+            utils.dist_log(
+                f"- Dataset {label}: Average squared distance = {np.mean(avg_sq_dists[label]):0.3f} +- {np.std(avg_sq_dists[label]):0.3f} nm^2"
+            )
 
-#     # Average across all processes, if distributed.
-#     print("torch.distributed.is_initialized():", torch.distributed.is_initialized())
-#     mean_avg_sq_dist = torch.tensor(mean_avg_sq_dist, device="cuda")
-
-#     print("mean_avg_sq_dist bef:", mean_avg_sq_dist)
-#     torch.distributed.all_reduce(mean_avg_sq_dist, op=torch.distributed.ReduceOp.AVG)
-#     mean_avg_sq_dist = mean_avg_sq_dist.item()
-#     print("mean_avg_sq_dist aft:", mean_avg_sq_dist)
-
-#     return mean_avg_sq_dist
+    return float(mean_avg_sq_dist)

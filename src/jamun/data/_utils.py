@@ -1,9 +1,9 @@
 import collections
 import os
 import re
-import random
 from typing import List, Optional, Sequence
 
+import pandas as pd
 import hydra
 import requests
 import torch
@@ -124,6 +124,7 @@ def parse_datasets_from_directory_new(
     max_datasets: Optional[int] = None,
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
+    split_csv: Optional[str] = None,
     as_iterable: bool = False,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
@@ -170,6 +171,9 @@ def parse_datasets_from_directory_new(
             pdb_files[code] = pdb_file
     
     # Filter out codes
+    if split_csv is not None:
+        filter_codes = pd.read_csv("train.csv")["entry"].tolist()
+
     if filter_codes is not None:
         codes = [code for code in codes if code in set(filter_codes)]
     
