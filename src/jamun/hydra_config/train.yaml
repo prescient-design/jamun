@@ -10,7 +10,7 @@ defaults:
   - profiler: null
   - experiment: null
 
-float32_matmul_precision: "medium"
+float32_matmul_precision: "high"
 
 task_name: "train"
 run_group: "dev"

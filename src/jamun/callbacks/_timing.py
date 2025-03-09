@@ -6,6 +6,16 @@ from lightning.pytorch.utilities import rank_zero_only
 
 
 class Timing(pl.Callback):
+    """
+    Callback to measure and log the time taken for each batch and epoch.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.train_epoch_batch_times = []
+        self.train_epoch_start_steps = 0
+        self.train_batch_start_time = 0
+
     @rank_zero_only
     def on_train_start(self, trainer, pl_module):
         if isinstance(trainer.logger, pl.loggers.WandbLogger):

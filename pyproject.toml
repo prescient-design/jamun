@@ -20,7 +20,7 @@ jamun_sample = "jamun.cmdline.sample:main"
 where = ["src"]
 
 [build-system]
-requires = ["setuptools >= 65", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools >= 65", "setuptools_scm[toml]>=7.1"]
 build-backend = 'setuptools.build_meta'
 
 [tool.setuptools_scm]
@@ -28,6 +28,7 @@ search_parent_directories = true
 version_scheme = "no-guess-dev"
 local_scheme = "node-and-date"
 fallback_version = "0.0.0"
+git_describe_command = "git describe --dirty --tags --long --match v* --first-parent"
 
 [tool.ruff]
 line-length = 120

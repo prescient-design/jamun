@@ -11,8 +11,12 @@ add_fixed_noise: false
 add_fixed_ones: false
 align_noisy_input_during_training: true
 align_noisy_input_during_evaluation: true
-mean_center_input: true
-mean_center_output: true
+mean_center: true
 mirror_augmentation_rate: 0.0
+use_torch_compile: true
+torch_compile_kwargs:
+  fullgraph: true
+  dynamic: true
+  mode: max-autotune-no-cudagraphs
 
 _target_: jamun.model.Denoiser

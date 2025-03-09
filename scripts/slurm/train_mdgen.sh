@@ -5,8 +5,8 @@
 #SBATCH --ntasks-per-node 2
 #SBATCH --gpus-per-node 2
 #SBATCH --cpus-per-task 8
-#SBATCH --time 3-0
-#SBATCH --mem 128G
+#SBATCH --time 7-0
+#SBATCH --mem-per-cpu=32G
 
 eval "$(conda shell.bash hook)"
 conda activate jamun
@@ -21,7 +21,7 @@ export HYDRA_FULL_ERROR=1
 # export TORCH_LOGS="+dynamo"
 # export TORCHDYNAMO_VERBOSE=1
 
-# NOTE we generate this in submit script instead of using time based default to ensure consistency across ranks
+# NOTE: We generate this in submit script instead of using time-based default to ensure consistency across ranks.
 RUN_KEY=$(openssl rand -hex 12)
 echo "RUN_KEY = ${RUN_KEY}"
 
@@ -32,5 +32,5 @@ srun --cpus-per-task 8 --cpu-bind=cores,verbose \
     experiment=train_mdgen.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
-    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train"] \
+    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","mdgen"] \
     ++run_key=$RUN_KEY

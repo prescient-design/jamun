@@ -1,24 +1,15 @@
 # @package _global_
 
-defaults:
-  - override /data: md.yaml
-  - override /model/arch: e3conv.yaml
-  - override /callbacks:
-    - default.yaml
-    - model_checkpoint.yaml
-    - visualize_denoise.yaml
-  - _self_
-
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
   arch:
-    n_layers: 1
+    n_layers: 2
   max_radius: 1.0
   optim:
     lr: 0.002
-
+  use_torch_compile: false
 
 callbacks:
   viz:
@@ -35,7 +26,15 @@ data:
             - EI-traj-arrays.npz
           pdbfile: EI-traj-state0.pdb
           subsample: 100
-          label: GLU_ILE
+          label: EI
+
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - FC-traj-arrays.npz
+          pdbfile: FC-traj-state0.pdb
+          subsample: 100
+          label: FC
 
       val:
         - _target_: jamun.data.MDtrajDataset
@@ -44,7 +43,7 @@ data:
             - KL-traj-arrays.npz
           pdbfile: KL-traj-state0.pdb
           subsample: 100
-          label: LYS_LEU
+          label: KL
 
       test:
         - _target_: jamun.data.MDtrajDataset
@@ -53,7 +52,7 @@ data:
             - CK-traj-arrays.npz
           pdbfile: CK-traj-state0.pdb
           subsample: 100
-          label: CYS_LYS
+          label: CK
 
 trainer:
   val_check_interval: 0.5

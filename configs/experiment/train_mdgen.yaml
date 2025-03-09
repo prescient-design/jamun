@@ -10,6 +10,11 @@ model:
   max_radius: 1.0
   optim:
     lr: 0.002
+  use_torch_compile: true
+  torch_compile_kwargs:
+    fullgraph: true
+    dynamic: true
+    mode: default
 
 callbacks:
   viz:
@@ -17,7 +22,8 @@ callbacks:
 
 data:
   datamodule:
-    batch_size: 16
+    num_workers: 4
+    batch_size: 32
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -26,6 +32,7 @@ data:
         pdb_pattern: "^(....).pdb"
         as_iterable: true
         subsample: 100
+        start_at_random_frame: true
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -34,6 +41,7 @@ data:
         pdb_pattern: "^(....).pdb"
         as_iterable: true
         subsample: 100
+        start_at_random_frame: true
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -42,6 +50,7 @@ data:
         pdb_pattern: "^(....).pdb"
         as_iterable: true
         subsample: 100
+        start_at_random_frame: true
 
 trainer:
   val_check_interval: 30000
@@ -53,6 +62,6 @@ logger:
     group: train_mdgen
 
 
-# resume_from_checkpoint:
-#   wandb_train_run_path: prescient-design/jamun/zrlnc4a6
-#   checkpoint_type: last
+resume_from_checkpoint:
+  wandb_train_run_path: prescient-design/jamun/brd51ln4
+  checkpoint_type: last

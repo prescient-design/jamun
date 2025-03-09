@@ -20,7 +20,7 @@ export HYDRA_FULL_ERROR=1
 # export TORCH_LOGS="+dynamo"
 # export TORCHDYNAMO_VERBOSE=1
 
-# NOTE we generate this in submit script instead of using time based default to ensure consistency across ranks
+# NOTE: We generate this in submit script instead of using time-based default to ensure consistency across ranks.
 RUN_KEY=$(openssl rand -hex 12)
 echo "RUN_KEY = ${RUN_KEY}"
 

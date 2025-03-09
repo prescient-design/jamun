@@ -20,7 +20,7 @@ export HYDRA_FULL_ERROR=1
 # export TORCH_LOGS="+dynamo"
 # export TORCHDYNAMO_VERBOSE=1
 
-# NOTE we generate this in submit script instead of using time based default to ensure consistency across ranks
+# NOTE: We generate this in submit script instead of using time-based default to ensure consistency across ranks.
 RUN_KEY=$(openssl rand -hex 12)
 echo "RUN_KEY = ${RUN_KEY}"
 
@@ -28,7 +28,7 @@ nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
   jamun_train --config-dir=/homefs/home/daigavaa/jamun/configs \
-    experiment=train_mdgen.yaml \
+    experiment=train_test.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
     ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train"] \

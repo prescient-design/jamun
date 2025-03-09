@@ -103,11 +103,11 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         subsample: Optional[int] = None,
         loss_weight: float = 1.0,
         chunk_size: int = 100,
-        start_at_random_frame: bool = True,
+        start_at_random_frame: bool = False,
         verbose: bool = False,
     ):
         self.root = root
-        self.label = lambda: label
+        self._label = label
         self.transform = transform
         self.loss_weight = loss_weight
         self.chunk_size = chunk_size
@@ -126,12 +126,15 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
 
-        self.save_topology_pdb()
+        # self.save_topology_pdb()
 
         if verbose:
             utils.dist_log(
                 f"Dataset {self.label()}: Iteratively loading trajectory files {trajfiles} and PDB file {pdbfile}."
             )
+
+    def label(self):
+        return self._label
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)
@@ -180,7 +183,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         verbose: bool = False,
     ):
         self.root = root
-        self.label = lambda: label
+        self._label = label
         self.transform = transform
         self.loss_weight = loss_weight
 
@@ -218,13 +221,16 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.dataset_label = self.label()
 
-        self.save_topology_pdb()
+        # self.save_topology_pdb()
 
         if verbose:
             utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {trajfiles} and PDB file {pdbfile}.")
             utils.dist_log(
                 f"Dataset {self.label()}: Loaded {self.traj.n_frames} frames starting from index {start_frame} with subsample {subsample}."
             )
+
+    def label(self):
+        return self._label
 
     def save_topology_pdb(self):
         os.makedirs("dataset_pdbs", exist_ok=True)
@@ -257,7 +263,7 @@ class MDtrajDataModule(pl.LightningDataModule):
         self,
         datasets: Dict[str, Sequence[MDtrajDataset]],
         batch_size: int,
-        num_workers: int = 8,
+        num_workers: int,
     ):
         super().__init__()
 
@@ -299,7 +305,8 @@ class MDtrajDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
-            prefetch_factor=10,
+            pin_memory=True,
+            persistent_workers=True,
         )
 
     def val_dataloader(self):
@@ -307,6 +314,8 @@ class MDtrajDataModule(pl.LightningDataModule):
             self.concatenated_datasets["val"],
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
         )
 
     def test_dataloader(self):
@@ -314,4 +323,6 @@ class MDtrajDataModule(pl.LightningDataModule):
             self.concatenated_datasets["test"],
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
         )

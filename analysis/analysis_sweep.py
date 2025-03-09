@@ -1,27 +1,19 @@
-from typing import Tuple, Optional
 import subprocess
 import argparse
 import os
 import sys
 import pandas as pd
-from concurrent.futures import ProcessPoolExecutor
-import multiprocessing
 
 sys.path.append("./")
 
 import load_trajectory
 
 
-def run_analysis(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
+def run_analysis(peptide: str, trajectory: str, reference: str, run_path: str, experiment: str, output_dir: str) -> None:
     """Run analysis for a single peptide."""
-    peptide, trajectory, reference, run_path, experiment, output_dir, same_sampling_time = args
-
-    cmd = []
-    if use_srun:
-        cmd += ["srun", "--partition=cpu", "--mem=64G"]
-    cmd += [
+    cmd = [
         "python",
-        "analysis/run_analysis.py",
+        "run_analysis.py",
         f"--peptide={peptide}",
         f"--trajectory={trajectory}",
         f"--run-path={run_path}",
@@ -29,26 +21,20 @@ def run_analysis(args, use_srun: bool = True) -> Tuple[str, Optional[str]]:
         f"--experiment={experiment}",
         f"--output-dir={output_dir}",
     ]
-    if same_sampling_time:
-        cmd += ["--same-sampling-time"]
     print(f"Running command: {' '.join(cmd)}")
     try:
-        subprocess.run(cmd, check=True)
-        return (peptide, None)
+        launched = subprocess.run(cmd, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
-        return (peptide, str(e))
+        raise RuntimeError(f"Error running command: {' '.join(cmd)}: {e.stderr}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Run analysis for multiple peptides")
     parser.add_argument("--csv", type=str, required=True, help="CSV file containing wandb runs")
     parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
-    parser.add_argument(
-        "--same-sampling-time", action="store_true", help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
-    )
     parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
     parser.add_argument(
-        "--num-workers", type=int, default=multiprocessing.cpu_count(), help="Number of parallel workers"
+        "--row-index", type=int, help="Row index to analyze",
     )
 
     args = parser.parse_args()
@@ -69,29 +55,17 @@ def main():
     # Create one row for each peptide.
     df = df.explode("peptide")
 
-    # Prepare arguments for parallel processing.
-    analysis_args = list(
-        zip(
-            df["peptide"],
-            df["trajectory"],
-            df["reference"],
-            df["run_path"],
-            [args.experiment] * len(df),
-            [args.output_dir] * len(df),
-            [args.same_sampling_time] * len(df),
-        )
+    # Choose row to analyze.
+    df = df.iloc[[args.row_index]]
+    
+    run_analysis(
+        peptide=df["peptide"].iloc[0],
+        trajectory=df["trajectory"].iloc[0],
+        reference=df["reference"].iloc[0],
+        run_path=df["run_path"].iloc[0],
+        experiment=args.experiment,
+        output_dir=args.output_dir,
     )
-
-    # Run analyses in parallel.
-    with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
-        results = list(executor.map(run_analysis, analysis_args))
-
-    # Process results.
-    for peptide, error in results:
-        if error:
-            print(f"Error processing peptide {peptide}: {error}")
-        else:
-            print(f"Successfully processed peptide {peptide}")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ class SaveTrajectory(TrajectoryMetric):
             for ext in self.true_samples_extensions:
                 os.makedirs(os.path.join(self.true_samples_dir, ext), exist_ok=True)
 
-        self.pred_samples_extensions = ["npy", "pdb", "dcd"]
+        self.pred_samples_extensions = ["pdb", "dcd"]
         for ext in self.pred_samples_extensions:
             os.makedirs(os.path.join(self.pred_samples_dir, ext), exist_ok=True)
 
@@ -69,29 +69,29 @@ class SaveTrajectory(TrajectoryMetric):
         label = self.dataset.label()
         label = label.replace("/", "_").replace("=", "-")
 
-        for ext in ["npy", "pdb", "dcd"]:
-            filename = self.filename_pred("joined", ext)
-            artifact = wandb.Artifact(f"{label}_pred_samples_joined", type="pred_samples_joined")
-            artifact.add_file(filename, f"pred_samples_joined.{ext}")
-            wandb.log_artifact(artifact)
+        # for ext in self.pred_samples_extensions:
+        #     filename = self.filename_pred("joined", ext)
+        #     artifact = wandb.Artifact(f"{label}_pred_samples_joined", type="pred_samples_joined")
+        #     artifact.add_file(filename, f"pred_samples_joined.{ext}")
+        #     wandb.log_artifact(artifact)
 
     def compute(self) -> Dict[str, float]:
         # Save the predicted samples as numpy files.
-        samples_np = self.sample_tensors(new=True).cpu().detach().numpy()
-        for trajectory_index, sample in enumerate(samples_np):
-            np.save(self.filename_pred(trajectory_index, "npy"), sample)
+        # samples_np = self.sample_tensors(new=True).cpu().detach().numpy()
+        # for trajectory_index, sample in enumerate(samples_np):
+        #     np.save(self.filename_pred(trajectory_index, "npy"), sample)
 
-        samples_joined_np = self.joined_sample_tensor().cpu().detach().numpy()
-        np.save(self.filename_pred("joined", "npy"), samples_joined_np)
+        # samples_joined_np = self.joined_sample_tensor().cpu().detach().numpy()
+        # np.save(self.filename_pred("joined", "npy"), samples_joined_np)
 
         # Save the predict sample trajectory as a PDB and DCD file.
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
-            utils.save_pdb(pred_trajectory, self.filename_pred(trajectory_index, "pdb"))
+            # utils.save_pdb(pred_trajectory, self.filename_pred(trajectory_index, "pdb"))
             pred_trajectory.save_dcd(self.filename_pred(trajectory_index, "dcd"))
 
         pred_trajectory_joined = self.joined_sample_trajectory()
-        utils.save_pdb(pred_trajectory_joined, self.filename_pred("joined", "pdb"))
+        # utils.save_pdb(pred_trajectory_joined, self.filename_pred("joined", "pdb"))
         pred_trajectory_joined.save_dcd(self.filename_pred("joined", "dcd"))
 
         return {}

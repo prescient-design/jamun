@@ -33,11 +33,11 @@ This is because certain dependencies are tricky to install directly.
 conda create --name jamun python=3.11 -y
 conda activate jamun
 conda install -c conda-forge ambertools=23 openmm pdbfixer pyemma -y
+conda install pulchra -c bioconda -y
 ```
 
 The remaining dependencies can be installed via `pip` or [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (recommended).
 ```bash
-uv pip install -r env/requirements.txt
 uv pip install -e .[dev]
 ```
 
@@ -84,9 +84,9 @@ JAMUN_ROOT_PATH=...
 Once you have downloaded the data and set the appropriate variables correctly,
 you can start training on Timewarp.
 
-We recommend first running our test config to check that installation was successful:
+We recommend first running our test config (on one GPU) to check that installation was successful:
 ```bash
-jamun_train --config-dir=configs experiment=train_test.yaml
+CUDA_VISIBLE_DEVICES=0 jamun_train --config-dir=configs experiment=train_test.yaml
 ```
 
 Then, you can train on the uncapped 2AA peptides dataset:
@@ -108,7 +108,14 @@ sbatch scripts/slurm/sample.sh
 ## Inference
 
 ### Loading Trained Models
-We provide trained models for the uncapped and capped peptides datasets at ..... These can be used by...
+
+We provide trained models (for both sampling, and restarting training) for Timewarp 2AA, Timewarp 4AA, MDGen 4AA and other datasets at https://huggingface.co/ameya98/JAMUN:
+
+```bash
+# Make sure you have git-lfs installed (https://git-lfs.com)
+git lfs install
+git clone https://huggingface.co/ameya98/JAMUN
+```
 
 If you want to test out your own trained model,
 either specify the `wandb_train_run_path` (in the form `entity/project/run_id`, which can be obtained from the Overview tab in the Weights and Biases UI for your training run), or the `checkpoint_dir` of the trained model.
@@ -151,22 +158,13 @@ jamun_sample --config-dir=configs experiment=sample_uncapped_4AA.yaml checkpoint
 
 ## Analysis
 
-Our sampling scripts produce visualizations and some simple analysis in the Weights and Biases UI.
-
-For more in-depth exploration, we provide an analysis notebook, adapted from that of [MDGen](https://github.com/bjing2016/mdgen).
-
-First, add the details of the sampling runs to `analysis/wandb_runs.csv`.
-
-Then, precompute analysis results with:
-```bash
-python analysis/analysis_sweep.py --csv analysis/wandb_runs.csv --experiment Timewarp_2AA --output-dir /data/bucket/kleinhej/jamun-analysis/
-```
-
-Finally, run `analysis/make_plots.ipynb` to make plots.
+We provide scripts for analysing JAMUN and original MD trajectories in [https://github.com/prescient-design/jamun/tree/main/analysis].
 
 ## Data Generation
 
-We also provide scripts for generating the MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with the NVT and NPT ensembles.
+### Running Molecular Dynamics with OpenMM
+
+We provide scripts for generating MD simulation data with [OpenMM](https://openmm.org/), including energy minimization and calibration steps with NVT and NPT ensembles.
 
 ```bash
 python scripts/generate_data/run_simulation.py [INIT_PDB]
@@ -175,10 +173,15 @@ python scripts/generate_data/run_simulation.py [INIT_PDB]
 The defaults correspond to our setup for the capped diamines.
 Please run this script with the `-h` flag to see all simulation parameters.
 
-## Preprocessing
+### Preprocessing
+
+Some of the datasets require some preprocessing for easier consumption, for eg. the MDGen data:
 
 ```bash
-python scripts/process_mdgen.py  --input-dir /data/bucket/kleinhej/mdgen --output-dir /data/bucket/kleinhej/mdgen/data/4AA_sims_partitioned_chunked
+source .env
+python scripts/process_mdgen.py \
+  --input-dir ${JAMUN_DATA_PATH}/mdgen \
+  --output-dir ${JAMUN_DATA_PATH}/mdgen/data/4AA_sims_partitioned_chunked
 ```
 
 ## Citation
