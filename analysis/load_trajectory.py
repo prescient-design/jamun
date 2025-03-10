@@ -61,6 +61,8 @@ def get_sampling_rate(name: str, peptide: str, experiment: str) -> float:
     if name == "JAMUN":
         rates_csv = os.path.join(find_project_root(), "analysis", "sampling_times", "JAMUN.csv")
         df = pd.read_csv(rates_csv)
+        if experiment not in df["experiment"].values:
+            return None
         ms_per_sample = df[(df["experiment"] == experiment)]["ms_per_sample"].values[0]
         return ms_per_sample / 1000
 
