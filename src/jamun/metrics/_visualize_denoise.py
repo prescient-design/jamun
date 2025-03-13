@@ -151,7 +151,7 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
                     {f"{self.dataset.label()}/visualize_denoise/ramachandran_plots_static/sigma={sigma}": wandb.Image(fig)}
                 )
                 plt.close(fig)
-        except ValueError as e:
+        except ValueError:
             pass
 
         if scaled_rmsd_per_sigma is not None:
