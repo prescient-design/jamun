@@ -93,11 +93,15 @@ def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, 
     bonds = torch.tensor([[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()] for bond in rdkit_mol.GetBonds()], dtype=torch.long).T
 
     residues = get_residues(rdkit_mol, residues_in_mol=None, macrocycle_idxs=None)
+    for atom_set, residue in residues.items():
+        if residue.startswith("Me"):
+            residues[atom_set] = residue.replace("Me", "Me+")
     residue_sequence = [v for k, v in residues.items()]
     residue_to_sequence_index = {residue: index for index, residue in enumerate(residue_sequence)}
 
     atom_to_residue = {atom_idx: symbol for atom_idxs, symbol in residues.items() for atom_idx in atom_idxs}
     atom_to_residue = dict(sorted(atom_to_residue.items(), key=lambda x: x[0]))
+    # print(atom_to_residue)
     atom_to_residue_sequence_index = {atom_idx: residue_to_sequence_index[symbol] for atom_idx, symbol in atom_to_residue.items()}
     atom_to_3_letter = {atom_idx: utils.convert_to_three_letter_code(symbol) for atom_idx, symbol in atom_to_residue.items()}
     atom_to_residue_index = {atom_idx: utils.encode_residue(residue) for atom_idx, residue in atom_to_3_letter.items()}
@@ -127,7 +131,7 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         root: str, 
-        sdf_file: str,
+        sdf_files: List[str],
         label: str,
         num_frames: Optional[int] = None,
         start_frame: Optional[int] = None, 
@@ -142,10 +146,15 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         self.transform = transform
         self.loss_weight = loss_weight
 
-        sdf_file = os.path.join(self.root, sdf_file)
+        sdf_files = [os.path.join(self.root, sdf_file) for sdf_file in sdf_files]
 
-        # Preprocess the SDF file
-        self.data, self.rdkit_mol, self.rdkit_mol_withH, self.mols = preprocess_sdf(sdf_file)
+        # print(sdf_files[0])
+        self.data, self.rdkit_mol, self.rdkit_mol_withH, mols = preprocess_sdf(sdf_files[0])
+        for sdf_file in sdf_files[1:]:
+            _, _, _, frame_mols = preprocess_sdf(sdf_file)
+            mols.extend(frame_mols)
+        self.mols = mols
+
         self.data.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.data.dataset_label = self.label()
 
@@ -216,112 +225,3 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.positions)
-
-# @singleton
-# class MDtrajIterableSDFDataset(torch.utils.data.IterableDataset):
-#     """PyTorch iterable dataset for MDtraj trajectories from SDF files."""
-
-#     def __init__(self, sdf_file: str, label: str, transform: Optional[Callable] = None,
-#                  subsample: Optional[int] = None, loss_weight: float = 1.0, chunk_size: int = 100,
-#                  start_at_random_frame: bool = True, verbose: bool = False):
-        
-#         self.label = lambda: label
-#         self.transform = transform
-#         self.loss_weight = loss_weight
-#         self.chunk_size = chunk_size
-#         self.start_at_random_frame = start_at_random_frame
-
-#         if subsample is None or subsample == 0:
-#             subsample = 1
-#         self.subsample = subsample
-
-#         # Preprocess the SDF file
-#         self.data, self.rdkit_mol, self.rdkit_mol_withH, self.trajfiles = preprocess_sdf(sdf_file)
-#         self.data.dataset_label = self.label()
-#         self.data.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
-
-#         if verbose:
-#             utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files and SDF file {sdf_file}.")
-
-#     def __iter__(self):
-#         trajfiles = self.trajfiles
-#         if self.start_at_random_frame:
-#             trajfiles = np.random.permutation(trajfiles)
-
-#         for traj_frame in trajfiles:
-#             graph = self.data.clone()
-#             graph.pos = torch.tensor(traj_frame.GetConformer().GetPositions(), dtype=torch.float32)
-#             if self.transform:
-#                 graph = self.transform(graph)
-#             yield graph
-
-
-class sdfMDtrajDataModule(pl.LightningDataModule):
-    """PyTorch Lightning data module for MDtraj datasets."""
-
-    def __init__(
-        self, 
-        datasets: Dict[str, Sequence[MDtrajSDFDataset]], 
-        batch_size: int, 
-        num_workers: int = 8):
-        
-        super().__init__()
-
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-
-        self.datasets = datasets
-        self.concatenated_datasets = {}
-
-        self.shuffle = True
-
-    def prepare_data(self):
-        pass
-
-    def setup(self, stage: str = None):
-        print(f"Setup stage: {stage}")
-        for split, datasets in self.datasets.items():
-            print(f"Processing split: {split}, dataset: {datasets}")
-            if datasets is None:
-                print(f"No dataset found for split: {split}")
-                continue
-
-            if isinstance(datasets[0], MDtrajSDFDataset):
-                self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
-                self.shuffle = False
-
-                utils.dist_log(f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}.")
-
-        print(f"Datasets loaded for: {self.datasets.keys()}")
-
-    def train_dataloader(self):
-        if "train" not in self.datasets:
-            raise KeyError(f"No 'train' dataset found in datasets.")
-        print("Creating train dataloader...")
-        return torch_geometric.loader.DataLoader(
-            self.concatenated_datasets["train"],
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=self.shuffle,
-            prefetch_factor=10,
-        )
-
-    def val_dataloader(self):
-        if "val" not in self.datasets:
-            raise KeyError(f"No 'val' dataset found in datasets.")
-        print("Creating val dataloader...")
-        return torch_geometric.loader.DataLoader(
-            self.concatenated_datasets["val"],
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-        )
-
-    def test_dataloader(self):
-        if "test" not in self.datasets:
-            raise KeyError(f"No 'test' dataset found in datasets.")
-        print("Creating test dataloader...")
-        return torch_geometric.loader.DataLoader(
-            self.concatenated_datasets["test"],
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-        )

@@ -24,24 +24,24 @@ data:
     batch_size: 16
     datasets:
       train:
-        _target_: jamun.data.parse_sdf_datasets_from_directory
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        traj_pattern: "^(.*).sdf"
-        max_datasets: 1000
-
+        - _target_: jamun.data.MDtrajSDFDataset
+          # root: "/data/davidsd5/cremp/sdf_and_json/"
+          root: /homefs/home/daigavaa/
+          sdf_files: ["F.C.K.D.sdf"]
+          label: fckd
       val:
-        _target_: jamun.data.parse_sdf_datasets_from_directory
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        traj_pattern: "^(.*).sdf"
-        max_datasets: 1000
-        max_datasets_offset: 1000
-
+        - _target_: jamun.data.MDtrajSDFDataset
+          # root: "/data/davidsd5/cremp/sdf_and_json/"
+          root: /homefs/home/daigavaa/
+          sdf_files: ["F.C.K.D.sdf"]
+          label: fckd
       test:
-        _target_: jamun.data.parse_sdf_datasets_from_directory
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        traj_pattern: "^(.*).sdf"
-        max_datasets: 1000
-        max_datasets_offset: 2000
+        - _target_: jamun.data.MDtrajSDFDataset
+          # root: "/data/davidsd5/cremp/sdf_and_json/"
+          root: /homefs/home/daigavaa/
+          sdf_files: ["F.C.K.D.sdf"]
+          label: fckd
+
 
 trainer:
   val_check_interval: 0.1
