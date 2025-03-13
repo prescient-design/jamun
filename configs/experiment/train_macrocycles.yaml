@@ -17,27 +17,27 @@ callbacks:
 
 data:
   datamodule:
-    _target_: jamun.data.sdfMDtrajDataModule  # Explicitly set the correct datamodule class here
+    _target_: jamun.data.MDtrajDataModule  # Explicitly set the correct datamodule class here
     batch_size: 16
     datasets:
       train:
-        _target_: jamun.data.MDtrajSDFDataset
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
-        trajfiles: ["F.C.K.D.sdf"]  # Example trajectory files
-        label: fckd
+        - _target_: jamun.data.MDtrajSDFDataset
+          # root: "/data/davidsd5/cremp/sdf_and_json/"
+          root: /homefs/home/daigavaa/
+          sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
+          label: fckd
       val:
-        _target_: jamun.data.MDtrajSDFDataset
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
-        trajfiles: ["F.C.K.D.sdf"]  # Example trajectory files
-        label: fckd
+        - _target_: jamun.data.MDtrajSDFDataset
+          # root: "/data/davidsd5/cremp/sdf_and_json/"
+          root: /homefs/home/daigavaa/
+          sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
+          label: fckd
       test:
-        _target_: jamun.data.MDtrajSDFDataset
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
-        trajfiles: ["F.C.K.D.sdf"]  # Example trajectory files
-        label: fckd
+        - _target_: jamun.data.MDtrajSDFDataset
+          # root: "/data/davidsd5/cremp/sdf_and_json/"
+          root: /homefs/home/daigavaa/
+          sdf_file: "F.C.K.D.sdf"  # Changed to use a single SDF file
+          label: fckd
 
 
 trainer:
