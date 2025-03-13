@@ -80,6 +80,7 @@ def encode_residue(residue_name: str) -> int:
     if residue_name in ResidueMetadata.RESIDUE_CODES:
         return ResidueMetadata.RESIDUE_CODES.index(residue_name)
     else:
+        raise ValueError(f"Invalid residue name: {residue_name}. Valid names are: {ResidueMetadata.RESIDUE_CODES}")
         return len(ResidueMetadata.RESIDUE_CODES)
 
 

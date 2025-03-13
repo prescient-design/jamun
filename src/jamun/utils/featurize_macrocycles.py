@@ -34,7 +34,7 @@ RING_SIZE_FEATURE_NAMES = [f"ringsize{rs}" for rs in RING_SIZES]  # No "unknown"
 NUM_RING_FEATURE_NAMES = [f"numring{nr}" for nr in NUM_RINGS] + ["numringUNK"]
 
 # Constants and data for amino acids
-AMINO_ACID_DATA_PATH = "/homefs/home/davidsd5/jamun/jamun/src/jamun/data/amino_acids.csv"
+AMINO_ACID_DATA_PATH = "/data/bucket/kleinhej/cremp/amino_acids.csv"
 AMINO_ACID_DATA = pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa")
 AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].map(Chem.MolFromSmiles)
 

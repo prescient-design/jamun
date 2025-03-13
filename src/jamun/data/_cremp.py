@@ -15,7 +15,7 @@ from rdkit import Chem
 
 from jamun import utils
 from jamun.data._random_chain_dataset import StreamingRandomChainDataset
-from jamun.utils.featurize_macrocycles import get_macrocycle_idxs, featurize_macrocycle_atoms
+from jamun.utils.featurize_macrocycles import get_macrocycle_idxs, featurize_macrocycle_atoms, get_residues
 
 def singleton(cls):
     """
@@ -55,7 +55,7 @@ def singleton(cls):
     cls.__init__ = __init__
     return cls
 
-def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, Chem.Mol, List[str]]:
+def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, Chem.Mol, List[Chem.Mol]]:
     """
     Preprocess the SDF topology.
     
@@ -67,7 +67,7 @@ def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, 
             - A PyTorch Geometric Data object.
             - The molecule with heavy atoms only (excluding hydrogen atoms).
             - The molecule with hydrogenated protein.
-            - List of trajectory files (conformers).
+            - List of molecules from the SDF file.
     """
     # Load molecules from the SDF file
     suppl = Chem.SDMolSupplier(sdf_file)
@@ -89,47 +89,56 @@ def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, 
     if macrocycle_idxs is None:
         raise ValueError(f"No macrocycle detected in the protein topology.")
 
-    # Featurize macrocycle atoms
-    atom_features = featurize_macrocycle_atoms(
-        rdkit_mol, macrocycle_idxs=macrocycle_idxs, use_peptide_stereo=False)
-
-    # Convert DataFrame to PyTorch tensor
-    atom_features_tensors = torch.tensor(atom_features.values, dtype=torch.float)
-
     bonds = torch.tensor([[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()] for bond in rdkit_mol.GetBonds()], dtype=torch.long).T
 
+    residues = get_residues(rdkit_mol, residues_in_mol=None, macrocycle_idxs=None)
+    residue_sequence = [v for k, v in residues.items()]
+    residue_to_sequence_index = {residue: index for index, residue in enumerate(residue_sequence)}
+
+    atom_to_residue = {atom_idx: symbol for atom_idxs, symbol in residues.items() for atom_idx in atom_idxs}
+    atom_to_residue = dict(sorted(atom_to_residue.items(), key=lambda x: x[0]))
+    atom_to_residue_sequence_index = {atom_idx: residue_to_sequence_index[symbol] for atom_idx, symbol in atom_to_residue.items()}
+    atom_to_3_letter = {atom_idx: utils.convert_to_three_letter_code(symbol) for atom_idx, symbol in atom_to_residue.items()}
+    atom_to_residue_index = {atom_idx: utils.encode_residue(residue) for atom_idx, residue in atom_to_3_letter.items()}
+    atom_types = [atom.GetSymbol() for atom in rdkit_mol.GetAtoms()]
+
+    residue_sequence_index = torch.tensor([atom_to_residue_sequence_index[atom_idx] for atom_idx in range(len(atom_to_residue))], dtype=torch.long)
+    residue_code_index = torch.tensor([v for k, v in atom_to_residue_index.items()], dtype=torch.long)
+    atom_type_index = torch.tensor([utils.encode_atom_type(atom_type) for atom_type in atom_types], dtype=torch.long)
+
     # Create a PyTorch Geometric Data object
-    data = torch_geometric.data.Data(
-        x=atom_features_tensors,
+    data = utils.DataWithResidueInformation(
+        atom_type_index=atom_type_index,
+        residue_code_index=residue_code_index,
+        residue_sequence_index=residue_sequence_index,
+        atom_code_index=atom_type_index,
+        residue_index=residue_sequence_index,
+        num_residues=residue_sequence_index.max().item() + 1,
         edge_index=bonds,
     )
-    
 
-    # Use the rest of the conformers as trajfiles
-    trajfiles = mols[1:]
-
-    return data, rdkit_mol, rdkit_mol_withH, trajfiles
+    return data, rdkit_mol, rdkit_mol_withH, mols
 
 @singleton
 class MDtrajSDFDataset(torch.utils.data.Dataset):
     """PyTorch dataset for MDtraj trajectories from SDF files."""
 
     def __init__(
-            self,
-            root: str, 
-            sdf_file: str,
-            trajfiles: Sequence[str], 
-            label: str,
-            num_frames: Optional[int] = None,
-            start_frame: Optional[int] = None, 
-            transform: Optional[Callable] = None, 
-            subsample: Optional[int] = None,
-            loss_weight: float = 1.0, 
-            verbose: bool = False,
-            ):
-        
+        self,
+        root: str, 
+        sdf_file: str,
+        trajfiles: Sequence[str], 
+        label: str,
+        num_frames: Optional[int] = None,
+        start_frame: Optional[int] = None, 
+        transform: Optional[Callable] = None, 
+        subsample: Optional[int] = None,
+        loss_weight: float = 1.0, 
+        verbose: bool = False,
+    ):
+
         self.root = root
-        self.label = lambda: label
+        self._label = label
         self.transform = transform
         self.loss_weight = loss_weight
 
@@ -137,13 +146,13 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
 
         # Preprocess the SDF file
-        self.data, self.rdkit_mol, self.rdkit_mol_withH, self.trajfiles = preprocess_sdf(sdf_file)
+        self.data, self.rdkit_mol, self.rdkit_mol_withH, self.mols = preprocess_sdf(sdf_file)
         self.data.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.data.dataset_label = self.label()
-        
+
         # Ensure the trajectory data is in the correct shape
-        self.traj = np.vstack([mol.GetConformer().GetPositions() for mol in self.trajfiles])
-        
+        self.traj = np.vstack([mol.GetConformer().GetPositions() for mol in self.mols])
+
         # Assuming you know the number of frames and atoms per frame
         n_atoms = self.rdkit_mol.GetNumAtoms()
         n_frames = len(self.traj) // n_atoms
@@ -172,11 +181,14 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
             utils.dist_log(f"Dataset {self.label()}: Loaded SDF file {sdf_file} and trajectory files: {self.trajfiles}.")
             utils.dist_log(f"Dataset {self.label()}: Loaded {len(self.trajfiles)} frames starting from index {start_frame} with subsample {subsample}.")
     
+    def label(self) -> str:
+        """Returns the dataset label."""
+        return self._label
+
     def __getitem__(self, idx):
         graph = self.data.clone()
         if self.trajfiles:
-            traj_frame = self.trajfiles[idx]
-            graph.pos = torch.tensor(traj_frame.GetConformer().GetPositions(), dtype=torch.float32)
+            graph.pos = self.traj[idx]
         if self.transform:
             graph = self.transform(graph)
         return graph
