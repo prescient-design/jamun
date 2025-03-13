@@ -20,8 +20,6 @@ class VisualizeDenoise(pl.Callback):
     ):
         super().__init__()
         self.sigma_list = sigma_list
-        print(datasets)
-        print("dataset labels:", [dataset.label() for dataset in datasets])
 
         self.visualizers = {
             dataset.label(): VisualizeDenoiseMetrics(

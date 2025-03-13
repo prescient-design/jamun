@@ -152,7 +152,7 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
                 )
                 plt.close(fig)
         except ValueError as e:
-            print(f"Error plotting Ramachandran plots: {e}")
+            pass
 
         if scaled_rmsd_per_sigma is not None:
             for sigma, scaled_rmsd in scaled_rmsd_per_sigma.items():

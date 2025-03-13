@@ -181,7 +181,7 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         tmp_pdb = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb").name
         with open(tmp_pdb, "w") as f:
             f.write(pdb)
-        self.top = md.load_pdb(tmp_pdb)
+        self.top = md.load_topology(tmp_pdb)
 
         self.traj = md.load_pdb(tmp_pdb)
         self.traj.xyz = self.positions
