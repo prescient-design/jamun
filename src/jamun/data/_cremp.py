@@ -151,6 +151,7 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
 
         # Ensure the trajectory data is in the correct shape
         self.positions = np.vstack([mol.GetConformer().GetPositions() for mol in self.mols])
+        self.positions /= 10.0  # Convert to nanometers
 
         # Assuming you know the number of frames and atoms per frame
         n_atoms = self.rdkit_mol.GetNumAtoms()

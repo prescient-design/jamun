@@ -128,6 +128,9 @@ def compute_distance_matrix(x: np.ndarray, cutoff: Optional[float] = None) -> np
     if cutoff is not None:
         mask = mask & (dist_x < cutoff)
 
+    if not np.any(mask):
+        raise ValueError(f"No distances below cutoff {cutoff} found in the distance matrix: min {dist_x[dist_x > 0].min()} and max {dist_x[dist_x > 0].max()}.")
+
     dist_x = dist_x[..., mask]
     return dist_x
 
