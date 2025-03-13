@@ -1,4 +1,5 @@
-import collections
+import functools
+import tempfile
 import os
 import threading
 from typing import Callable, Dict, Optional, Sequence, Tuple, Union, List
@@ -10,7 +11,7 @@ import torch
 import torch.utils.data
 import torch_geometric
 from torch_geometric.data import Data
-
+import mdtraj as md
 from rdkit import Chem
 
 from jamun import utils
@@ -127,7 +128,6 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         self,
         root: str, 
         sdf_file: str,
-        trajfiles: Sequence[str], 
         label: str,
         num_frames: Optional[int] = None,
         start_frame: Optional[int] = None, 
@@ -143,7 +143,6 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         self.loss_weight = loss_weight
 
         sdf_file = os.path.join(self.root, sdf_file)
-        trajfiles = [os.path.join(self.root, filename) for filename in trajfiles]
 
         # Preprocess the SDF file
         self.data, self.rdkit_mol, self.rdkit_mol_withH, self.mols = preprocess_sdf(sdf_file)
@@ -151,89 +150,110 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         self.data.dataset_label = self.label()
 
         # Ensure the trajectory data is in the correct shape
-        self.traj = np.vstack([mol.GetConformer().GetPositions() for mol in self.mols])
+        self.positions = np.vstack([mol.GetConformer().GetPositions() for mol in self.mols])
 
         # Assuming you know the number of frames and atoms per frame
         n_atoms = self.rdkit_mol.GetNumAtoms()
-        n_frames = len(self.traj) // n_atoms
+        n_frames = len(self.positions) // n_atoms
 
         # Reshape the trajectory data
-        self.traj = self.traj.reshape((n_frames, n_atoms, 3))
+        self.positions = self.positions.reshape((n_frames, n_atoms, 3))
 
-        # # Print the trajectory data and its shape
-        # print("Trajectory data shape:", self.traj.shape)
-        # print("Trajectory data:", self.traj)
-        assert self.traj.shape == (n_frames, n_atoms, 3)
+        # # Print the positionsectory data and its shape
+        # print("Trajectory data shape:", self.positions.shape)
+        # print("Trajectory data:", self.positions)
+        assert self.positions.shape == (n_frames, n_atoms, 3)
 
         if start_frame is None:
             start_frame = 0
 
         if num_frames == -1 or num_frames is None:
-            num_frames = len(self.trajfiles) - start_frame
+            num_frames = len(self.positions) - start_frame
         
         if subsample is None or subsample == 0:
             subsample = 1
 
         # Subsample the trajectory.
-        self.trajfiles = self.trajfiles[start_frame: start_frame + num_frames: subsample]
+        self.positions = self.positions[start_frame: start_frame + num_frames: subsample]
+
+        # Create topology from the SDF file
+        pdb = Chem.MolToPDBBlock(self.rdkit_mol)
+        tmp_pdb = tempfile.NamedTemporaryFile(delete=False, suffix=".pdb").name
+        with open(tmp_pdb, "w") as f:
+            f.write(pdb)
+        self.top = md.load_pdb(tmp_pdb)
+
+        self.traj = md.load_pdb(tmp_pdb)
+        self.traj.xyz = self.positions
+        self.traj.time = np.arange(start_frame, start_frame + num_frames, subsample)
+        assert len(self.traj) == len(self.positions), f"Number of frames in trajectory {len(self.traj)} does not match positions {len(self.positions)}."
+        
+        os.remove(tmp_pdb)
 
         if verbose:
             utils.dist_log(f"Dataset {self.label()}: Loaded SDF file {sdf_file} and trajectory files: {self.trajfiles}.")
             utils.dist_log(f"Dataset {self.label()}: Loaded {len(self.trajfiles)} frames starting from index {start_frame} with subsample {subsample}.")
     
+    @functools.cached_property
+    def topology(self) -> md.Topology:
+        return self.top
+
+    @functools.cached_property
+    def trajectory(self) -> md.Trajectory:
+        return self.traj
+
     def label(self) -> str:
         """Returns the dataset label."""
         return self._label
 
     def __getitem__(self, idx):
         graph = self.data.clone()
-        if self.trajfiles:
-            graph.pos = self.traj[idx]
+        graph.pos = torch.tensor(self.traj.xyz[idx])
         if self.transform:
             graph = self.transform(graph)
         return graph
 
     def __len__(self):
-        return len(self.trajfiles) if self.trajfiles else 1
-    
+        return len(self.positions)
 
-@singleton
-class MDtrajIterableSDFDataset(torch.utils.data.IterableDataset):
-    """PyTorch iterable dataset for MDtraj trajectories from SDF files."""
+# @singleton
+# class MDtrajIterableSDFDataset(torch.utils.data.IterableDataset):
+#     """PyTorch iterable dataset for MDtraj trajectories from SDF files."""
 
-    def __init__(self, sdf_file: str, label: str, transform: Optional[Callable] = None,
-                 subsample: Optional[int] = None, loss_weight: float = 1.0, chunk_size: int = 100,
-                 start_at_random_frame: bool = True, verbose: bool = False):
+#     def __init__(self, sdf_file: str, label: str, transform: Optional[Callable] = None,
+#                  subsample: Optional[int] = None, loss_weight: float = 1.0, chunk_size: int = 100,
+#                  start_at_random_frame: bool = True, verbose: bool = False):
         
-        self.label = lambda: label
-        self.transform = transform
-        self.loss_weight = loss_weight
-        self.chunk_size = chunk_size
-        self.start_at_random_frame = start_at_random_frame
+#         self.label = lambda: label
+#         self.transform = transform
+#         self.loss_weight = loss_weight
+#         self.chunk_size = chunk_size
+#         self.start_at_random_frame = start_at_random_frame
 
-        if subsample is None or subsample == 0:
-            subsample = 1
-        self.subsample = subsample
+#         if subsample is None or subsample == 0:
+#             subsample = 1
+#         self.subsample = subsample
 
-        # Preprocess the SDF file
-        self.data, self.rdkit_mol, self.rdkit_mol_withH, self.trajfiles = preprocess_sdf(sdf_file)
-        self.data.dataset_label = self.label()
-        self.data.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
+#         # Preprocess the SDF file
+#         self.data, self.rdkit_mol, self.rdkit_mol_withH, self.trajfiles = preprocess_sdf(sdf_file)
+#         self.data.dataset_label = self.label()
+#         self.data.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
 
-        if verbose:
-            utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files and SDF file {sdf_file}.")
+#         if verbose:
+#             utils.dist_log(f"Dataset {self.label()}: Iteratively loading trajectory files and SDF file {sdf_file}.")
 
-    def __iter__(self):
-        trajfiles = self.trajfiles
-        if self.start_at_random_frame:
-            trajfiles = np.random.permutation(trajfiles)
+#     def __iter__(self):
+#         trajfiles = self.trajfiles
+#         if self.start_at_random_frame:
+#             trajfiles = np.random.permutation(trajfiles)
 
-        for traj_frame in trajfiles:
-            graph = self.data.clone()
-            graph.pos = torch.tensor(traj_frame.GetConformer().GetPositions(), dtype=torch.float32)
-            if self.transform:
-                graph = self.transform(graph)
-            yield graph
+#         for traj_frame in trajfiles:
+#             graph = self.data.clone()
+#             graph.pos = torch.tensor(traj_frame.GetConformer().GetPositions(), dtype=torch.float32)
+#             if self.transform:
+#                 graph = self.transform(graph)
+#             yield graph
+
 
 class sdfMDtrajDataModule(pl.LightningDataModule):
     """PyTorch Lightning data module for MDtraj datasets."""

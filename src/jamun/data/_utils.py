@@ -13,7 +13,7 @@ from rdkit import Chem
 
 from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
 #from jamun.data._cremp import MDtrajPickleDataset, MDtrajSDFDataset, MDtrajIterablePickleDataset, MDtrajIterableSDFDataset
-from jamun.data._cremp import MDtrajSDFDataset, MDtrajIterableSDFDataset
+from jamun.data._cremp import MDtrajSDFDataset
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
     outs = []
@@ -215,7 +215,7 @@ def parse_sdf_datasets_from_directory(
         codes = codes[:max_datasets]
 
     if as_iterable:
-        dataset_class = MDtrajIterableSDFDataset
+        raise ValueError("as_iterable is not supported for SDF datasets.")
     else:
         dataset_class = MDtrajSDFDataset
 

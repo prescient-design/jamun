@@ -155,7 +155,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
                     yield graph
 
     @functools.cached_property
-    def topology(self) -> md.Trajectory:
+    def topology(self) -> md.Topology:
         return self.top
 
     @functools.cached_property
@@ -277,7 +277,7 @@ class MDtrajDataModule(pl.LightningDataModule):
             if datasets is None:
                 continue
 
-            if isinstance(datasets[0], MDtrajDataset):
+            if isinstance(datasets[0], torch.utils.data.Dataset):
                 self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
                 self.shuffle = True
 
@@ -285,7 +285,7 @@ class MDtrajDataModule(pl.LightningDataModule):
                     f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
                 )
 
-            elif isinstance(datasets[0], MDtrajIterableDataset):
+            elif isinstance(datasets[0], torch.utils.data.IterableDataset):
                 # Shuffling is handled by the StreamingRandomChainDataset.
                 self.concatenated_datasets[split] = StreamingRandomChainDataset(datasets)
                 self.shuffle = False
