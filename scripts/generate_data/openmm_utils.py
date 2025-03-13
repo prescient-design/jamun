@@ -7,6 +7,7 @@ import mdtraj as md
 import numpy as np
 import pdbfixer
 from openmm import (
+
     CustomExternalForce,
     LangevinMiddleIntegrator,
     MonteCarloBarostat,
@@ -34,6 +35,7 @@ from openmm.unit import (
     nanometer,
     nanometers,
     picoseconds,
+    Quantity
 )
 
 Positions = List[Tuple[Vec3, ...]]
@@ -245,10 +247,11 @@ def add_dihedral_restraints(dihedrals: np.ndarray, simulation: Simulation, k: fl
 def minimize_energy(
     positions: Positions,
     simulation: Simulation,
+    num_steps: int,
     tolerance_kJ_per_mol_per_nm: float = 10,
-    num_steps: int = 1500,
     output_file_prefix: str = "minimized",
     save_file: bool = True,
+    save_protein_only_file: bool = True,
 ) -> Tuple[Positions, Simulation]:
     """Energy minimization steps to relax the system."""
     py_logger.info("Minimizing the energy of the system.")
@@ -264,8 +267,27 @@ def minimize_energy(
         output_file = filename_with_prefix(output_file_prefix, extension="pdb")
         with open(output_file, "w") as f:
             PDBFile.writeFile(simulation.topology, pdb_positions, f)
-
+        
         py_logger.info(f"Minimized PDB file saved at: {os.path.abspath(output_file)}")
+
+    if save_protein_only_file:
+        pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
+        
+        mdtraj_topology = md.Topology.from_openmm(simulation.topology)
+        protein_indices = mdtraj_topology.select("protein")
+        positions_array = np.asarray(pdb_positions.value_in_unit(nanometer))
+        minimized_positions_protein = Quantity(positions_array[protein_indices], nanometer)
+
+        mdtraj_topology_protein = mdtraj_topology.subset(protein_indices)
+        topology_protein = mdtraj_topology_protein.to_openmm()
+
+        # Save protein only.
+        output_file_protein = filename_with_prefix(f"{output_file_prefix}_protein", extension="pdb")
+        with open(output_file_protein, "w") as f:
+            PDBFile.writeFile(topology_protein, minimized_positions_protein, f)
+    
+        py_logger.info(f"Minimized protein PDB file saved at: {os.path.abspath(output_file_protein)}")
+
 
     return minimized_positions, simulation
 

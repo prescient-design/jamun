@@ -2,6 +2,7 @@
 
 defaults:
   - override /callbacks:
+    - sampler/measure_sampling_time.yaml
     - sampler/save_trajectory.yaml
   - _self_
 
@@ -12,22 +13,21 @@ repeat_init_samples: 1
 continue_chain: true
 
 # MDGen
-wandb_train_run_path: prescient-design/jamun/lmnf3vyu
-
+wandb_train_run_path: prescient-design/jamun/fl0mbm3c
 
 checkpoint_type: best_so_far
 sigma: 0.04
 M: 1.0
 delta: 0.04
-friction: 1.0
+friction: 10.0
 inverse_temperature: 1.0
 score_fn_clip: 100.0
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned/test/"
-  traj_pattern: "^(.*).xtc"
-  pdb_pattern: "^(.*).pdb"
+  root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/test/"
+  traj_pattern: "^(....)_.*.xtc"
+  pdb_pattern: "^(....).pdb"
   as_iterable: false
 
 sampler:

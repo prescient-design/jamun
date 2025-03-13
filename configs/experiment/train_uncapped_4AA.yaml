@@ -1,14 +1,5 @@
 # @package _global_
 
-defaults:
-  - override /data: md.yaml
-  - override /model/arch: e3conv.yaml
-  - override /callbacks:
-    - default.yaml
-    - model_checkpoint.yaml
-    - visualize_denoise.yaml
-  - _self_
-
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma

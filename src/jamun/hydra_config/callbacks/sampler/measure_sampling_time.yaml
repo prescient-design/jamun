@@ -1,0 +1,2 @@
+measure_sampling_time:
+  _target_: jamun.callbacks.sampler.MeasureSamplingTimeCallback

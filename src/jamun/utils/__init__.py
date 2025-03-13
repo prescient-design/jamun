@@ -1,5 +1,5 @@
 from .align import align_A_to_B, align_A_to_B_batched
-from .average_squared_distance import compute_average_squared_distance, compute_average_squared_distance_from_data
+from .average_squared_distance import compute_average_squared_distance, compute_average_squared_distance_from_datasets
 from .checkpoint import find_checkpoint, find_checkpoint_directory, get_wandb_run_config
 from .data_with_residue_info import DataWithResidueInformation
 from .dist_log import dist_log, wandb_dist_log
@@ -20,4 +20,5 @@ from .residue_metadata import (
 from .sampling_wrapper import ModelSamplingWrapper
 from .scaled_rmsd import scaled_rmsd
 from .unsqueeze_trailing import unsqueeze_trailing
+from .slurm import wait_for_jobs
 from .featurize_macrocycles import one_k_encoding,featurize_macrocycle_atoms,featurize_macrocycle_atoms_from_file,get_amino_acid_stereo,get_residues,get_side_chain_torsion_idxs

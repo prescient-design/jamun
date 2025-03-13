@@ -1,0 +1,56 @@
+# @package _global_
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  arch:
+    n_layers: 2
+  max_radius: 1000.0
+  optim:
+    lr: 0.002
+
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
+
+data:
+  datamodule:
+    batch_size: 32
+    datasets:
+      train:
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
+          subsample: 100
+          label: "AA"
+
+      val:
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
+          subsample: 100
+          label: "AA"
+
+      test:
+        - _target_: jamun.data.MDtrajDataset
+          root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+          trajfiles:
+            - AA-traj-arrays.npz
+          pdbfile: AA-traj-state0.pdb
+          subsample: 100
+          label: "AA"
+
+
+trainer:
+  val_check_interval: 0.5
+  max_epochs: 1
+
+logger:
+  wandb:
+    group: train_test

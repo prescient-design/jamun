@@ -1,4 +1,5 @@
 from ._chemical_validity import ChemicalValidityMetricsCallback
+from ._measure_sampling_time import MeasureSamplingTimeCallback
 from ._posebusters import PoseBustersCallback
 from ._ramachandran import RamachandranPlotMetricsCallback
 from ._save_trajectory import SaveTrajectoryCallback

@@ -1,9 +1,9 @@
 import collections
 import os
 import re
-import random
 from typing import List, Optional, Sequence
 
+import pandas as pd
 import hydra
 import requests
 import torch
@@ -116,6 +116,103 @@ def parse_datasets_from_directory(
             **dataset_kwargs,
         )
         datasets.append(dataset)
+    return datasets
+
+
+def parse_datasets_from_directory_new(
+    root: str,
+    traj_pattern: str,
+    pdb_pattern: Optional[str] = None,
+    pdb_file: Optional[Sequence[str]] = None,
+    max_datasets: Optional[int] = None,
+    max_datasets_offset: Optional[int] = None,
+    filter_codes: Optional[Sequence[str]] = None,
+    filter_codes_csv: Optional[str] = None,
+    as_iterable: bool = False,
+    **dataset_kwargs,
+) -> List[MDtrajDataset]:
+    """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
+    if pdb_file is not None and pdb_pattern is not None:
+        raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
+    
+    # Compile the regex patterns
+    traj_pattern_compiled = re.compile(traj_pattern)
+    if pdb_pattern is not None:
+        pdb_pattern_compiled = re.compile(pdb_pattern)
+    
+    # Find all trajectory files recursively
+    traj_files = collections.defaultdict(list)
+    codes = set()
+    
+    for dirpath, _, filenames in os.walk(root):
+        rel_dirpath = os.path.relpath(dirpath, root)
+        for filename in filenames:
+            filepath = os.path.join(rel_dirpath, filename)
+            match = traj_pattern_compiled.match(filepath)
+            if match:
+                code = match.group(1)
+                codes.add(code)
+                traj_files[code].append(filepath)
+    
+    if len(codes) == 0:
+        raise ValueError("No codes found in directory.")
+    
+    # Find all PDB files recursively
+    pdb_files = {}
+    if pdb_pattern is not None:
+        for dirpath, _, filenames in os.walk(root):
+            rel_dirpath = os.path.relpath(dirpath, root)
+            for filename in filenames:
+                filepath = os.path.join(rel_dirpath, filename)
+                match = pdb_pattern_compiled.match(filepath)
+                if match:
+                    code = match.group(1)
+                    if code in codes:
+                        pdb_files[code] = filepath
+    else:
+        for code in codes:
+            pdb_files[code] = pdb_file
+    
+    # Filter out codes
+    if filter_codes_csv is not None:
+        if filter_codes is not None:
+            raise ValueError("Only one of filter_codes and filter_codes_csv should be provided.")
+
+        filter_codes = pd.read_csv(filter_codes_csv)["code"].tolist()
+
+    if filter_codes is not None:
+        codes = [code for code in codes if code in set(filter_codes)]
+    
+    # Sort the codes and offset them, if necessary
+    codes = list(sorted(codes))
+    if max_datasets_offset is not None:
+        codes = codes[max_datasets_offset:]
+    if max_datasets is not None:
+        codes = codes[:max_datasets]
+    
+    # Determine dataset class
+    if as_iterable:
+        dataset_class = MDtrajIterableDataset
+    else:
+        dataset_class = MDtrajDataset
+    
+    # Create datasets
+    datasets = []
+    for code in tqdm(codes, desc="Creating datasets"):
+        # Skip codes without pdb files
+        if code not in pdb_files:
+            print(f"Warning: No PDB file found for code {code}, skipping.")
+            continue
+            
+        dataset = dataset_class(
+            root,
+            trajfiles=traj_files[code],
+            pdbfile=pdb_files[code],
+            label=code,
+            **dataset_kwargs,
+        )
+        datasets.append(dataset)
+    
     return datasets
 
 

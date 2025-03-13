@@ -39,12 +39,6 @@ def parse_args():
         help="Type of reference trajectory to compare against",
     )
     parser.add_argument(
-        "--same-sampling-time",
-        action="store_true",
-        default=False,
-        help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
-    )
-    parser.add_argument(
         "--run-path",
         type=str,
         help="Path to JAMUN run directory containing trajectory files",
@@ -76,9 +70,9 @@ def load_trajectories_by_name(
     if args.data_path:
         JAMUN_DATA_PATH = args.data_path
     else:
-        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key(".env", "JAMUN_DATA_PATH"))
+        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key("../.env", "JAMUN_DATA_PATH"))
         if not JAMUN_DATA_PATH:
-            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path or environment variable")
+            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path, environment variable or .env file")
     py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
 
     filter_codes = [args.peptide]
@@ -137,20 +131,14 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
 def subset_reference_trajectory(
     traj_md: md.Trajectory,
     ref_traj_md: md.Trajectory,
-    args: argparse.Namespace,
+    traj_seconds_per_sample: float,
+    ref_traj_seconds_per_sample: float,
+    base_factor: float = 1.0,
 ) -> md.Trajectory:
-    """Subset reference trajectory to match the length of the trajectory in actual sampling time."""
-    traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
-    if traj_samples_per_sec is None:
-        raise ValueError(f"Sampling rate not found for {args.trajectory}")
-
-    ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
-    if ref_traj_samples_per_sec is None:
-        raise ValueError(f"Sampling rate not found for {args.reference}")
-
-    traj_time = traj_samples_per_sec * traj_md.n_frames
-    ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
-    factor = min(traj_time / ref_traj_time, 1)
+    """Subset reference trajectory to match base_factor x length of the trajectory in actual sampling time."""
+    traj_time = traj_seconds_per_sample * traj_md.n_frames
+    ref_traj_time = ref_traj_seconds_per_sample * ref_traj_md.n_frames
+    factor = min(traj_time / ref_traj_time, 1) * base_factor
     ref_traj_subset_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
     return ref_traj_subset_md
 
@@ -253,7 +241,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     return results
 
 
-def save_results(results: Dict[str, Any], args: argparse.Namespace, is_benchmark_reference: bool) -> None:
+def save_results(results: Dict[str, Any], args: argparse.Namespace, output_path_suffix: Optional[str] = None) -> None:
     """Save analysis results to pickle file."""
 
     # Delete intermediate results, to reduce memory usage.
@@ -266,8 +254,8 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace, is_benchmark
     output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
 
-    if is_benchmark_reference:
-        output_path = os.path.join(output_dir, f"{args.peptide}_benchmark.pkl")
+    if output_path_suffix:
+        output_path = os.path.join(output_dir, f"{args.peptide}_{output_path_suffix}.pkl")
     else:
         output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
 
@@ -290,17 +278,24 @@ def main():
     results = analyze_trajectories(traj, ref_traj)
 
     # Save results.
-    save_results(results, args, is_benchmark_reference=False)
+    save_results(results, args, output_path_suffix=None)
 
-    if args.run_reference_benchmark:
-        ref_traj_subset = subset_reference_trajectory(traj, ref_traj, args)
-        py_logger.info(f"Reference trajectory subsetting complete.")
+    # Compute sampling rates.
+    traj_seconds_per_sample = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
+    ref_traj_seconds_per_sample = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
+
+    if traj_seconds_per_sample is not None and ref_traj_seconds_per_sample is not None:
+        py_logger.info(f"Running analysis on subsetted reference trajectory.")
 
         # Run analysis again, this time with the subsetted reference trajectory.
+        ref_traj_subset = subset_reference_trajectory(traj, ref_traj, traj_seconds_per_sample, ref_traj_seconds_per_sample, base_factor=1.0)
         results = analyze_trajectories(ref_traj_subset, ref_traj)
+        save_results(results, args, output_path_suffix="benchmark")
 
-        # Save results again.
-        save_results(results, args, is_benchmark_reference=True)
+        # Run analysis again, this time with the subsetted reference trajectory, but 10x longer.
+        # ref_traj_subset_10x = subset_reference_trajectory(traj, ref_traj, traj_seconds_per_sample, ref_traj_seconds_per_sample, base_factor=10.0)
+        # results = analyze_trajectories(ref_traj_subset_10x, ref_traj)
+        # save_results(results, args, output_path_suffix="benchmark_10x")
 
 
 if __name__ == "__main__":

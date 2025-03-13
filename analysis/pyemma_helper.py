@@ -7,10 +7,12 @@ from pyemma.plots.plots2d import get_histogram, plot_map, _to_free_energy
 
 
 def compute_2D_histogram(xall: np.ndarray, yall: np.ndarray, weights=None, nbins=100, avoid_zero_count=False):
+    """Compute a 2D histogram from scattered data."""
     return get_histogram(xall, yall, nbins=nbins, weights=weights, avoid_zero_count=avoid_zero_count)
 
 
 def compute_1D_histogram(xyzall: np.ndarray, n_bins: int = 50) -> Dict[str, np.ndarray]:
+    """Compute a 1D histogram from scattered data."""
     all_hists = []
     all_edges = []
 
@@ -28,12 +30,11 @@ def compute_1D_histogram(xyzall: np.ndarray, n_bins: int = 50) -> Dict[str, np.n
 
 
 def plot_free_energy(
-    x,
-    y,
-    z,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
     ax=None,
-    ncontours=100,
-    offset=-1,
+    ncontours: int = 100,
     minener_zero=True,
     kT=1.0,
     vmin=None,
@@ -44,7 +45,6 @@ def plot_free_energy(
     cax=None,
     levels=None,
     legacy=True,
-    ncountours=None,
     cbar_orientation="vertical",
     **kwargs,
 ):
@@ -68,9 +68,6 @@ def plot_free_energy(
         Number of histogram bins used in each dimension.
     ncontours : int, optional, default=100
         Number of contour levels.
-    offset : float, optional, default=-1
-        Deprecated and ineffective; raises a ValueError
-        outside legacy mode.
     avoid_zero_count : bool, optional, default=False
         Avoid zero counts by lifting all histogram elements to the
         minimum value before computing the free energy. If False,
@@ -171,18 +168,8 @@ def plot_free_energy(
             "Legacy mode is deprecated is will be removed in the" " next major release. Until then use legacy=False",
             DeprecationWarning,
         )
-        if offset != -1:
-            warn("Parameter offset is deprecated and will be ignored", DeprecationWarning)
-        if ncountours is not None:
-            warn("Parameter ncountours is deprecated;" " use ncontours instead", DeprecationWarning)
-            ncontours = ncountours
         if vmin is None:
             vmin = 0.0
-    else:
-        if offset != -1:
-            raise ValueError("Parameter offset is not allowed outside legacy mode")
-        if ncountours is not None:
-            raise ValueError("Parameter ncountours is not allowed outside" " legacy mode; use ncontours instead")
 
     f = _to_free_energy(z, minener_zero=minener_zero) * kT
     fig, ax, misc = plot_map(

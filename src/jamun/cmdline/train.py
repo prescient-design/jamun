@@ -11,41 +11,25 @@ import wandb
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
+import e3nn
+e3nn.set_optimization_defaults(jit_script_fx=False)
+
 import jamun
 from jamun.hydra import instantiate_dict_cfg
 from jamun.hydra.utils import format_resolver
-from jamun.utils import compute_average_squared_distance_from_data, dist_log, find_checkpoint
+from jamun.utils import compute_average_squared_distance_from_datasets, dist_log, find_checkpoint
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
 
 
-# def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
-#     """Computes the average squared distance for normalization from the data."""
-#     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
-#     datamodule.setup("compute_normalization")
-#     train_dataloader = datamodule.train_dataloader()
-#     cutoff = cfg.model.max_radius
-#     average_squared_distance = compute_average_squared_distance_from_data(train_dataloader, cutoff)
-#     average_squared_distance = float(average_squared_distance)
-#     return average_squared_distance
-
 def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     """Computes the average squared distance for normalization from the data."""
-    print("Instantiating datamodule...")
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
-    print(datamodule)
-    print("Setting up datamodule...")
     datamodule.setup("compute_normalization")
-    print("Creating train dataloader...")
-    train_dataloader = datamodule.train_dataloader()
-    print(train_dataloader)
-    print(f"Train dataloader created with {len(train_dataloader)} batches.")
+    train_datasets = datamodule.datasets["train"]
     cutoff = cfg.model.max_radius
-    print(f"Computing average squared distance with cutoff {cutoff}...")
-    average_squared_distance = compute_average_squared_distance_from_data(train_dataloader, cutoff)
-    average_squared_distance = float(average_squared_distance)
-    print(f"Computed average squared distance: {average_squared_distance}")
+    average_squared_distance = compute_average_squared_distance_from_datasets(train_datasets, cutoff)
     return average_squared_distance
 
 def run(cfg):
@@ -55,6 +39,9 @@ def run(cfg):
     dist_log(f"{os.getcwd()=}")
     dist_log(f"{torch.__config__.parallel_info()}")
     dist_log(f"{os.sched_getaffinity(0)=}")
+
+    # Set the start method to spawn to avoid issues with the default fork method.
+    torch.multiprocessing.set_start_method("spawn", force=True)
 
     # Compute data normalization.
     if cfg.get("compute_average_squared_distance_from_data"):
@@ -67,7 +54,7 @@ def run(cfg):
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     model = hydra.utils.instantiate(cfg.model)
     if matmul_prec := cfg.get("float32_matmul_precision"):
-        dist_log(f"setting float_32_matmul_precision to {matmul_prec}")
+        dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
 
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
