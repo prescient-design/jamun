@@ -11,6 +11,11 @@ Then, precompute analysis results with:
 python analysis_sweep.py --csv [SAMPLE_RUNS_CSV] --experiment [EXPERIMENT] --output-dir [ANALYSIS_OUTPUT_DIR]
 ```
 
+If you have SLURM:
+```bash
+sbatch analysis_sweep.sh --csv [SAMPLE_RUNS_CSV] --experiment [EXPERIMENT] --output-dir [ANALYSIS_OUTPUT_DIR]
+```
+
 Finally, run [`make_plots.ipynb`](https://github.com/prescient-design/jamun/blob/main/analysis/make_plots.ipynb) to make plots for your chosen experiment.
 
 For example, if we have details for our sampling runs at `sample_runs.csv`:
