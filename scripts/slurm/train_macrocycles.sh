@@ -5,7 +5,8 @@
 #SBATCH --ntasks-per-node 2
 #SBATCH --gpus-per-node 2
 #SBATCH --cpus-per-task 8
-#SBATCH --time 3-0
+#SBATCH --time 7-0
+#SBATCH --mem-per-cpu=32G
 
 eval "$(conda shell.bash hook)"
 conda activate jamun
@@ -27,7 +28,7 @@ echo "RUN_KEY = ${RUN_KEY}"
 nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
-  jamun_train --config-dir=/homefs/home/davidsd5/jamun/jamun/configs \
+  jamun_train --config-dir=/homefs/home/daigavaa/jamun/configs \
     experiment=train_macrocycles.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
