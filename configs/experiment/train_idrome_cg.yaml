@@ -34,6 +34,7 @@ data:
         traj_pattern: "^(.*)/traj.xtc"
         pdb_pattern: "^(.*)/top.pdb"
         filter_codes_csv: "${paths.data_path}/IDRome_v4_preprocessed/flat/train.csv"
+        filter_codes_csv_header: "code"
 
       val:
         _target_: jamun.data.parse_datasets_from_directory_new
@@ -42,6 +43,7 @@ data:
         pdb_pattern: "^(.*)/top.pdb"
         subsample: 100
         filter_codes_csv: "${paths.data_path}/IDRome_v4_preprocessed/flat/val.csv"
+        filter_codes_csv_header: "code"
 
       test:
         _target_: jamun.data.parse_datasets_from_directory_new
@@ -50,6 +52,7 @@ data:
         pdb_pattern: "^(.*)/top.pdb"
         subsample: 100
         filter_codes_csv: "${paths.data_path}/IDRome_v4_preprocessed/flat/test.csv"
+        filter_codes_csv_header: "code"
 
 
 trainer:

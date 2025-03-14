@@ -3,7 +3,11 @@
 compute_average_squared_distance_from_data: true
 
 model:
-  # average_squared_distance: 0.33
+  arch:
+    num_atom_types: 20
+    max_sequence_length: 20
+    num_atom_codes: 10
+    num_residue_types: 50
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
@@ -20,25 +24,22 @@ callbacks:
 data:
   datamodule:
     num_workers: 2
-    _target_: jamun.data.MDtrajDataModule  # Explicitly set the correct datamodule class here
+    _target_: jamun.data.MDtrajDataModule
     batch_size: 16
     datasets:
       train:
         - _target_: jamun.data.MDtrajSDFDataset
-          # root: "/data/davidsd5/cremp/sdf_and_json/"
-          root: /homefs/home/daigavaa/
+          root: "/data/davidsd5/cremp/sdf_and_json/"
           sdf_files: ["F.C.K.D.sdf"]
           label: fckd
       val:
         - _target_: jamun.data.MDtrajSDFDataset
-          # root: "/data/davidsd5/cremp/sdf_and_json/"
-          root: /homefs/home/daigavaa/
+          root: "/data/davidsd5/cremp/sdf_and_json/"
           sdf_files: ["F.C.K.D.sdf"]
           label: fckd
       test:
         - _target_: jamun.data.MDtrajSDFDataset
-          # root: "/data/davidsd5/cremp/sdf_and_json/"
-          root: /homefs/home/daigavaa/
+          root: "/data/davidsd5/cremp/sdf_and_json/"
           sdf_files: ["F.C.K.D.sdf"]
           label: fckd
 

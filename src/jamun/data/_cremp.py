@@ -3,6 +3,8 @@ import tempfile
 import os
 import threading
 from typing import Callable, Dict, Optional, Sequence, Tuple, Union, List
+import line_profiler
+profile = line_profiler.LineProfiler()
 
 import lightning.pytorch as pl
 import numpy as np
@@ -70,10 +72,15 @@ def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, 
             - The molecule with hydrogenated protein.
             - List of molecules from the SDF file.
     """
+    import time
+    start_time = time.time()
     # Load molecules from the SDF file
     suppl = Chem.SDMolSupplier(sdf_file)
     mols = [mol for mol in suppl if mol is not None]
-    
+    # mols = [mol for mol in suppl if mol is not None]
+    end_time = time.time()
+    # print(f"Loading SDF took {end_time - start_time:.2f} seconds for {sdf_file}: {len(mols)} molecules found.")
+
     if not mols:
         raise ValueError(f"No valid molecules found in the SDF file: {sdf_file}")
 
@@ -81,17 +88,8 @@ def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, 
     rdkit_mol_withH = mols[0]
     rdkit_mol = Chem.RemoveHs(rdkit_mol_withH)
 
-    # Get macrocycle indices
-    try:
-        macrocycle_idxs = get_macrocycle_idxs(rdkit_mol)
-    except ValueError as e:
-        raise ValueError(f"Error in extracting macrocycle indices: {e}")
-
-    if macrocycle_idxs is None:
-        raise ValueError(f"No macrocycle detected in the protein topology.")
-
+    start_time = time.time()
     bonds = torch.tensor([[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()] for bond in rdkit_mol.GetBonds()], dtype=torch.long).T
-
     residues = get_residues(rdkit_mol, residues_in_mol=None, macrocycle_idxs=None)
     for atom_set, residue in residues.items():
         if residue.startswith("Me"):
@@ -121,7 +119,8 @@ def preprocess_sdf(sdf_file: str) -> Tuple[torch_geometric.data.Data, Chem.Mol, 
         num_residues=residue_sequence_index.max().item() + 1,
         edge_index=bonds,
     )
-
+    end_time = time.time()
+    # print(f"Tensor took {end_time - start_time:.2f} seconds for {sdf_file}")
     return data, rdkit_mol, rdkit_mol_withH, mols
 
 @singleton
@@ -138,53 +137,52 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         transform: Optional[Callable] = None, 
         subsample: Optional[int] = None,
         loss_weight: float = 1.0, 
-        verbose: bool = False,
     ):
 
         self.root = root
         self._label = label
         self.transform = transform
         self.loss_weight = loss_weight
+        self.num_frames = num_frames
+        self.preprocessed = False
 
-        sdf_files = [os.path.join(self.root, sdf_file) for sdf_file in sdf_files]
+        # Set default values for parameters
+        self.start_frame = 0 if start_frame is None else start_frame
+        self.subsample = 1 if subsample is None or subsample == 0 else subsample
+        self.sdf_files = [os.path.join(self.root, sdf_file) for sdf_file in sdf_files]
 
-        # print(sdf_files[0])
-        self.data, self.rdkit_mol, self.rdkit_mol_withH, mols = preprocess_sdf(sdf_files[0])
-        for sdf_file in sdf_files[1:]:
-            _, _, _, frame_mols = preprocess_sdf(sdf_file)
+        import time
+        start_time = time.time()
+        self.data, self.rdkit_mol, self.rdkit_mol_withH, mols = preprocess_sdf(self.sdf_files[0])
+        end_time = time.time()
+        for sdf_file in self.sdf_files[1:]:
+            suppl = Chem.SDMolSupplier(sdf_file)
+            frame_mols = [mol for mol in suppl if mol is not None]
             mols.extend(frame_mols)
         self.mols = mols
+        # print(f"Preprocessing SDF took {end_time - start_time:.2f} seconds for {self.sdf_files[0]}")
 
-        self.data.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
+        self.data.loss_weight = torch.tensor([self.loss_weight], dtype=torch.float32)
         self.data.dataset_label = self.label()
 
         # Ensure the trajectory data is in the correct shape
-        self.positions = np.vstack([mol.GetConformer().GetPositions() for mol in self.mols])
+        self.positions = np.stack([mol.GetConformer().GetPositions() for mol in self.mols], axis=0)
+        self.positions = self.positions.astype(np.float32)  # Ensure positions are float32
         self.positions /= 10.0  # Convert to nanometers
 
-        # Assuming you know the number of frames and atoms per frame
-        n_atoms = self.rdkit_mol.GetNumAtoms()
-        n_frames = len(self.positions) // n_atoms
-
-        # Reshape the trajectory data
-        self.positions = self.positions.reshape((n_frames, n_atoms, 3))
-
-        # # Print the positionsectory data and its shape
-        # print("Trajectory data shape:", self.positions.shape)
-        # print("Trajectory data:", self.positions)
-        assert self.positions.shape == (n_frames, n_atoms, 3)
-
-        if start_frame is None:
-            start_frame = 0
-
-        if num_frames == -1 or num_frames is None:
-            num_frames = len(self.positions) - start_frame
-        
-        if subsample is None or subsample == 0:
-            subsample = 1
-
         # Subsample the trajectory.
-        self.positions = self.positions[start_frame: start_frame + num_frames: subsample]
+        if self.num_frames is None:
+            self.num_frames = self.positions.shape[0]
+        self.positions = self.positions[self.start_frame: self.start_frame + self.num_frames: self.subsample]
+
+        num_frames = self.positions.shape[0]
+        num_atoms = self.positions.shape[1]
+        assert self.positions.shape == (num_frames, num_atoms, 3), f"Positions shape mismatch: {self.positions.shape} != ({num_frames}, {num_atoms}, 3)"
+
+
+    def preprocess(self):
+        if self.preprocessed:
+            return
 
         # Create topology from the SDF file
         pdb = Chem.MolToPDBBlock(self.rdkit_mol)
@@ -195,33 +193,33 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
 
         self.traj = md.load_pdb(tmp_pdb)
         self.traj.xyz = self.positions
-        self.traj.time = np.arange(start_frame, start_frame + num_frames, subsample)
         assert len(self.traj) == len(self.positions), f"Number of frames in trajectory {len(self.traj)} does not match positions {len(self.positions)}."
         
         os.remove(tmp_pdb)
-
-        if verbose:
-            utils.dist_log(f"Dataset {self.label()}: Loaded SDF file {sdf_file} and trajectory files: {self.trajfiles}.")
-            utils.dist_log(f"Dataset {self.label()}: Loaded {len(self.trajfiles)} frames starting from index {start_frame} with subsample {subsample}.")
-    
-    @functools.cached_property
-    def topology(self) -> md.Topology:
-        return self.top
-
-    @functools.cached_property
-    def trajectory(self) -> md.Trajectory:
-        return self.traj
-
-    def label(self) -> str:
-        """Returns the dataset label."""
-        return self._label
+        self.preprocessed = True
 
     def __getitem__(self, idx):
         graph = self.data.clone()
-        graph.pos = torch.tensor(self.traj.xyz[idx])
+        graph.pos = torch.tensor(self.positions[idx])
         if self.transform:
             graph = self.transform(graph)
         return graph
 
     def __len__(self):
         return len(self.positions)
+    
+    @functools.cached_property
+    def topology(self) -> md.Topology:
+        if not self.preprocessed:
+            self.preprocess()
+        return self.top
+
+    @functools.cached_property
+    def trajectory(self) -> md.Trajectory:
+        if not self.preprocessed:
+            self.preprocess()
+        return self.traj
+
+    def label(self) -> str:
+        """Returns the dataset label."""
+        return self._label

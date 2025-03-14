@@ -3,7 +3,11 @@
 compute_average_squared_distance_from_data: true
 
 model:
-  # average_squared_distance: 0.33
+  arch:
+    num_atom_types: 20
+    max_sequence_length: 20
+    num_atom_codes: 10
+    num_residue_types: 50
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
@@ -16,35 +20,36 @@ callbacks:
   viz:
     sigma_list: ["${model.sigma_distribution.sigma}"]
 
-
 data:
   datamodule:
     num_workers: 2
-    _target_: jamun.data.MDtrajDataModule  # Explicitly set the correct datamodule class here
+    _target_: jamun.data.MDtrajDataModule
     batch_size: 16
     datasets:
       train:
         _target_: jamun.data.parse_sdf_datasets_from_directory
         root: "/data/davidsd5/cremp/sdf_and_json/"
         traj_pattern: "^(.*).sdf"
-        max_datasets: 1000
+        max_datasets: 2000
+        filter_codes_csv: "/data/davidsd5/cremp/train.csv"
+        filter_codes_csv_header: "sequence"
 
       val:
         _target_: jamun.data.parse_sdf_datasets_from_directory
         root: "/data/davidsd5/cremp/sdf_and_json/"
         traj_pattern: "^(.*).sdf"
-        max_datasets: 1000
-        max_datasets_offset: 1000
+        filter_codes_csv: "/data/davidsd5/cremp/val.csv"
+        filter_codes_csv_header: "sequence"
 
       test:
         _target_: jamun.data.parse_sdf_datasets_from_directory
         root: "/data/davidsd5/cremp/sdf_and_json/"
         traj_pattern: "^(.*).sdf"
-        max_datasets: 1000
-        max_datasets_offset: 2000
+        filter_codes_csv: "/data/davidsd5/cremp/test.csv"
+        filter_codes_csv_header: "sequence"
 
 trainer:
-  val_check_interval: 0.1
+  val_check_interval: 10000
   max_epochs: 100
 
 

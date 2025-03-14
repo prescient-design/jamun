@@ -27,6 +27,10 @@ class E3Conv(torch.nn.Module):
         residue_code_embedding_dim: int,
         residue_index_embedding_dim: int,
         use_residue_sequence_index: bool,
+        num_atom_types: int,
+        max_sequence_length: int,
+        num_atom_codes: int,
+        num_residue_types: int,
         test_equivariance: bool = False,
     ):
         super().__init__()
@@ -44,11 +48,15 @@ class E3Conv(torch.nn.Module):
 
         if use_residue_information:
             self.atom_embedder = AtomEmbeddingWithResidueInformation(
-                atom_type_embedding_dim,
-                atom_code_embedding_dim,
-                residue_code_embedding_dim,
-                residue_index_embedding_dim,
-                use_residue_sequence_index,
+                atom_type_embedding_dim=atom_type_embedding_dim,
+                atom_code_embedding_dim=atom_code_embedding_dim,
+                residue_code_embedding_dim=residue_code_embedding_dim,
+                residue_index_embedding_dim=residue_index_embedding_dim,
+                use_residue_sequence_index=use_residue_sequence_index,
+                num_atom_types=num_atom_types,
+                max_sequence_length=max_sequence_length,
+                num_atom_codes=num_atom_codes,
+                num_residue_types=num_residue_types,
             )
         else:
             self.atom_embedder = SimpleAtomEmbedding(

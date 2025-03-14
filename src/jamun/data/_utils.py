@@ -1,7 +1,7 @@
+from typing import List, Optional, Sequence
 import collections
 import os
 import re
-from typing import List, Optional, Sequence
 
 import pandas as pd
 import hydra
@@ -12,8 +12,8 @@ from tqdm.auto import tqdm
 from rdkit import Chem
 
 from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
-#from jamun.data._cremp import MDtrajPickleDataset, MDtrajSDFDataset, MDtrajIterablePickleDataset, MDtrajIterableSDFDataset
 from jamun.data._cremp import MDtrajSDFDataset
+
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
     outs = []
@@ -128,6 +128,7 @@ def parse_datasets_from_directory_new(
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
     filter_codes_csv: Optional[str] = None,
+    filter_codes_csv_header: Optional[str] = None,
     as_iterable: bool = False,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
@@ -172,24 +173,20 @@ def parse_datasets_from_directory_new(
     else:
         for code in codes:
             pdb_files[code] = pdb_file
-    
-    # Filter out codes
-    if filter_codes_csv is not None:
-        if filter_codes is not None:
-            raise ValueError("Only one of filter_codes and filter_codes_csv should be provided.")
 
-        filter_codes = pd.read_csv(filter_codes_csv)["code"].tolist()
+    # Filter out codes.
+    codes = filter_and_subset_codes(
+        codes,
+        filter_codes=filter_codes,
+        filter_codes_csv=filter_codes_csv,
+        filter_codes_csv_header=filter_codes_csv_header,
+        max_datasets=max_datasets,
+        max_datasets_offset=max_datasets_offset,
+    )
+    
+    if len(codes) == 0:
+        raise ValueError("No codes found after filtering.")
 
-    if filter_codes is not None:
-        codes = [code for code in codes if code in set(filter_codes)]
-    
-    # Sort the codes and offset them, if necessary
-    codes = list(sorted(codes))
-    if max_datasets_offset is not None:
-        codes = codes[max_datasets_offset:]
-    if max_datasets is not None:
-        codes = codes[:max_datasets]
-    
     # Determine dataset class
     if as_iterable:
         dataset_class = MDtrajIterableDataset
@@ -223,16 +220,17 @@ def parse_sdf_datasets_from_directory(
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
     filter_codes_csv: Optional[str] = None,
+    filter_codes_csv_header: Optional[str] = None,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""    
     # Compile the regex patterns
     traj_pattern_compiled = re.compile(traj_pattern)
-    
+
     # Find all trajectory files recursively
     traj_files = collections.defaultdict(list)
     codes = set()
-    
+
     for dirpath, _, filenames in os.walk(root):
         rel_dirpath = os.path.relpath(dirpath, root)
         for filename in filenames:
@@ -240,30 +238,27 @@ def parse_sdf_datasets_from_directory(
             match = traj_pattern_compiled.match(filepath)
             if match:
                 code = match.group(1)
+                code = os.path.basename(code)
                 codes.add(code)
                 traj_files[code].append(filepath)
-    
+
     if len(codes) == 0:
         raise ValueError("No codes found in directory.")
-    
-    # Filter out codes
-    if filter_codes_csv is not None:
-        if filter_codes is not None:
-            raise ValueError("Only one of filter_codes and filter_codes_csv should be provided.")
 
-        filter_codes = pd.read_csv(filter_codes_csv)["code"].tolist()
+    # Filter out codes.
+    codes = filter_and_subset_codes(
+        codes,
+        filter_codes=filter_codes,
+        filter_codes_csv=filter_codes_csv,
+        filter_codes_csv_header=filter_codes_csv_header,
+        max_datasets=max_datasets,
+        max_datasets_offset=max_datasets_offset,
+    )
 
-    if filter_codes is not None:
-        codes = [code for code in codes if code in set(filter_codes)]
+    if len(codes) == 0:
+        raise ValueError("No codes found after filtering.")
 
-    # Sort the codes and offset them, if necessary
-    codes = list(sorted(codes))
-    if max_datasets_offset is not None:
-        codes = codes[max_datasets_offset:]
-    if max_datasets is not None:
-        codes = codes[:max_datasets]
-    
-    # Create datasets
+    # Create datasets.
     datasets = []
     for code in tqdm(codes, desc="Creating datasets"):
         dataset = MDtrajSDFDataset(
@@ -276,6 +271,35 @@ def parse_sdf_datasets_from_directory(
 
     return datasets
 
+
+def filter_and_subset_codes(
+    codes: List[str],
+    filter_codes: Optional[Sequence[str]],
+    filter_codes_csv: Optional[str],
+    filter_codes_csv_header: Optional[str],
+    max_datasets: Optional[int],
+    max_datasets_offset: Optional[int],
+):
+    """Get a list of codes from the dataset."""
+    
+    if filter_codes_csv is not None:
+        if filter_codes is not None:
+            raise ValueError("Only one of filter_codes and filter_codes_csv should be provided.")
+
+        filter_codes = pd.read_csv(filter_codes_csv)[filter_codes_csv_header].tolist()
+
+    if filter_codes is not None:
+        filter_codes = set(filter_codes)
+        codes = [code for code in codes if code in filter_codes]
+
+    # Sort the codes and offset them, if necessary
+    codes = list(sorted(codes))
+    if max_datasets_offset is not None:
+        codes = codes[max_datasets_offset:]
+    if max_datasets is not None:
+        codes = codes[:max_datasets]
+
+    return codes
 
 def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> List[MDtrajDataset]:
     """Concatenate multiple lists of datasets into one list."""

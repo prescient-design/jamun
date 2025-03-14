@@ -17,6 +17,6 @@ use_torch_compile: true
 torch_compile_kwargs:
   fullgraph: true
   dynamic: true
-  mode: max-autotune-no-cudagraphs
+  mode: default
 
 _target_: jamun.model.Denoiser

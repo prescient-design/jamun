@@ -13,7 +13,7 @@ import torch_geometric
 from rdkit import Chem
 
 from jamun import utils
-from jamun.data._random_chain_dataset import StreamingRandomChainDataset
+from jamun.data._random_chain_dataset import StreamingRandomChainDataset, RandomChainDataset
 
 
 def singleton(cls):
@@ -284,12 +284,12 @@ class MDtrajDataModule(pl.LightningDataModule):
                 continue
 
             if isinstance(datasets[0], torch.utils.data.Dataset):
-                self.concatenated_datasets[split] = torch.utils.data.ConcatDataset(datasets)
-                self.shuffle = True
+                self.concatenated_datasets[split] = RandomChainDataset(datasets)
+                self.shuffle = False
 
-                utils.dist_log(
-                    f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
-                )
+                # utils.dist_log(
+                #     f"Split {split}: Loaded {len(self.concatenated_datasets[split])} frames in total from {len(datasets)} datasets: {[dataset.label() for dataset in datasets]}."
+                # )
 
             elif isinstance(datasets[0], torch.utils.data.IterableDataset):
                 # Shuffling is handled by the StreamingRandomChainDataset.
