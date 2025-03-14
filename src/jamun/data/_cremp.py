@@ -18,7 +18,6 @@ from rdkit import Chem
 
 from jamun import utils
 from jamun.data._random_chain_dataset import StreamingRandomChainDataset
-from jamun.utils.featurize_macrocycles import get_macrocycle_idxs, featurize_macrocycle_atoms, get_residues
 
 def singleton(cls):
     """
