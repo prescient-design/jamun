@@ -57,6 +57,7 @@ data:
 
 trainer:
   val_check_interval: 10000
+  limit_val_batches: 1000
   max_epochs: 100
 
 
