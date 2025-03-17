@@ -14,7 +14,7 @@ model:
   max_radius: 1.0
   optim:
     lr: 0.002
-  use_torch_compile: false
+
 
 callbacks:
   viz:
@@ -22,31 +22,38 @@ callbacks:
 
 data:
   datamodule:
-    num_workers: 2
+    persistent_workers: false
+    num_workers: 0
     _target_: jamun.data.MDtrajDataModule
-    batch_size: 16
+    batch_size: 8
     datasets:
       train:
-        _target_: jamun.data.parse_sdf_datasets_from_directory
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        traj_pattern: "^(.*).sdf"
-        max_datasets: 2000
-        filter_codes_csv: "/data/davidsd5/cremp/train.csv"
+        _target_: jamun.data.parse_datasets_from_directory_new
+        root: "${paths.data_path}/cremp-preprocessed/"
+        traj_pattern: "^(.*).npz"
+        topology_pattern: "^(.*).sdf"
+        filter_codes_csv: "${paths.data_path}/cremp-preprocessed/train.csv"
         filter_codes_csv_header: "sequence"
+        as_sdf: true
 
       val:
-        _target_: jamun.data.parse_sdf_datasets_from_directory
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        traj_pattern: "^(.*).sdf"
-        filter_codes_csv: "/data/davidsd5/cremp/val.csv"
+        _target_: jamun.data.parse_datasets_from_directory_new
+        root: "${paths.data_path}/cremp-preprocessed/"
+        traj_pattern: "^(.*).npz"
+        topology_pattern: "^(.*).sdf"
+        max_datasets: 100
+        filter_codes_csv: "${paths.data_path}/cremp-preprocessed/val.csv"
         filter_codes_csv_header: "sequence"
+        as_sdf: true
 
       test:
-        _target_: jamun.data.parse_sdf_datasets_from_directory
-        root: "/data/davidsd5/cremp/sdf_and_json/"
-        traj_pattern: "^(.*).sdf"
-        filter_codes_csv: "/data/davidsd5/cremp/test.csv"
+        _target_: jamun.data.parse_datasets_from_directory_new
+        root: "${paths.data_path}/cremp-preprocessed/"
+        traj_pattern: "^(.*).npz"
+        topology_pattern: "^(.*).sdf"
+        filter_codes_csv: "${paths.data_path}/cremp-preprocessed/test.csv"
         filter_codes_csv_header: "sequence"
+        as_sdf: true
 
 trainer:
   val_check_interval: 10000

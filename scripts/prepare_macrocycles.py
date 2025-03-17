@@ -42,7 +42,9 @@ def preprocess_sdf(sdf_file, output_file):
     np.savez(output_file, positions=positions, edge_index=bonds, atom_type_index=atom_type_index, residue_code_index=residue_code_index, residue_sequence_index=residue_sequence_index)
     print(f"Preprocessed {sdf_file} and saved to {output_file}")
 
+    return rdkit_mol_withH
     
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Preprocess SDF files for macrocycles.")
     parser.add_argument("--input-dir", type=str, required=True, help="Directory containing the SDF files.")
@@ -51,10 +53,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     sdf_files = sorted([f for f in os.listdir(args.input_dir) if f.endswith('.sdf')])
-    code = os.path.splitext(os.path.basename(sdf_files[args.index]))[0]
-    sdf_file = os.path.join(args.input_dir, sdf_files[args.index])
     
     os.makedirs(args.output_dir, exist_ok=True)
-    output_file = os.path.join(args.output_dir, f"{code}.npz")
-    
-    preprocess_sdf(sdf_file, output_file)
+
+    start_index = args.index * 50
+    end_index = start_index + 50
+
+    for index in range(start_index, end_index):
+        filename = sdf_files[index]
+        code = os.path.splitext(filename)[0]
+        sdf_file = os.path.join(args.input_dir, filename)
+
+        output_file = os.path.join(args.output_dir, f"{code}.npz")
+        mol = preprocess_sdf(sdf_file, output_file)
+
+        # Save the RDKit molecule with hydrogens to a file
+        output_mol_file = os.path.join(args.output_dir, f"{code}.sdf")
+        writer = Chem.SDWriter(output_mol_file)
+        writer.write(mol)
+        writer.close()

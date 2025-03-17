@@ -29,23 +29,26 @@ data:
     datasets:
       train:
         - _target_: jamun.data.MDtrajSDFDataset
-          root: "/data/davidsd5/cremp/sdf_and_json/"
-          sdf_files: ["F.C.K.D.sdf"]
+          root: "${paths.data_path}/cremp-preprocessed/"
+          traj_files: ["F.C.K.D.npz"]
+          sdf_file: "F.C.K.D.sdf"
           label: fckd
       val:
         - _target_: jamun.data.MDtrajSDFDataset
-          root: "/data/davidsd5/cremp/sdf_and_json/"
-          sdf_files: ["F.C.K.D.sdf"]
+          root: "${paths.data_path}/cremp-preprocessed/"
+          traj_files: ["F.C.K.D.npz"]
+          sdf_file: "F.C.K.D.sdf"
           label: fckd
       test:
         - _target_: jamun.data.MDtrajSDFDataset
-          root: "/data/davidsd5/cremp/sdf_and_json/"
-          sdf_files: ["F.C.K.D.sdf"]
+          root: "${paths.data_path}/cremp-preprocessed/"
+          traj_files: ["F.C.K.D.npz"]
+          sdf_file: "F.C.K.D.sdf"
           label: fckd
 
 
 trainer:
-  val_check_interval: 0.1
+  val_check_interval: 10000
   max_epochs: 100
 
 

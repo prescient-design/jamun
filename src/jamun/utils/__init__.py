@@ -22,3 +22,4 @@ from .scaled_rmsd import scaled_rmsd
 from .unsqueeze_trailing import unsqueeze_trailing
 from .slurm import wait_for_jobs
 from .featurize_macrocycles import one_k_encoding,featurize_macrocycle_atoms,featurize_macrocycle_atoms_from_file,get_amino_acid_stereo,get_residues,get_side_chain_torsion_idxs
+from .singleton import singleton

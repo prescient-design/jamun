@@ -9,8 +9,6 @@ import requests
 import torch
 from tqdm.auto import tqdm
 
-from rdkit import Chem
-
 from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
 from jamun.data._cremp import MDtrajSDFDataset
 
@@ -122,24 +120,25 @@ def parse_datasets_from_directory(
 def parse_datasets_from_directory_new(
     root: str,
     traj_pattern: str,
-    pdb_pattern: Optional[str] = None,
-    pdb_file: Optional[Sequence[str]] = None,
+    topology_pattern: Optional[str] = None,
+    topology_file: Optional[Sequence[str]] = None,
     max_datasets: Optional[int] = None,
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
     filter_codes_csv: Optional[str] = None,
     filter_codes_csv_header: Optional[str] = None,
     as_iterable: bool = False,
+    as_sdf: bool = False,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
-    if pdb_file is not None and pdb_pattern is not None:
+    if topology_file is not None and topology_pattern is not None:
         raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
     
     # Compile the regex patterns
     traj_pattern_compiled = re.compile(traj_pattern)
-    if pdb_pattern is not None:
-        pdb_pattern_compiled = re.compile(pdb_pattern)
+    if topology_pattern is not None:
+        topology_pattern_compiled = re.compile(topology_pattern)
     
     # Find all trajectory files recursively
     traj_files = collections.defaultdict(list)
@@ -152,27 +151,29 @@ def parse_datasets_from_directory_new(
             match = traj_pattern_compiled.match(filepath)
             if match:
                 code = match.group(1)
+                code = os.path.basename(code)
                 codes.add(code)
                 traj_files[code].append(filepath)
     
     if len(codes) == 0:
         raise ValueError("No codes found in directory.")
     
-    # Find all PDB files recursively
-    pdb_files = {}
-    if pdb_pattern is not None:
+    # Find all topology (.pdb or .sdf) files recursively
+    topology_files = {}
+    if topology_pattern is not None:
         for dirpath, _, filenames in os.walk(root):
             rel_dirpath = os.path.relpath(dirpath, root)
             for filename in filenames:
                 filepath = os.path.join(rel_dirpath, filename)
-                match = pdb_pattern_compiled.match(filepath)
+                match = topology_pattern_compiled.match(filepath)
                 if match:
                     code = match.group(1)
+                    code = os.path.basename(code)
                     if code in codes:
-                        pdb_files[code] = filepath
+                        topology_files[code] = filepath
     else:
         for code in codes:
-            pdb_files[code] = pdb_file
+            topology_files[code] = topology_file
 
     # Filter out codes.
     codes = filter_and_subset_codes(
@@ -188,26 +189,41 @@ def parse_datasets_from_directory_new(
         raise ValueError("No codes found after filtering.")
 
     # Determine dataset class
-    if as_iterable:
-        dataset_class = MDtrajIterableDataset
+    if as_sdf:
+        dataset_fn = lambda code: MDtrajSDFDataset(
+            root,
+            traj_files=traj_files[code],
+            sdf_file=topology_files[code],
+            label=code,
+            **dataset_kwargs,
+        )
     else:
-        dataset_class = MDtrajDataset
-    
+        if as_iterable:
+            dataset_fn = lambda code: MDtrajIterableDataset(
+                root,
+                traj_files=traj_files[code],
+                pdb_file=topology_files[code],
+                label=code,
+                **dataset_kwargs,
+            )
+        else:
+            dataset_fn = lambda code: MDtrajDataset(
+                root,
+                traj_files=traj_files[code],
+                pdb_file=topology_files[code],
+                label=code,
+                **dataset_kwargs,
+            )
+
     # Create datasets
     datasets = []
     for code in tqdm(codes, desc="Creating datasets"):
         # Skip codes without pdb files
-        if code not in pdb_files:
-            print(f"Warning: No PDB file found for code {code}, skipping.")
+        if code not in topology_files:
+            print(f"Warning: No topology file found for code {code}, skipping.")
             continue
             
-        dataset = dataset_class(
-            root,
-            trajfiles=traj_files[code],
-            pdbfile=pdb_files[code],
-            label=code,
-            **dataset_kwargs,
-        )
+        dataset = dataset_fn(code)
         datasets.append(dataset)
     
     return datasets
@@ -216,6 +232,7 @@ def parse_datasets_from_directory_new(
 def parse_sdf_datasets_from_directory(
     root: str,
     traj_pattern: str,
+    sdf_pattern: str,
     max_datasets: Optional[int] = None,
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
@@ -323,8 +340,8 @@ def create_dataset_from_pdbs(pdbfiles: str, label_prefix: Optional[str] = None) 
 
         dataset = MDtrajDataset(
             root=root,
-            trajfiles=[pdbfile],
-            pdbfile=pdbfile,
+            traj_files=[pdbfile],
+            pdb_file=pdbfile,
             label=label,
         )
         datasets.append(dataset)
