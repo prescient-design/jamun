@@ -21,7 +21,7 @@ M: 1.0
 delta: 0.04
 friction: 10.0
 inverse_temperature: 1.0
-score_fn_clip: 100.0
+score_fn_clip: null
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
