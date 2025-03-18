@@ -40,10 +40,10 @@ class AtomEmbeddingWithResidueInformation(nn.Module):
         residue_code_embedding_dim: int,
         residue_index_embedding_dim: int,
         use_residue_sequence_index: bool,
-        num_atom_types: int = 20,
-        max_sequence_length: int = 10,
-        num_atom_codes: int = 10,
-        num_residue_types: int = 25,
+        num_atom_types: int,
+        max_sequence_length: int,
+        num_atom_codes: int,
+        num_residue_types: int,
     ):
         super().__init__()
         self.atom_type_embedding = torch.nn.Embedding(num_atom_types, atom_type_embedding_dim)

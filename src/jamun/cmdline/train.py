@@ -32,7 +32,6 @@ def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     average_squared_distance = compute_average_squared_distance_from_datasets(train_datasets, cutoff)
     return average_squared_distance
 
-
 def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
 

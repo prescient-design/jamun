@@ -11,19 +11,16 @@ residue_code_embedding_dim: 32
 residue_index_embedding_dim: 8
 use_residue_information: ${data.use_residue_information}
 use_residue_sequence_index: false
+num_atom_types: 20
+max_sequence_length: 10
+num_atom_codes: 10
+num_residue_types: 25
 hidden_layer_factory:
   _target_: jamun.e3tools.nn.ConvBlock
   _partial_: true
   conv:
     _target_: jamun.e3tools.nn.Conv
     _partial_: true
-    # use_torch_compile: true
-    # torch_compile_kwargs:
-    #     fullgraph: true
-    #     dynamic: true
-    #     options:
-    #       trace.enabled: false
-    #       trace.fx_graph: false
 output_head_factory:
   _target_: jamun.e3tools.nn.EquivariantMLP
   _partial_: true

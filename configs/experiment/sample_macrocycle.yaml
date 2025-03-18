@@ -1,0 +1,46 @@
+# @package _global_
+
+defaults:
+  - override /callbacks:
+    - sampler/save_trajectory.yaml
+  - _self_
+
+num_sampling_steps_per_batch: 10000
+num_batches: 10
+num_init_samples_per_dataset: 1
+repeat_init_samples: 1
+continue_chain: true
+
+# New 4AA
+wandb_train_run_path: prescient-design/jamun/6297yugb
+
+
+# Put path to 5AA pdb here.
+# init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
+init_pdbs:
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_AMEYA.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_NRLCQ.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_VWSPF.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_KTYDI.pdb
+  - /homefs/home/daigavaa/jamun/pdbs/uncapped_VANIP.pdb
+label: null
+
+checkpoint_type: best_so_far
+sigma: 0.04
+M: 1.0
+delta: 0.04
+friction: 1.0
+inverse_temperature: 1.0
+score_fn_clip: 100.0
+
+init_datasets:
+  _target_: jamun.data.create_dataset_from_pdbs
+  pdbfiles: ${init_pdbs}
+
+sampler:
+  _target_: jamun.sampling.Sampler
+  devices: 1
+
+logger:
+  wandb:
+    group: sample_custom

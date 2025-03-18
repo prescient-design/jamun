@@ -1,0 +1,57 @@
+# @package _global_
+
+compute_average_squared_distance_from_data: true
+
+model:
+  arch:
+    num_atom_types: 20
+    max_sequence_length: 20
+    num_atom_codes: 10
+    num_residue_types: 50
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  max_radius: 1.0
+  optim:
+    lr: 0.002
+  use_torch_compile: false
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
+
+
+data:
+  datamodule:
+    num_workers: 2
+    _target_: jamun.data.MDtrajDataModule
+    batch_size: 16
+    datasets:
+      train:
+        - _target_: jamun.data.MDtrajSDFDataset
+          root: "${paths.data_path}/cremp-preprocessed/"
+          traj_files: ["F.C.K.D.npz"]
+          sdf_file: "F.C.K.D.sdf"
+          label: fckd
+      val:
+        - _target_: jamun.data.MDtrajSDFDataset
+          root: "${paths.data_path}/cremp-preprocessed/"
+          traj_files: ["F.C.K.D.npz"]
+          sdf_file: "F.C.K.D.sdf"
+          label: fckd
+      test:
+        - _target_: jamun.data.MDtrajSDFDataset
+          root: "${paths.data_path}/cremp-preprocessed/"
+          traj_files: ["F.C.K.D.npz"]
+          sdf_file: "F.C.K.D.sdf"
+          label: fckd
+
+
+trainer:
+  val_check_interval: 10000
+  max_epochs: 100
+
+
+logger:
+  wandb:
+    group: train_macrocycles

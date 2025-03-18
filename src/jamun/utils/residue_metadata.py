@@ -77,14 +77,20 @@ def encode_atom_code(atom_code: str) -> int:
 
 def encode_residue(residue_name: str) -> int:
     """Encode residue name as an integer."""
+    if residue_name.startswith("Me+"):
+        return len(ResidueMetadata.RESIDUE_CODES) + encode_residue(residue_name[len("Me+"):])
     if residue_name in ResidueMetadata.RESIDUE_CODES:
         return ResidueMetadata.RESIDUE_CODES.index(residue_name)
     else:
+        raise ValueError(f"Invalid residue name: {residue_name}. Valid names are: {ResidueMetadata.RESIDUE_CODES}")
         return len(ResidueMetadata.RESIDUE_CODES)
 
 
 def convert_to_three_letter_code(aa: str) -> str:
     """Convert one-letter amino acid code to three-letter code."""
+    if aa.startswith("Me+"):
+        return "Me+" + convert_to_three_letter_code(aa[len("Me+"):])  # Return the rest of the string after "Me"
+
     aa = aa.upper()
     if len(aa) == 1:
         if aa not in ResidueMetadata.AA_3CODES:
