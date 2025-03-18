@@ -4,8 +4,7 @@ import lightning.pytorch as pl
 import torch_geometric.data
 from lightning.pytorch.utilities import rank_zero_only
 
-from jamun.data import MDtrajDataset
-from jamun.data._cremp import MDtrajSDFDataset
+from jamun.data import MDtrajDataset, MDtrajSDFDataset
 from jamun.metrics import VisualizeDenoiseMetrics
 
 

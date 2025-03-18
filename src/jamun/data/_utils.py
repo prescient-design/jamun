@@ -10,7 +10,7 @@ import torch
 from tqdm.auto import tqdm
 
 from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
-from jamun.data._cremp import MDtrajSDFDataset
+from jamun.data._sdf import MDtrajSDFDataset
 
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
