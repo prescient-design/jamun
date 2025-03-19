@@ -6,8 +6,8 @@ defaults:
     - sampler/save_trajectory.yaml
   - _self_
 
-num_sampling_steps_per_batch: 10000
-num_batches: 10
+num_sampling_steps_per_batch: 100000
+num_batches: 2
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
@@ -19,7 +19,7 @@ checkpoint_type: best_so_far
 sigma: 0.04
 M: 1.0
 delta: 0.04
-friction: 10.0
+friction: 1.0
 inverse_temperature: 1.0
 score_fn_clip: null
 
