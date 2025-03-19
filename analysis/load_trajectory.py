@@ -3,6 +3,11 @@ import os
 import mdtraj as md
 import tqdm
 import pandas as pd
+import dotenv
+import logging
+
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
+py_logger = logging.getLogger("analysis")
 
 from jamun import data
 from jamun import utils
@@ -248,3 +253,58 @@ def get_JAMUNReference_5AA_trajectories(
 def get_TBG_trajectories(root: str) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to the TBG MDTraj trajectory."""
     raise NotImplementedError("TBG trajectories not implemented yet.")
+
+
+def load_trajectories_by_name(
+    name: str,
+    peptide: str,
+    data_path: str,
+    run_path: Optional[str],
+    wandb_run: Optional[str],
+):
+    """Load trajectories based on name and command line arguments."""
+    if data_path:
+        JAMUN_DATA_PATH = data_path
+    else:
+        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH")
+        if JAMUN_DATA_PATH is None:
+            env_file = os.path.join(find_project_root(), ".env")
+            JAMUN_DATA_PATH = dotenv.get_key(env_file, "JAMUN_DATA_PATH")
+        if not JAMUN_DATA_PATH:
+            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path, environment variable or .env file")
+    py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
+
+    filter_codes = [peptide]
+    if name == "JAMUN":
+        if not run_path and not wandb_run:
+            raise ValueError("Must provide either --run-path or --wandb-run for JAMUN trajectory")
+        if run_path and wandb_run:
+            raise ValueError("Must provide only one of --run-path or --wandb-run for JAMUN trajectory")
+
+        if wandb_run:
+            run_paths = [get_run_path_for_wandb_run(wandb_run)]
+        else:
+            run_paths = [run_path]
+        return get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)
+    elif name == "MDGenReference":
+        return get_MDGenReference_trajectories(
+            JAMUN_DATA_PATH,
+            filter_codes=filter_codes,
+        )
+    elif name == "TimewarpReference":
+        return get_TimewarpReference_trajectories(
+            JAMUN_DATA_PATH,
+            filter_codes=filter_codes,
+        )
+    elif name == "JAMUNReference_2AA":
+        return get_JAMUNReference_2AA_trajectories(
+            JAMUN_DATA_PATH,
+            filter_codes=filter_codes,
+        )
+    elif name == "JAMUNReference_5AA":
+        return get_JAMUNReference_5AA_trajectories(
+            JAMUN_DATA_PATH,
+            filter_codes=filter_codes,
+        )
+
+    raise ValueError(f"Trajectory type {name} not supported. Available options: JAMUN, MDGenReference, TimewarpReference, JAMUNReference_2AA, JAMUNReference_5AA")
