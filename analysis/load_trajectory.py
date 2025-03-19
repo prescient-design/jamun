@@ -6,11 +6,11 @@ import pandas as pd
 import dotenv
 import logging
 
-logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
-py_logger = logging.getLogger("analysis")
-
 from jamun import data
 from jamun import utils
+
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
+py_logger = logging.getLogger("analysis")
 
 
 def find_project_root() -> str:

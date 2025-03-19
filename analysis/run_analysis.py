@@ -7,13 +7,13 @@ import pickle
 import warnings
 import collections
 
+import scipy.stats
 import mdtraj as md
 import pyemma.coordinates.data
 import numpy as np
 import mdtraj as md
 import pyemma
 import pyemma.coordinates.clustering
-import pandas as pd
 from scipy.spatial import distance
 from statsmodels.tsa import stattools
 
@@ -246,7 +246,7 @@ def discretize(
     return msm.metastable_assignments[kmeans.transform(traj_featurized)[:, 0]]
 
 
-def compute_JSD_torsion_stats(
+def compute_JSD_torsions(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
 ) -> Dict[str, float]:
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory. Taken from MDGen."""
@@ -297,13 +297,13 @@ def compute_JSD_torsion_stats(
     return results
 
 
-def compute_JSD_torsion_stats_against_time_for_trajectory(
+def compute_JSD_torsions_against_time_for_trajectory(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
 ) -> Dict[int, Dict[str, float]]:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
     steps = np.logspace(0, np.log10(len(traj_featurized)), num=10, dtype=int)
     return {
-        step: compute_JSD_torsion_stats(
+        step: compute_JSD_torsions(
             traj_featurized[:step],
             ref_traj_featurized,
             feats,
@@ -312,13 +312,13 @@ def compute_JSD_torsion_stats_against_time_for_trajectory(
     }
 
 
-def compute_JSD_torsion_stats_against_time(
+def compute_JSD_torsions_against_time(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
 ) -> Dict[str, Dict[int, Dict[str, float]]]:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
     return {
-        "traj": compute_JSD_torsion_stats_against_time_for_trajectory(traj_featurized, ref_traj_featurized, feats),
-        "ref_traj": compute_JSD_torsion_stats_against_time_for_trajectory(ref_traj_featurized, ref_traj_featurized, feats),
+        "traj": compute_JSD_torsions_against_time_for_trajectory(traj_featurized, ref_traj_featurized, feats),
+        "ref_traj": compute_JSD_torsions_against_time_for_trajectory(ref_traj_featurized, ref_traj_featurized, feats),
     }
 
 
@@ -348,6 +348,7 @@ def compute_torsion_decorrelations(traj_featurized: np.ndarray, ref_traj_featuri
             torsion_decorrelations[feat]["traj_decorrelation_time"] = np.where(traj_autocorrelations < 1 / np.e)[0][0]
         except IndexError:
             torsion_decorrelations[feat]["traj_decorrelation_time"] = np.nan
+    
     return torsion_decorrelations
 
 
@@ -363,7 +364,7 @@ def compute_TICA(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray) -
     }
 
 
-def compute_TICA_stats(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, float]:
+def compute_TICA_JSDs(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, float]:
     """Compute Jenson-Shannon distances on TICA projections of trajectories."""
     tica_0_min = min(ref_traj_tica[:, 0].min(), traj_tica[:, 0].min())
     tica_0_max = max(ref_traj_tica[:, 0].max(), traj_tica[:, 0].max())
@@ -420,6 +421,18 @@ def compute_TICA_decorrelations(traj_tica: np.ndarray, ref_traj_tica: np.ndarray
     }
 
 
+def compute_flux_matrix(transition_matrix: np.ndarray, pi: np.ndarray) -> np.ndarray:
+    """Compute the flux matrix from a transition matrix and stationary distribution."""
+    flux_matrix = np.multiply(transition_matrix, pi[:, None])
+    np.fill_diagonal(flux_matrix, 0)
+
+    row_sums = flux_matrix.sum(axis=1)
+    column_sums = flux_matrix.sum(axis=0)
+    assert np.allclose(row_sums, column_sums)
+
+    return flux_matrix
+
+
 def compute_MSM_stats(
     traj_tica: np.ndarray, ref_traj_tica: np.ndarray,
     precomputed_MSM_data: Optional[Dict[str, Any]] = None, JSD_only: bool = False
@@ -468,6 +481,14 @@ def compute_MSM_stats(
     traj_pi = np.zeros(10)
     traj_pi[traj_msm.active_set] = traj_msm.pi
 
+    # Compute flux matrices.
+    msm_flux_matrix = compute_flux_matrix(msm_transition_matrix, msm_pi)
+    traj_flux_matrix = compute_flux_matrix(traj_transition_matrix, traj_pi)
+
+    # Compute Spearman correlation between corresponding flux matrices and transition matrices.
+    flux_spearman_corr = scipy.stats.spearmanr(msm_flux_matrix, traj_flux_matrix, axis=None).statistic
+    transition_spearman_corr = scipy.stats.spearmanr(msm_transition_matrix, traj_transition_matrix, axis=None).statistic
+
     # Store MSM results.
     return {
         "ref_metastable_probs": ref_metastable_probs,
@@ -475,9 +496,13 @@ def compute_MSM_stats(
         "JSD_metastable_probs": JSD_metastable_probs,
         "msm_transition_matrix": msm_transition_matrix,
         "msm_pi": msm_pi,
+        "msm_flux_matrix": msm_flux_matrix,
         "traj_transition_matrix": traj_transition_matrix,
         "traj_pi": traj_pi,
+        "traj_flux_matrix": traj_flux_matrix,
         "pcca_pi": pcca._pi_coarse,
+        "flux_spearman_corr": flux_spearman_corr,
+        "transition_spearman_corr": transition_spearman_corr,
     }
 
 
@@ -515,8 +540,8 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     # Featurize trajectories.
     results = {}
     results["featurization"] = featurize_trajectories(traj_md, ref_traj_md)
-
     py_logger.info(f"Featurization complete.")
+
     traj_results = results["featurization"]["traj"]
     traj_feats = traj_results["feats"]["torsions"]
     traj_featurized_dict = traj_results["traj_featurized"]
@@ -527,7 +552,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
     ref_traj_featurized = ref_traj_featurized_dict["torsions"]
     ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
-    py_logger.info(f"Featurization complete.")
 
     # Compute feature histograms.
     results["feature_histograms"] = compute_feature_histograms(
@@ -545,20 +569,28 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     py_logger.info(f"PMFs computed.")
 
     # Compute JSDs.
-    results["JSD_torsion_stats"] = compute_JSD_torsion_stats(
+    results["JSD_torsions"] = compute_JSD_torsions(
         traj_featurized,
         ref_traj_featurized,
         traj_feats,
     )
-    py_logger.info(f"JSD torsion stats computed.")
+    py_logger.info(f"JSD torsions computed.")
 
     # Compute JSDs of torsions against time.
-    results["JSD_torsion_stats_against_time"] = compute_JSD_torsion_stats_against_time(
+    results["JSD_torsions_against_time"] = compute_JSD_torsions_against_time(
         traj_featurized,
         ref_traj_featurized,
         traj_feats,
     )
-    py_logger.info(f"JSD torsion stats as a function of time computed.")
+    py_logger.info(f"JSD torsions as a function of time computed.")
+
+    # Compute torsion decorrelations.
+    results["torsion_decorrelations"] = compute_torsion_decorrelations(
+        traj_featurized,
+        ref_traj_featurized,
+        traj_feats,
+    )
+    py_logger.info(f"Torsion decorrelations computed.")
 
     # TICA analysis.
     results["TICA"] = compute_TICA(
@@ -571,18 +603,18 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     ref_traj_tica = results["TICA"]["ref_traj_tica"]
 
     # Compute TICA stats.
-    results["TICA_stats"] = compute_TICA_stats(
+    results["JSD_TICA"] = compute_TICA_JSDs(
         traj_tica,
         ref_traj_tica,
     )
-    py_logger.info(f"TICA stats computed.")
+    py_logger.info(f"JSD of TICA projections computed.")
 
     # Compute autocorrelation stats.
-    results["autocorrelation_stats"] = compute_autocorrelation_stats(
+    results["TICA_decorrelations"] = compute_TICA_decorrelations(
         traj_tica,
         ref_traj_tica,
     )
-    py_logger.info(f"Autocorrelation stats computed.")
+    py_logger.info(f"TICA decorrelations computed.")
 
     # Compute MSM stats.
     # Sometimes, this fails because the reference trajectory is too short.
