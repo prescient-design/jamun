@@ -97,4 +97,3 @@ ignore = [
 
 [tool.uv]
 no-build-package = ["mdtraj"]
-constraint-dependencies = ["torch==2.5.1"]
