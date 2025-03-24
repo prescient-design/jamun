@@ -239,7 +239,7 @@ def get_JAMUNReference_5AA_datasets(
 
     # Remove prefix.
     three_letter_filter_codes = [
-        "_".join([utils.convert_to_three_letter_code(aa) for aa in code]) for code[len(prefix) :] in filter_codes
+        "_".join([utils.convert_to_three_letter_code(aa) for aa in code[len(prefix):]]) for code in filter_codes
     ]
     assert len(set(three_letter_filter_codes)) == len(three_letter_filter_codes), "Filter codes must be unique"
 

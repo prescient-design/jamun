@@ -204,24 +204,24 @@ def compute_JSD_torsions(
     for i, feat in enumerate(feats.describe()):
         ref_p = np.histogram(ref_traj_featurized[:, i], range=(-np.pi, np.pi), bins=100)[0]
         traj_p = np.histogram(traj_featurized[:, i], range=(-np.pi, np.pi), bins=100)[0]
-        results[feat] = distance.jensenshannon(ref_p, traj_p)
+        results["JSD_" + feat] = distance.jensenshannon(ref_p, traj_p)
 
     # Compute JSDs for backbone, sidechain, and all torsions.
-    results["backbone_torsions"] = np.mean(
+    results["JSD_backbone_torsions"] = np.mean(
         [
-            results[feat] for feat in feats.describe()
+            results["JSD_" + feat] for feat in feats.describe()
             if feat.startswith("PHI") or feat.startswith("PSI")
         ]
     )
-    results["sidechain_torsions"] = np.mean(
+    results["JSD_sidechain_torsions"] = np.mean(
         [
-            results[feat] for feat in feats.describe()
+            results["JSD_" + feat] for feat in feats.describe()
             if feat.startswith("CHI")
         ]
     )
-    results["all_torsions"] = np.mean(
+    results["JSD_all_torsions"] = np.mean(
         [
-            results[feat]
+            results["JSD_" + feat]
             for feat in feats.describe()
             if feat.startswith("PHI") or feat.startswith("PSI") or feat.startswith("CHI")
         ]
@@ -242,7 +242,7 @@ def compute_JSD_torsions(
         traj_p = np.histogram2d(*traj_features.T, range=((-np.pi, np.pi), (-np.pi, np.pi)), bins=50)[0]
 
         phi_psi_feats = [feats.describe()[phi_index], feats.describe()[psi_index]]
-        results["|".join(phi_psi_feats)] = distance.jensenshannon(ref_p.flatten(), traj_p.flatten())
+        results["JSD_" + "|".join(phi_psi_feats)] = distance.jensenshannon(ref_p.flatten(), traj_p.flatten())
 
     return results
 
@@ -286,11 +286,11 @@ def compute_torsion_decorrelations(traj_featurized: np.ndarray, ref_traj_featuri
     for i, feat in enumerate(feats.describe()):
         baseline = np.sin(ref_traj[:,i]).mean()**2 + np.cos(ref_traj[:,i]).mean()**2
         
-        ref_traj_autocorrelations, ref_decorrelation_time = autocorrelation_and_decorrelation_time(
+        ref_traj_autocorrelations, ref_traj_decorrelation_time = autocorrelation_and_decorrelation_time(
             ref_traj[:, i], baseline
         )
         torsion_decorrelations[feat]["ref_traj_autocorrelations"] = ref_traj_autocorrelations
-        torsion_decorrelations[feat]["ref_decorrelation_time"] = ref_decorrelation_time
+        torsion_decorrelations[feat]["ref_traj_decorrelation_time"] = ref_traj_decorrelation_time
 
         traj_autocorrelations, traj_decorrelation_time = autocorrelation_and_decorrelation_time(
             traj[:, i], baseline
@@ -339,8 +339,8 @@ def compute_JSD_TICA(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[s
     tica_01_jsd = distance.jensenshannon(ref_p.flatten(), traj_p.flatten())
 
     return {
-        "TICA-0 JSD": tica_0_jsd,
-        "TICA-0,1 JSD": tica_01_jsd,
+        "JSD_TICA-0": tica_0_jsd,
+        "JSD_TICA-0,1": tica_01_jsd,
     }
 
 
@@ -425,6 +425,23 @@ def compute_JSD_MSM(
     }
 
 
+def compute_JSD_MSM_against_time(
+    traj_tica: np.ndarray,
+    ref_traj_tica: np.ndarray,
+    MSM_info: Dict[str, Any],
+) -> Dict[int, Dict[str, float]]:
+    """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
+    steps = np.logspace(0, np.log10(len(traj_tica)), num=10, dtype=int)
+    return {
+        step: compute_JSD_MSM(
+            traj_tica[:step],
+            ref_traj_tica,
+            MSM_info,
+        )
+        for step in steps
+    }
+
+
 def compute_MSM_transition_and_flux_matrices(
     traj_tica: np.ndarray,
     ref_traj_tica: np.ndarray,
@@ -483,23 +500,6 @@ def compute_MSM_transition_and_flux_matrices(
         "pcca_pi": pcca._pi_coarse,
         "flux_spearman_correlation": flux_spearman_correlation,
         "transition_spearman_correlation": transition_spearman_correlation,
-    }
-
-
-def compute_JSD_MSM_against_time(
-    traj_tica: np.ndarray,
-    ref_traj_tica: np.ndarray,
-    MSM_info: Dict[str, Any],
-) -> Dict[int, Dict[str, float]]:
-    """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
-    steps = np.logspace(0, np.log10(len(traj_tica)), num=10, dtype=int)
-    return {
-        step: compute_JSD_MSM(
-            traj_tica[:step],
-            ref_traj_tica,
-            MSM_info,
-        )["JSD_metastable_probs"]
-        for step in steps
     }
 
 
@@ -562,7 +562,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     results["JSD_torsions_against_time"] = {}
     for key, traj in trajs_to_compare.items():
         results["JSD_torsions_against_time"][key] = compute_JSD_torsions_against_time(
-            traj_featurized,
+            traj,
             ref_traj_featurized,
             feats,
         )
@@ -645,7 +645,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
         
     results["JSD_MSM_against_time"] = {}
     for key, tica in traj_ticas_to_compare.items():
-        results["JSD_MSM_against_time"] = compute_JSD_MSM_against_time(
+        results["JSD_MSM_against_time"][key] = compute_JSD_MSM_against_time(
             tica,
             ref_traj_tica,
             MSM_info,
