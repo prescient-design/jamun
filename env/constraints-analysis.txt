@@ -1,3 +1,0 @@
-numpy==1.23.4
-torch==2.4.0
-Cython==0.22
