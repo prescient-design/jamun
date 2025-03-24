@@ -4,8 +4,8 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --job-name=analysis_sweep
 #SBATCH --output=logs/%j_analysis_sweep.log
-#SBATCH --error=logs/%j_analysis_sweep.log
-#SBATCH --array=0-99
+#SBATCH --error=logs/%j_analysis_sweep.err
+#SBATCH --array=0-199
 
 eval "$(conda shell.bash hook)"
 conda activate jamun
