@@ -273,8 +273,8 @@ class Denoiser(pl.LightningModule):
 
         # Take the mean over each graph.
         with torch.cuda.nvtx.range("mean_over_graphs"):
-            raw_coordinate_loss = scatter(raw_coordinate_loss, x.batch, dim_size=x.num_graphs, reduce="mean")
-            scaled_rmsd = scatter(scaled_rmsd, x.batch, dim_size=x.num_graphs, reduce="mean")
+            raw_coordinate_loss = scatter(raw_coordinate_loss, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+            scaled_rmsd = scatter(scaled_rmsd, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
 
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
