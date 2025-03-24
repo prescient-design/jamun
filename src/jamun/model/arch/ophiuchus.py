@@ -6,10 +6,11 @@ import einops
 import torch
 import torch.nn.functional as F
 import torch_geometric
+from e3tools import radius_graph
+from e3tools.nn import AxisToMul, Gate, MulToAxis
 from torch import nn
 
 from jamun import utils
-from jamun.e3tools.nn import AxisToMul, Gate, MulToAxis
 from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
 
 
@@ -541,7 +542,7 @@ class Ophiuchus(nn.Module):
         residue_data = to_residue_data(data)
 
         # Compute residue edges and corresponding attributes.
-        residue_edge_index = torch_geometric.nn.radius_graph(
+        residue_edge_index = radius_graph(
             residue_data.residue_base_coords, effective_radial_cutoff, batch=residue_data.residue_batch
         )
         residue_edge_attr, residue_edge_sh = self.compute_edge_attributes(

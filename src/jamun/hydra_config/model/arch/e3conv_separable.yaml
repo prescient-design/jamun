@@ -16,10 +16,10 @@ max_sequence_length: 10
 num_atom_codes: 10
 num_residue_types: 25
 hidden_layer_factory:
-  _target_: jamun.e3tools.nn.ConvBlock
+  _target_: e3tools.nn.ConvBlock
   _partial_: true
   conv:
-    _target_: jamun.e3tools.nn.SeparableConv
+    _target_: e3tools.nn.SeparableConv
     _partial_: true
     use_torch_compile: true
     torch_compile_kwargs:
@@ -29,7 +29,7 @@ hidden_layer_factory:
           trace.enabled: false
           trace.fx_graph: false
 output_head_factory:
-  _target_: jamun.e3tools.nn.EquivariantMLP
+  _target_: e3tools.nn.EquivariantMLP
   _partial_: true
   irreps_hidden_list:
     - ${model.arch.irreps_hidden}

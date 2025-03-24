@@ -1,14 +1,15 @@
 import logging
-from typing import Callable, Optional, Tuple, Union, Dict
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import lightning.pytorch as pl
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch_geometric
-import torch_scatter
+from e3tools import scatter, radius_graph
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
+
 
 class Denoiser(pl.LightningModule):
     """The main denoiser model."""
@@ -144,11 +145,11 @@ class Denoiser(pl.LightningModule):
 
         # Our dataloader already adds the bonded edges.
         bonded_edge_index = y.edge_index
-        
-        with torch.cuda.nvtx.range("radial_graph"):
-            radial_edge_index = torch_geometric.nn.radius_graph(y.pos, radial_cutoff, batch)
 
-        with torch.cuda.nvtx.range("concatenate_edges"):    
+        with torch.cuda.nvtx.range("radial_graph"):
+            radial_edge_index = radius_graph(y.pos, radial_cutoff, batch)
+
+        with torch.cuda.nvtx.range("concatenate_edges"):
             edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
             if bonded_edge_index.numel() == 0:
                 bond_mask = torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device)
@@ -233,7 +234,7 @@ class Denoiser(pl.LightningModule):
 
             with torch.cuda.nvtx.range("add_noise"):
                 y = self.add_noise(x, sigma)
-    
+
             if self.mean_center:
                 with torch.cuda.nvtx.range("mean_center_y"):
                     y = mean_center(y)
@@ -269,12 +270,12 @@ class Denoiser(pl.LightningModule):
         # Compute the scaled RMSD.
         with torch.cuda.nvtx.range("scaled_rmsd"):
             scaled_rmsd = torch.sqrt(raw_coordinate_loss) / (sigma * np.sqrt(D))
-    
+
         # Take the mean over each graph.
         with torch.cuda.nvtx.range("mean_over_graphs"):
-            raw_coordinate_loss = torch_scatter.scatter_mean(raw_coordinate_loss, x.batch, dim_size=x.num_graphs)
-            scaled_rmsd = torch_scatter.scatter_mean(scaled_rmsd, x.batch, dim_size=x.num_graphs)
-    
+            raw_coordinate_loss = scatter(raw_coordinate_loss, x.batch, dim_size=x.num_graphs, reduce="mean")
+            scaled_rmsd = scatter(scaled_rmsd, x.batch, dim_size=x.num_graphs, reduce="mean")
+
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
             scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight

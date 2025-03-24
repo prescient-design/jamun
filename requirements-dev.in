@@ -1,6 +1,0 @@
-pytest
-pre-commit
-ruff
-nbstripout
-ipython
-ipykernel

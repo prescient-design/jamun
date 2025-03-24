@@ -16,13 +16,13 @@ max_sequence_length: 10
 num_atom_codes: 10
 num_residue_types: 25
 hidden_layer_factory:
-  _target_: jamun.e3tools.nn.ConvBlock
+  _target_: e3tools.nn.ConvBlock
   _partial_: true
   conv:
-    _target_: jamun.e3tools.nn.Conv
+    _target_: e3tools.nn.Conv
     _partial_: true
 output_head_factory:
-  _target_: jamun.e3tools.nn.EquivariantMLP
+  _target_: e3tools.nn.EquivariantMLP
   _partial_: true
   irreps_hidden_list:
     - ${model.arch.irreps_hidden}
