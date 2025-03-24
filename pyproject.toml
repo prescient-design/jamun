@@ -42,9 +42,6 @@ dependencies = [
 jamun_train = "jamun.cmdline.train:main"
 jamun_sample = "jamun.cmdline.sample:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
