@@ -22,40 +22,40 @@ data:
       train:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-          trajfiles:
+          traj_files:
             - EI-traj-arrays.npz
-          pdbfile: EI-traj-state0.pdb
+          pdb_file: EI-traj-state0.pdb
           subsample: 100
           label: EI
 
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-          trajfiles:
+          traj_files:
             - FC-traj-arrays.npz
-          pdbfile: FC-traj-state0.pdb
+          pdb_file: FC-traj-state0.pdb
           subsample: 100
           label: FC
 
       val:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/val/"
-          trajfiles:
+          traj_files:
             - KL-traj-arrays.npz
-          pdbfile: KL-traj-state0.pdb
+          pdb_file: KL-traj-state0.pdb
           subsample: 100
           label: KL
 
       test:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/test/"
-          trajfiles:
+          traj_files:
             - CK-traj-arrays.npz
-          pdbfile: CK-traj-state0.pdb
+          pdb_file: CK-traj-state0.pdb
           subsample: 100
           label: CK
 
 trainer:
-  val_check_interval: 0.5
+  val_check_interval: 1.0
   max_epochs: 1
 
 logger:

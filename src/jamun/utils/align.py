@@ -3,7 +3,7 @@ from typing import Tuple
 
 import torch
 import torch_geometric
-import torch_scatter
+from e3tools import scatter
 
 
 def kabsch_algorithm(y: torch.Tensor, x: torch.Tensor, batch: torch.Tensor, num_graphs: int) -> torch.Tensor:
@@ -28,8 +28,8 @@ def kabsch_algorithm(y: torch.Tensor, x: torch.Tensor, batch: torch.Tensor, num_
         Aligned points y.
     """
     # Mean centering.
-    x_mu = torch_scatter.scatter_mean(x, batch, dim=-2, dim_size=num_graphs)
-    y_mu = torch_scatter.scatter_mean(y, batch, dim=-2, dim_size=num_graphs)
+    x_mu = scatter(x, batch, dim=-2, dim_size=num_graphs, reduce="mean")
+    y_mu = scatter(y, batch, dim=-2, dim_size=num_graphs, reduce="mean")
 
     x_c = x - x_mu[batch]
     y_c = y - y_mu[batch]
@@ -37,7 +37,7 @@ def kabsch_algorithm(y: torch.Tensor, x: torch.Tensor, batch: torch.Tensor, num_
     # Compute batch covariance matrix.
     batch_one_hot = torch.nn.functional.one_hot(batch, num_classes=num_graphs).float()
     H = torch.einsum("Ni,Nj,NG->Gij", y_c, x_c, batch_one_hot)
-    
+
     # SVD to get rotation.
     U, _, VH = torch.linalg.svd(H)
     R = torch.einsum("Gki,Gjk->Gij", VH, U)  # V U^T
