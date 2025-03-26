@@ -29,8 +29,8 @@ def run_analysis(peptide: str, trajectory: str, reference: str, run_path: str, e
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run analysis for multiple peptides")
-    parser.add_argument("--csv", type=str, required=True, help="CSV file containing wandb runs")
+    parser = argparse.ArgumentParser(description="Run analysis of JAMUN trajectories for multiple peptides")
+    parser.add_argument("--csv", type=str, required=True, help="CSV file containing information about wandb sampling runs")
     parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
     parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
     parser.add_argument(

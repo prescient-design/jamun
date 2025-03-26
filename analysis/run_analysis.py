@@ -97,14 +97,6 @@ def featurize_trajectory(traj: md.Trajectory) -> Dict[str, np.ndarray]:
     }
 
 
-def featurize_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Dict[str, np.ndarray]]:
-    """Featurize MDTraj trajectories with backbone, and sidechain torsion angles and distances using pyEMMA."""
-    return {
-        "traj": featurize_trajectory(traj_md),
-        "ref_traj": featurize_trajectory(ref_traj_md),
-    }
-
-
 def compute_feature_histograms(traj_featurized_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """Compute histograms of features for a trajectory."""
     return {
@@ -508,7 +500,10 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
 
     # Featurize trajectories.
     results = {}
-    results["featurization"] = featurize_trajectories(traj_md, ref_traj_md)
+    results["featurization"] = {
+        "traj": featurize_trajectory(traj_md),
+        "ref_traj": featurize_trajectory(ref_traj_md),
+    }
     py_logger.info(f"Featurization complete.")
 
     traj_results = results["featurization"]["traj"]
@@ -690,7 +685,7 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Analyze molecular dynamics trajectories for peptide sequences.",
+        description="Analyze molecular dynamics trajectories.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -699,15 +694,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--trajectory",
         type=str,
-        choices=["JAMUN", "JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
         help="Type of trajectory to analyze",
+        required=True,
     )
     parser.add_argument(
         "--reference",
         type=str,
-        choices=["JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
         help="Type of reference trajectory to compare against",
+        required=True,
     )
+    parser.add_argument("--experiment", type=str, required=True, help="Experiment name for saving results")
     parser.add_argument(
         "--run-path",
         type=str,
@@ -721,7 +717,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
     )
-    parser.add_argument("--experiment", type=str, required=True, help="Experiment name for saving results")
     parser.add_argument("--output-dir", type=str, default="analysis_results", help="Directory to save analysis results")
     parser.add_argument(
         "--no-delete-intermediates",

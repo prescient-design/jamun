@@ -219,10 +219,7 @@ def get_JAMUNReference_2AA_datasets(
     elif split == "all":
         datasets = sum([get_datasets_for_split(split) for split in all_splits], [])
 
-    # Remap keys.
-    filter_codes_map = dict(zip(filter_codes, filter_codes))
-    return {filter_codes_map[dataset.label()]: dataset for dataset in datasets}
-
+    return {dataset.label(): dataset for dataset in datasets}
 
 def get_JAMUNReference_5AA_datasets(
     data_path: str, filter_codes: Optional[Sequence[str]] = None
@@ -255,29 +252,44 @@ def get_JAMUNReference_5AA_datasets(
     return {filter_codes_map[dataset.label()]: dataset for dataset in datasets}
 
 
-def get_TBG_trajectories(root: str) -> Dict[str, data.MDtrajDataset]:
-    """Returns a dictionary mapping peptide names to the TBG MDTraj trajectory."""
-    raise NotImplementedError("TBG trajectories not implemented yet.")
+def get_TBG_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
+    """Returns a dictionary mapping peptide names to the datasets of TBG samples."""
+    datasets = data.parse_datasets_from_directory(
+        root=f"{data_path}/tbg-samples/",
+        traj_pattern="^(.*).dcd",
+        pdb_pattern="^(.*).pdb",
+        filter_codes=filter_codes,
+    )
+    return {dataset.label(): dataset for dataset in datasets}
+
+
+def get_data_path(data_path: Optional[str] = None):
+    """Returns the default data path if none provided."""
+    if data_path:
+        return data_path
+    
+    data_path = os.environ.get("JAMUN_DATA_PATH")
+    if data_path:
+        return data_path
+
+    env_file = os.path.join(find_project_root(), ".env")
+    data_path = dotenv.get_key(env_file, "JAMUN_DATA_PATH")
+    if data_path:
+        return data_path
+
+    raise ValueError("data_path must be provided either via --data-path, or as JAMUN_DATA_PATH in environment variable or .env file")
 
 
 def load_trajectory_with_info(
     trajectory_name: str,
     peptide: str,
-    data_path: str,
+    data_path: Optional[str],
     run_path: Optional[str],
     wandb_run: Optional[str],
 ) -> Tuple[md.Trajectory, Dict[str, Any]]:
     """Returns the trajectory, trajectory files, and topology file for this model and peptide."""
-    if data_path:
-        JAMUN_DATA_PATH = data_path
-    else:
-        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH")
-        if JAMUN_DATA_PATH is None:
-            env_file = os.path.join(find_project_root(), ".env")
-            JAMUN_DATA_PATH = dotenv.get_key(env_file, "JAMUN_DATA_PATH")
-        if not JAMUN_DATA_PATH:
-            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path, environment variable or .env file")
-    py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
+    data_path = get_data_path(data_path)
+    py_logger.info(f"Using data_path: {data_path}")
 
     filter_codes = [peptide]
     if trajectory_name == "JAMUN":
@@ -290,26 +302,32 @@ def load_trajectory_with_info(
             run_paths = [get_run_path_for_wandb_run(wandb_run)]
         else:
             run_paths = [run_path]
+        
         return get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)[peptide]
     
     if trajectory_name == "MDGenReference":
         dataset = get_MDGenReference_datasets(
-            JAMUN_DATA_PATH,
+            data_path,
             filter_codes=filter_codes,
         )[peptide]
     elif trajectory_name == "TimewarpReference":
         dataset = get_TimewarpReference_datasets(
-            JAMUN_DATA_PATH,
+            data_path,
             filter_codes=filter_codes,
         )[peptide]
     elif trajectory_name == "JAMUNReference_2AA":
         dataset = get_JAMUNReference_2AA_datasets(
-            JAMUN_DATA_PATH,
+            data_path,
             filter_codes=filter_codes,
         )[peptide]
     elif trajectory_name == "JAMUNReference_5AA":
         dataset = get_JAMUNReference_5AA_datasets(
-            JAMUN_DATA_PATH,
+            data_path,
+            filter_codes=filter_codes,
+        )[peptide]
+    elif trajectory_name == "TBG":
+        dataset = get_TBG_datasets(
+            data_path,
             filter_codes=filter_codes,
         )[peptide]
     else:
