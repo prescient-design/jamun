@@ -46,4 +46,4 @@ resume_from_checkpoint:
 
 logger:
   wandb:
-    group: train_2AA
+    group: train_chignolin
