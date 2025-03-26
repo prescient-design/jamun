@@ -28,6 +28,8 @@ class Denoiser(pl.LightningModule):
         mean_center: bool,
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
+        normalization_type: Optional[str] = "JAMUN",
+        sigma_data: Optional[float] = None, # Only used if normalization_type is "EDM"
         lr_scheduler_config: Optional[Dict] = None,
         use_torch_compile: bool = True,
         torch_compile_kwargs: Optional[Dict] = None,
@@ -83,6 +85,18 @@ class Denoiser(pl.LightningModule):
         self.mirror_augmentation_rate = mirror_augmentation_rate
         py_logger.info(f"Mirror augmentation rate: {self.mirror_augmentation_rate}")
 
+        self.normalization_type = normalization_type
+        if self.normalization_type is not None:
+            py_logger.info(f"Normalization type: {self.normalization_type}")
+        else:
+            py_logger.info("No normalization")
+        
+        self.sigma_data = sigma_data
+        if self.normalization_type == "EDM" and self.sigma_data is None:
+            raise ValueError("sigma_data must be provided when normalization_type is 'EDM'")
+        elif self.normalization_type != "EDM" and self.sigma_data is not None:
+            raise ValueError("sigma_data can only be used when normalization_type is 'EDM'")
+
         self.bond_loss_coefficient = bond_loss_coefficient
 
     def add_noise(self, x: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
@@ -114,22 +128,35 @@ class Denoiser(pl.LightningModule):
         sigma = torch.as_tensor(sigma).to(y.pos)
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
-    @classmethod
-    def normalization_factors(cls, sigma: float, average_squared_distance: float, D: int = 3) -> Tuple[float, float, float, float]:
+    def normalization_factors(self, sigma: float, D: int = 3) -> Tuple[float, float, float, float]:
         """Normalization factors for the input and output."""
-        A = torch.as_tensor(average_squared_distance)
-        B = torch.as_tensor(2 * D * sigma**2)
+        sigma = torch.as_tensor(sigma)
+        
+        if self.normalization_type is None:
+            return 1.0, 0.0, 1.0, sigma
 
-        c_in = 1.0 / torch.sqrt(A + B)
-        c_skip = A / (A + B)
-        c_out = torch.sqrt((A * B) / (A + B))
-        c_noise = torch.log(sigma) / 4
-        return c_in, c_skip, c_out, c_noise
+        if self.normalization_type == "EDM":
+            c_skip = (self.sigma_data**2) / (sigma**2 + self.sigma_data**2)
+            c_out = sigma * self.sigma_data / torch.sqrt(self.sigma_data**2 + sigma**2)
+            c_in = 1 / torch.sqrt(sigma**2 + self.sigma_data**2)
+            c_noise = torch.log(sigma / self.sigma_data) * 0.25
+            return c_in, c_skip, c_out, c_noise
 
-    @classmethod
-    def loss_weight(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
+        if self.normalization_type == "JAMUN":
+            A = torch.as_tensor(self.average_squared_distance)
+            B = torch.as_tensor(2 * D * sigma**2)
+
+            c_in = 1.0 / torch.sqrt(A + B)
+            c_skip = A / (A + B)
+            c_out = torch.sqrt((A * B) / (A + B))
+            c_noise = torch.log(sigma) / 4
+            return c_in, c_skip, c_out, c_noise
+
+        raise ValueError(f"Unknown normalization type: {self.normalization_type}")
+
+    def loss_weight(self, sigma: float, D: int = 3) -> float:
         """Loss weight for this graph."""
-        _, _, c_out, _ = cls.normalization_factors(sigma, average_squared_distance, D)
+        _, _, c_out, _ = self.normalization_factors(sigma, D)
         return 1 / (c_out**2)
 
     def effective_radial_cutoff(self, sigma: Union[float, torch.Tensor]) -> torch.Tensor:
@@ -175,7 +202,7 @@ class Denoiser(pl.LightningModule):
 
         # Compute the normalization factors.
         with torch.cuda.nvtx.range("normalization_factors"):
-            c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
+            c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, D)
         radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
 
         # Adjust dimensions.
@@ -279,7 +306,7 @@ class Denoiser(pl.LightningModule):
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
             scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
-            scaled_coordinate_loss *= self.loss_weight(sigma, self.average_squared_distance, D)
+            scaled_coordinate_loss *= self.loss_weight(sigma, D)
 
         return scaled_coordinate_loss, {
             "coordinate_loss": scaled_coordinate_loss,
