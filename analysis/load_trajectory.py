@@ -221,6 +221,7 @@ def get_JAMUNReference_2AA_datasets(
 
     return {dataset.label(): dataset for dataset in datasets}
 
+
 def get_JAMUNReference_5AA_datasets(
     data_path: str, filter_codes: Optional[Sequence[str]] = None
 ) -> Dict[str, data.MDtrajDataset]:
@@ -263,6 +264,40 @@ def get_TBG_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = Non
     return {dataset.label(): dataset for dataset in datasets}
 
 
+def get_plot_path(plot_path: Optional[str] = None):
+    """Returns the default plot path if none provided."""
+    if plot_path:
+        return plot_path
+    
+    plot_path = os.environ.get("JAMUN_PLOT_PATH")
+    if plot_path:
+        return plot_path
+
+    env_file = os.path.join(find_project_root(), ".env")
+    plot_path = dotenv.get_key(env_file, "JAMUN_PLOT_PATH")
+    if plot_path:
+        return plot_path
+
+    raise ValueError("plot_path must be provided as JAMUN_PLOT_PATH in environment variable or .env file")
+
+
+def get_analysis_path(analysis_path: Optional[str] = None):
+    """Returns the default analysis path if none provided."""
+    if analysis_path:
+        return analysis_path
+    
+    analysis_path = os.environ.get("JAMUN_ANALYSIS_PATH")
+    if analysis_path:
+        return analysis_path
+
+    env_file = os.path.join(find_project_root(), ".env")
+    analysis_path = dotenv.get_key(env_file, "JAMUN_ANALYSIS_PATH")
+    if analysis_path:
+        return analysis_path
+
+    raise ValueError("analysis_path must be provided as JAMUN_ANALYSIS_PATH in environment variable or .env file")
+
+
 def get_data_path(data_path: Optional[str] = None):
     """Returns the default data path if none provided."""
     if data_path:
@@ -277,7 +312,7 @@ def get_data_path(data_path: Optional[str] = None):
     if data_path:
         return data_path
 
-    raise ValueError("data_path must be provided either via --data-path, or as JAMUN_DATA_PATH in environment variable or .env file")
+    raise ValueError("data_path must be provided as JAMUN_DATA_PATH in environment variable or .env file")
 
 
 def load_trajectory_with_info(

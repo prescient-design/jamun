@@ -1,6 +1,6 @@
 from typing import List, Iterator, Any, Dict, Sequence, Union
 
-from torch.utils.data import IterableDataset, Dataset
+from torch.utils.data import IterableDataset, Dataset, ConcatDataset
 import torch_geometric.loader
 import numpy as np
 import lightning.pytorch as pl
@@ -110,8 +110,8 @@ class MDtrajDataModule(pl.LightningDataModule):
                 continue
 
             if isinstance(datasets[0], Dataset):
-                self.concatenated_datasets[split] = RandomChainDataset(datasets)
-                self.shuffle = False
+                self.concatenated_datasets[split] = ConcatDataset(datasets)
+                self.shuffle = True
 
             elif isinstance(datasets[0], IterableDataset):
                 self.concatenated_datasets[split] = StreamingRandomChainDataset(datasets)

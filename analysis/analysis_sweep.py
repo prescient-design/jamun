@@ -1,7 +1,9 @@
+from typing import Optional
 import subprocess
 import argparse
 import os
 import sys
+
 import pandas as pd
 
 sys.path.append("./")
@@ -28,6 +30,30 @@ def run_analysis(peptide: str, trajectory: str, reference: str, run_path: str, e
         raise RuntimeError(f"Error running command: {' '.join(cmd)}: {e.stderr}")
 
 
+def get_dataframe_of_runs(csv: str, experiment: Optional[str] = None) -> pd.DataFrame:
+    """Read the CSV file and filter for the specified experiment."""
+
+    # Read wandb run paths from CSV.
+    df = pd.read_csv(csv)
+
+    # Choose type of trajectory to analyze.
+    if experiment is not None:
+        df = df[df["experiment"] == experiment]
+
+    # Get run paths.
+    df["run_path"] = df["wandb_sample_run_path"].map(
+        load_trajectory.get_run_path_for_wandb_run
+    )
+    df["peptide"] = df["run_path"].map(
+        load_trajectory.get_peptides_in_JAMUN_run
+    )
+
+    # Create one row for each peptide.
+    df = df.explode("peptide")
+
+    return df
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run analysis of JAMUN trajectories for multiple peptides")
     parser.add_argument("--csv", type=str, required=True, help="CSV file containing information about wandb sampling runs")
@@ -42,18 +68,8 @@ def main():
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Read wandb run paths from CSV.
-    df = pd.read_csv(args.csv)
-
-    # Choose type of trajectory to analyze.
-    df = df[df["experiment"] == args.experiment]
-
-    # Get run paths.
-    df["run_path"] = df["wandb_sample_run_path"].map(load_trajectory.get_run_path_for_wandb_run)
-    df["peptide"] = df["run_path"].map(load_trajectory.get_peptides_in_JAMUN_run)
-
-    # Create one row for each peptide.
-    df = df.explode("peptide")
+    # Read the CSV file for experiments.
+    df = get_dataframe_of_runs(args.csv, experiment=args.experiment)
 
     # Choose row to analyze.
     df = df.iloc[[args.row_index]]

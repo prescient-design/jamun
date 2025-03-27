@@ -239,11 +239,18 @@ def compute_JSD_torsions(
     return results
 
 
+def get_steps(traj_length: int) -> np.ndarray:
+    """Get steps for computing Jenson-Shannon distances against time."""
+    if traj_length >= 10000:
+        traj_length = 10000 * (traj_length // 10000)  # Round down to the nearest 10,000 frames
+    return np.geomspace(1, traj_length, num=10, dtype=int)
+
+
 def compute_JSD_torsions_against_time(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
 ) -> Dict[str, Dict[int, Dict[str, float]]]:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
-    steps = np.logspace(0, np.log10(len(traj_featurized)), num=10, dtype=int)
+    steps = get_steps(len(traj_featurized))
     return {
         step: compute_JSD_torsions(
             traj_featurized[:step],
@@ -295,7 +302,7 @@ def compute_torsion_decorrelations(traj_featurized: np.ndarray, ref_traj_featuri
 
 def compute_TICA(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute TICA projections of trajectories."""
-    tica = pyemma.coordinates.tica(ref_traj_featurized, lag=1000, kinetic_map=True)
+    tica = pyemma.coordinates.tica(ref_traj_featurized, lag=1000, var_cutoff=0.99, kinetic_map=True)
     ref_traj_tica = tica.transform(ref_traj_featurized)
     traj_tica = tica.transform(traj_featurized)
     return {
@@ -341,7 +348,7 @@ def compute_JSD_TICA_against_time(
     ref_traj_tica: np.ndarray,
 ) -> Dict[int, Dict[str, float]]:
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
-    steps = np.logspace(0, np.log10(len(traj_tica)), num=10, dtype=int)
+    steps = get_steps(len(traj_tica))
     return {
         step: compute_JSD_TICA(
             traj_tica[:step],
@@ -423,7 +430,7 @@ def compute_JSD_MSM_against_time(
     MSM_info: Dict[str, Any],
 ) -> Dict[int, Dict[str, float]]:
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
-    steps = np.logspace(0, np.log10(len(traj_tica)), num=10, dtype=int)
+    steps = get_steps(len(traj_tica))
     return {
         step: compute_JSD_MSM(
             traj_tica[:step],
@@ -436,7 +443,6 @@ def compute_JSD_MSM_against_time(
 
 def compute_MSM_transition_and_flux_matrices(
     traj_tica: np.ndarray,
-    ref_traj_tica: np.ndarray,
     MSM_info: Dict[str, Any],
 ) -> Dict[str, np.ndarray]:
     """Compute transition and flux matrices for a trajectory and reference trajectory according to a MSM."""
@@ -445,10 +451,6 @@ def compute_MSM_transition_and_flux_matrices(
     pcca = MSM_info["pcca"]
     cmsm = MSM_info["cmsm"]
     kmeans = MSM_info["kmeans"]
-
-    # Assign metastable states.
-    ref_discrete = discretize(ref_traj_tica, kmeans, msm)
-    traj_discrete = discretize(traj_tica, kmeans, msm)
 
     # Compute transition matrices.
     msm_transition_matrix = np.eye(10)
@@ -460,6 +462,7 @@ def compute_MSM_transition_and_flux_matrices(
     msm_pi[cmsm.active_set] = cmsm.pi
 
     # Compute trajectory MSM.
+    traj_discrete = discretize(traj_tica, kmeans, msm)
     traj_msm = pyemma.msm.estimate_markov_model(traj_discrete, lag=10)
     traj_transition_matrix = np.eye(10)
     for a, i in enumerate(traj_msm.active_set):
@@ -592,8 +595,9 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     # Compute TICA stats.
     results["TICA_histograms"] = {}
     for key, tica in traj_ticas_to_compare.items():
+        print(key, tica.shape, results["TICA"])
         results["TICA_histograms"][key] = compute_TICA_histogram_for_plotting(
-            tica,
+            tica
         )
     py_logger.info(f"Histograms of TICA projections computed.")
 
@@ -652,7 +656,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
         try:
             results["MSM_matrices"][key] = compute_MSM_transition_and_flux_matrices(
                 tica,
-                ref_traj_tica,
                 MSM_info,
             )
         except RuntimeError:
