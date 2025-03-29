@@ -1,13 +1,14 @@
-from typing import Dict, List, Optional, Sequence, Tuple, Any
-import os
-import mdtraj as md
-import tqdm
-import pandas as pd
-import dotenv
 import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from jamun import data
-from jamun import utils
+import dotenv
+import mdtraj as md
+import pandas as pd
+import tqdm
+
+from jamun import data, utils
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("analysis")
@@ -221,6 +222,23 @@ def get_JAMUNReference_2AA_datasets(
 
     return {dataset.label(): dataset for dataset in datasets}
 
+def get_chignolin_reference_dataset(
+    data_path: str, split: str = "all"
+) -> Dict[str, data.MDtrajDataset]:
+    """Returns a dictionary mapping peptide names to our reference 2AA MDTraj trajectory."""
+
+    root = Path(data_path) / "fast-folding/processed/chignolin"
+    pdb_file = root / "filtered.pdb"
+
+    if split == "all":
+        traj_files = list(root.rglob("*.xtc"))
+    else:
+        traj_files = list((root / split).rglob("*.xtc"))
+
+    dataset = data.MDtrajDataset(root = str(root), pdb_file=str(pdb_file), traj_files=list(map(str, traj_files)), label="filtered")
+
+    return {"filtered" : dataset}
+
 def get_JAMUNReference_5AA_datasets(
     data_path: str, filter_codes: Optional[Sequence[str]] = None
 ) -> Dict[str, data.MDtrajDataset]:
@@ -267,7 +285,7 @@ def get_data_path(data_path: Optional[str] = None):
     """Returns the default data path if none provided."""
     if data_path:
         return data_path
-    
+
     data_path = os.environ.get("JAMUN_DATA_PATH")
     if data_path:
         return data_path
@@ -302,9 +320,9 @@ def load_trajectory_with_info(
             run_paths = [get_run_path_for_wandb_run(wandb_run)]
         else:
             run_paths = [run_path]
-        
+
         return get_JAMUN_trajectories(run_paths, filter_codes=filter_codes)[peptide]
-    
+
     if trajectory_name == "MDGenReference":
         dataset = get_MDGenReference_datasets(
             data_path,
@@ -330,10 +348,12 @@ def load_trajectory_with_info(
             data_path,
             filter_codes=filter_codes,
         )[peptide]
+    elif trajectory_name == "Chignolin":
+        dataset = get_chignolin_reference_dataset(data_path)[peptide]
     else:
-        raise ValueError(f"Trajectory type {trajectory_name} not supported. Available options: JAMUN, MDGenReference, TimewarpReference, JAMUNReference_2AA, JAMUNReference_5AA")
+        raise ValueError(f"Trajectory type {trajectory_name} not supported. Available options: JAMUN, MDGenReference, TimewarpReference, JAMUNReference_2AA, JAMUNReference_5AA, Chignolin")
 
     return dataset.trajectory, {
-        "trajectory_files": dataset.trajectory_files, 
+        "trajectory_files": dataset.trajectory_files,
         "topology_file": dataset.topology_file,
     }
