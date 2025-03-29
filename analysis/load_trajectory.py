@@ -5,6 +5,7 @@ import tqdm
 import pandas as pd
 import dotenv
 import logging
+import torch
 
 from jamun import data
 from jamun import utils
@@ -19,16 +20,6 @@ def find_project_root() -> str:
     while not os.path.exists(os.path.join(current_dir, "pyproject.toml")):
         current_dir = os.path.dirname(current_dir)
     return current_dir
-
-
-def get_run_path_for_wandb_run(wandb_run_path: str) -> str:
-    """Returns the path to the run directory given a wandb run path."""
-    cfg = utils.get_wandb_run_config(wandb_run_path)
-    run_path = os.path.join(cfg["paths"]["run_path"])
-    if run_path.startswith("."):
-        # Path is relative to the project root.
-        run_path = os.path.join(find_project_root(), run_path)
-    return os.path.abspath(run_path)
 
 
 def get_peptides_in_JAMUN_run(run_path: str) -> Sequence[str]:
@@ -167,17 +158,24 @@ def get_MDGenReference_datasets(
 
 
 def get_TimewarpReference_datasets(
-    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
+    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all", peptide_type: str = "all"
 ) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the Timewarp reference trajectory."""
     # Timewarp trajectory files are in one-letter format.
     one_letter_filter_codes = ["".join([utils.convert_to_one_letter_code(aa) for aa in code]) for code in filter_codes]
     assert len(set(one_letter_filter_codes)) == len(one_letter_filter_codes), "Filter codes must be unique"
 
+    if peptide_type == "all":
+        peptide_type_dirs = ["2AA-1-large", "4AA-large"]
+    elif peptide_type == "2AA":
+        peptide_type_dirs = ["2AA-1-large"]
+    elif peptide_type == "4AA":
+        peptide_type_dirs = ["4AA-large"]
+
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
         split_datasets = []
-        for peptide_type_dir in ["2AA-1-large", "4AA-large"]:
+        for peptide_type_dir in peptide_type_dirs:
             split_datasets += data.parse_datasets_from_directory(
                 root=f"{data_path}/timewarp/{peptide_type_dir}/{split}/",
                 traj_pattern="^(.*)-traj-arrays.npz",
@@ -227,19 +225,23 @@ def get_JAMUNReference_5AA_datasets(
 ) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to our reference 5AA MDTraj trajectories."""
     prefix = ""
-    for code in filter_codes:
-        if code.startswith("uncapped_"):
-            prefix = "uncapped_"
-            break
-        if code.startswith("uncapped_"):
-            prefix = "capped_"
-            break
 
-    # Remove prefix.
-    three_letter_filter_codes = [
-        "_".join([utils.convert_to_three_letter_code(aa) for aa in code[len(prefix):]]) for code in filter_codes
-    ]
-    assert len(set(three_letter_filter_codes)) == len(three_letter_filter_codes), "Filter codes must be unique"
+    if filter_codes is not None:
+        for code in filter_codes:
+            if code.startswith("uncapped_"):
+                prefix = "uncapped_"
+                break
+            if code.startswith("uncapped_"):
+                prefix = "capped_"
+                break
+
+        # Remove prefix.
+        three_letter_filter_codes = [
+            "_".join([utils.convert_to_three_letter_code(aa) for aa in code[len(prefix):]]) for code in filter_codes
+        ]
+        assert len(set(three_letter_filter_codes)) == len(three_letter_filter_codes), "Filter codes must be unique"
+    else:
+        three_letter_filter_codes = None
 
     datasets = data.parse_datasets_from_directory(
         root=f"{data_path}/5AA/",
@@ -249,8 +251,11 @@ def get_JAMUNReference_5AA_datasets(
     )
 
     # Remap keys.
-    filter_codes_map = dict(zip(three_letter_filter_codes, filter_codes))
-    return {filter_codes_map[dataset.label()]: dataset for dataset in datasets}
+    if three_letter_filter_codes is not None:
+        filter_codes_map = dict(zip(three_letter_filter_codes, filter_codes))
+        return {filter_codes_map[dataset.label()]: dataset for dataset in datasets}
+
+    return {dataset.label(): dataset for dataset in datasets}
 
 
 def get_TBG_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
@@ -262,6 +267,48 @@ def get_TBG_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = Non
         filter_codes=filter_codes,
     )
     return {dataset.label(): dataset for dataset in datasets}
+
+
+def get_MDGen_4AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
+    """Returns a dictionary mapping peptide names to the datasets of MDGen samples for 4AA systems."""
+    datasets = data.parse_datasets_from_directory(
+        root=f"{data_path}/mdgen-samples/4AA_test",
+        traj_pattern="^(.*)_i100.xtc",
+        pdb_pattern="^(.*)_i100.pdb",
+        filter_codes=filter_codes,
+    )
+    return {dataset.label(): dataset for dataset in datasets}
+
+
+def get_MDGen_5AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
+    """Returns a dictionary mapping peptide names to the datasets of MDGen samples for 5AA systems."""
+    datasets = data.parse_datasets_from_directory(
+        root=f"{data_path}/mdgen-samples/5AA_test",
+        traj_pattern="^(.*)_i100.xtc",
+        pdb_pattern="^(.*)_i100.pdb",
+        filter_codes=filter_codes,
+    )
+    return {dataset.label(): dataset for dataset in datasets}
+
+
+def get_ChignolinReference_datasets(data_path: str, split: str = "all") -> Dict[str, data.MDtrajDataset]:
+    """Returns a dictionary mapping 'chignolin' to the datasets of Chignolin samples."""
+    def get_datasets_for_split(split: str):
+        return data.parse_datasets_from_directory(
+            root=f"{data_path}/fast-folding/processed/chignolin",
+            traj_pattern=f"{split}/^(.*).xtc",
+            pdb_file="filtered.pdb",
+        )
+
+    all_splits = ["train", "val", "test"]
+    if split in all_splits:
+        datasets = get_datasets_for_split(split)
+    elif split == "all":
+        datasets = sum([get_datasets_for_split(split) for split in all_splits], [])
+    else:
+        raise ValueError(f"Invalid split: {split}")
+
+    return {"chignolin": torch.utils.data.ConcatDataset(datasets)}
 
 
 def get_plot_path(plot_path: Optional[str] = None):
@@ -334,7 +381,7 @@ def load_trajectory_with_info(
             raise ValueError("Must provide only one of --run-path or --wandb-run for JAMUN trajectory")
 
         if wandb_run:
-            run_paths = [get_run_path_for_wandb_run(wandb_run)]
+            run_paths = [utils.get_run_path_for_wandb_run(wandb_run)]
         else:
             run_paths = [run_path]
         
@@ -364,6 +411,22 @@ def load_trajectory_with_info(
         dataset = get_TBG_datasets(
             data_path,
             filter_codes=filter_codes,
+        )[peptide]
+    elif trajectory_name == "MDGen_4AA":
+        dataset = get_MDGen_4AA_datasets(
+            data_path,
+            filter_codes=filter_codes,
+        )[peptide]
+    elif trajectory_name == "MDGen_5AA":
+        dataset = get_MDGen_5AA_datasets(
+            data_path,
+            filter_codes=filter_codes,
+        )[peptide]
+    elif trajectory_name == "ChignolinReference":
+        if peptide != "chignolin":
+            raise ValueError("ChignolinReference only supports peptide 'chignolin'")
+        dataset = get_ChignolinReference_datasets(
+            data_path,
         )[peptide]
     else:
         raise ValueError(f"Trajectory type {trajectory_name} not supported. Available options: JAMUN, MDGenReference, TimewarpReference, JAMUNReference_2AA, JAMUNReference_5AA")

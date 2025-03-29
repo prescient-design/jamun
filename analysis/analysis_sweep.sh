@@ -6,6 +6,7 @@
 #SBATCH --output=logs/%j_analysis_sweep.log
 #SBATCH --error=logs/%j_analysis_sweep.err
 #SBATCH --array=0-199
+#SBATCH --time 1:00:00
 
 eval "$(conda shell.bash hook)"
 conda activate jamun

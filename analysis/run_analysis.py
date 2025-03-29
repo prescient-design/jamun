@@ -239,25 +239,27 @@ def compute_JSD_torsions(
     return results
 
 
-def get_steps(traj_length: int) -> np.ndarray:
+def get_steps(traj_length: int) -> Tuple[np.ndarray, np.ndarray]:
     """Get steps for computing Jenson-Shannon distances against time."""
-    if traj_length >= 10000:
-        traj_length = 10000 * (traj_length // 10000)  # Round down to the nearest 10,000 frames
-    return np.geomspace(1, traj_length, num=10, dtype=int)
+    progress = [0.001, 0.005, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    progress = np.asarray(progress)
+
+    steps = np.asarray([max(1, int(p * traj_length)) for p in progress], dtype=int)
+    return steps, progress
 
 
 def compute_JSD_torsions_against_time(
     traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
 ) -> Dict[str, Dict[int, Dict[str, float]]]:
     """Computes the Jenson-Shannon distance between the Ramachandran distributions of a trajectory and a reference trajectory at different time points."""
-    steps = get_steps(len(traj_featurized))
+    steps, progress = get_steps(len(traj_featurized))
     return {
-        step: compute_JSD_torsions(
+        progress_fraction: compute_JSD_torsions(
             traj_featurized[:step],
             ref_traj_featurized,
             feats,
         )
-        for step in steps
+        for step, progress_fraction in zip(steps, progress)
     }
 
 
@@ -348,13 +350,13 @@ def compute_JSD_TICA_against_time(
     ref_traj_tica: np.ndarray,
 ) -> Dict[int, Dict[str, float]]:
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
-    steps = get_steps(len(traj_tica))
+    steps, progress = get_steps(len(traj_tica))
     return {
-        step: compute_JSD_TICA(
+        progress_fraction: compute_JSD_TICA(
             traj_tica[:step],
             ref_traj_tica,
         )
-        for step in steps
+        for step, progress_fraction in zip(steps, progress)
     }
 
 
@@ -430,14 +432,14 @@ def compute_JSD_MSM_against_time(
     MSM_info: Dict[str, Any],
 ) -> Dict[int, Dict[str, float]]:
     """Compute Jenson-Shannon distances for a trajectory and reference trajectory."""
-    steps = get_steps(len(traj_tica))
+    steps, progress = get_steps(len(traj_tica))
     return {
-        step: compute_JSD_MSM(
+        progress_fraction: compute_JSD_MSM(
             traj_tica[:step],
             ref_traj_tica,
             MSM_info,
         )
-        for step in steps
+        for step, progress_fraction in zip(steps, progress)
     }
 
 
@@ -595,7 +597,6 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     # Compute TICA stats.
     results["TICA_histograms"] = {}
     for key, tica in traj_ticas_to_compare.items():
-        print(key, tica.shape, results["TICA"])
         results["TICA_histograms"][key] = compute_TICA_histogram_for_plotting(
             tica
         )
@@ -658,7 +659,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
                 tica,
                 MSM_info,
             )
-        except RuntimeError:
+        except (ValueError, RuntimeError):
             py_logger.warning(f"MSM matrices could not be computed for {key}.")
             continue
     py_logger.info(f"MSM matrices computed.")
@@ -676,7 +677,10 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
         del results["TICA"]["traj_tica"]
         del results["TICA"]["ref_traj_tica"]
 
-    output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory, f"ref={args.reference}")
+    trajectory = args.trajectory
+    if args.shorten_trajectory_factor is not None:
+        trajectory += f"_{int(args.shorten_trajectory_factor)}x"
+    output_dir = os.path.join(args.output_dir, args.experiment, trajectory, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
 
     output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
@@ -699,6 +703,12 @@ if __name__ == "__main__":
         type=str,
         help="Type of trajectory to analyze",
         required=True,
+    )
+    parser.add_argument(
+        "--shorten-trajectory-factor",
+        type=float,
+        default=None,
+        help="Factor to shorten the trajectory (e.g., 10.0 to use 1/10 of the trajectory)",
     )
     parser.add_argument(
         "--reference",
@@ -748,6 +758,10 @@ if __name__ == "__main__":
     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
     py_logger.info(f"{args.trajectory} trajectory loaded: {traj} with info: {traj_info}")
     py_logger.info(f"{args.reference} reference trajectory loaded: {ref_traj} with info: {ref_traj_info}")
+
+    if args.shorten_trajectory_factor is not None:
+        traj = traj[: max(1, int(len(traj) // args.shorten_trajectory_factor))]
+        py_logger.info(f"Shortened trajectory to {len(traj)} frames.")
 
     # Run analysis.
     results = analyze_trajectories(traj, ref_traj)

@@ -9,9 +9,10 @@ import pandas as pd
 sys.path.append("./")
 
 import load_trajectory
+import jamun.utils
 
 
-def run_analysis(peptide: str, trajectory: str, reference: str, run_path: str, experiment: str, output_dir: str) -> None:
+def run_analysis(peptide: str, trajectory: str, reference: str, run_path: str, experiment: str, output_dir: str, shorten_trajectory_factor: Optional[int] = None) -> None:
     """Run analysis for a single peptide."""
     cmd = [
         "python",
@@ -23,9 +24,12 @@ def run_analysis(peptide: str, trajectory: str, reference: str, run_path: str, e
         f"--experiment={experiment}",
         f"--output-dir={output_dir}",
     ]
+    if shorten_trajectory_factor is not None:
+        cmd.append(f"--shorten-trajectory-factor={shorten_trajectory_factor}")
+    
     print(f"Running command: {' '.join(cmd)}")
     try:
-        launched = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        launched = subprocess.run(cmd, check=True, stdout=None, stderr=None)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Error running command: {' '.join(cmd)}: {e.stderr}")
 
@@ -42,7 +46,7 @@ def get_dataframe_of_runs(csv: str, experiment: Optional[str] = None) -> pd.Data
 
     # Get run paths.
     df["run_path"] = df["wandb_sample_run_path"].map(
-        load_trajectory.get_run_path_for_wandb_run
+        jamun.utils.get_run_path_for_wandb_run
     )
     df["peptide"] = df["run_path"].map(
         load_trajectory.get_peptides_in_JAMUN_run

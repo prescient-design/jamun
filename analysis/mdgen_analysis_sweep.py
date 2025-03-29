@@ -19,6 +19,7 @@ def main():
     parser.add_argument(
         "--shorten-trajectory-factor", type=int, default=None, help="Factor to shorten trajectory by. Defaults to None."
     )
+    parser.add_argument("--peptide-type", type=str, required=True, help="Peptide type", choices=["4AA", "5AA"])
     parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
 
     args = parser.parse_args()
@@ -28,16 +29,29 @@ def main():
 
     # Read all peptides.
     data_path = load_trajectory.get_data_path(args.data_path)
-    datasets = load_trajectory.get_TimewarpReference_datasets(data_path, peptide_type="2AA")
-    peptides = list(sorted(datasets.keys()))
+
+    if args.peptide_type == "4AA":
+        samples_path = os.path.join(data_path, "mdgen-samples", "4AA_test")
+    elif args.peptide_type == "5AA":
+        samples_path = os.path.join(data_path, "mdgen-samples", "5AA_test")
+    else:
+        raise ValueError(f"Invalid peptide type: {args.peptide_type}")
+
+    # List all peptides.
+    peptides = [os.path.basename(filename).split("_")[0] for filename in os.listdir(samples_path) if filename.endswith(".pdb")]
+    peptides = list(sorted(peptides))
+    print(f"Peptides: {peptides}")
 
     # Choose row to analyze.
     peptide = peptides[args.row_index]
 
+    trajectory = f"MDGen_4AA"
+    if args.peptide_type == "5AA":
+        trajectory = f"MDGen_5AA"
     analysis_sweep.run_analysis(
         peptide=peptide,
-        trajectory="TBG",
-        reference="TimewarpReference",
+        trajectory=trajectory,
+        reference="MDGenReference",
         run_path=None,
         experiment=args.experiment,
         output_dir=args.output_dir,
