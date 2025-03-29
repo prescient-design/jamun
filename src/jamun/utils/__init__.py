@@ -1,6 +1,6 @@
 from .align import align_A_to_B, align_A_to_B_batched
 from .average_squared_distance import compute_average_squared_distance, compute_average_squared_distance_from_datasets
-from .checkpoint import find_checkpoint, find_checkpoint_directory, get_wandb_run_config
+from .checkpoint import find_checkpoint, find_checkpoint_directory, get_wandb_run_config, get_run_path_for_wandb_run
 from .data_with_residue_info import DataWithResidueInformation
 from .dist_log import dist_log, wandb_dist_log
 from .mdtraj import coordinates_to_trajectories, save_pdb
