@@ -4,16 +4,17 @@ defaults:
   - override /callbacks:
     - sampler/measure_sampling_time.yaml
     - sampler/save_trajectory.yaml
+    - sampler/ramachandran.yaml
   - _self_
 
-num_sampling_steps_per_batch: 10000
-num_batches: 10
+num_sampling_steps_per_batch: 50000
+num_batches: 5
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
-# MDGen
-wandb_train_run_path: prescient-design/jamun/q2ufto6b
+# Chignolin
+wandb_train_run_path: prescient-design/jamun/mwpkaesx
 
 checkpoint_type: best_so_far
 sigma: 0.04

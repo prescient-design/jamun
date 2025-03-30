@@ -16,6 +16,7 @@
 .venv
 .ruff_cache
 .ipynb_checkpoints
+.vscode
 extras
 build
 outputs

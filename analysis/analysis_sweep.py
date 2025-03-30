@@ -60,12 +60,18 @@ def get_dataframe_of_runs(csv: str, experiment: Optional[str] = None) -> pd.Data
 
 def main():
     parser = argparse.ArgumentParser(description="Run analysis of JAMUN trajectories for multiple peptides")
-    parser.add_argument("--csv", type=str, required=True, help="CSV file containing information about wandb sampling runs")
-    parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
-    parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
     parser.add_argument(
-        "--row-index", type=int, help="Row index to analyze",
-    )
+        "--csv",
+        type=str, required=True, help="CSV file containing information about wandb sampling runs")
+    parser.add_argument(
+        "--experiment",
+        type=str, required=True, help="Experiment type")
+    parser.add_argument(
+        "--output-dir", 
+        type=str, required=True, help="Output directory")
+    parser.add_argument(
+        "--row-index", 
+        type=int,  required=True, help="Row index to analyze")
 
     args = parser.parse_args()
 

@@ -87,8 +87,42 @@ def get_format_traj_name_fn(results_df):
     return format_traj_name_fn
 
 
+def get_short_format_traj_name_fn(results_df):
+    def format_traj_name_fn(traj_name: str) -> str:
+        """Format the trajectory name for plotting"""
+        known_names = {
+            "traj": results_df.attrs["traj_name"],
+            "ref_traj": "Ref.",
+            "ref_traj_10x": "Ref. (10x shorter)",
+            "ref_traj_100x": "Ref. (100x shorter)",
+            "TBG": "TBG",
+            "TBG_20x": "TBG (20x shorter)",
+            "TBG_200x": "TBG (200x shorter)",
+        }
+        if traj_name in known_names:
+            return known_names[traj_name]
+        
+        return traj_name
+    return format_traj_name_fn
+
+def get_colors_fn(results_df):
+    colors = {
+        'traj': '#FF7F0E',        # Orange
+        'ref_traj': '#1F77B4',    # Dark blue
+        'ref_traj_10x': '#6BAED6', # Medium blue
+        'ref_traj_100x': '#BDD7E7', # Light blue
+        'TBG': '#2CA02C',         # Dark green
+        'TBG_20x': '#74C476',     # Medium green
+        'TBG_200x': '#BAE4B3'     # Light green
+    }
+    return lambda traj_name: colors.get(traj_name, '#000000')  # Default to black if not found
+
+
 def format_quantity(quantity: str) -> str:
     """Format the quantity for plotting."""
+    if not quantity.startswith("JSD_"):
+        return format_quantity("JSD_" + quantity)
+    
     return {
         "JSD_backbone_torsions": "Backbone Torsions",
         "JSD_sidechain_torsions": "Sidechain Torsions",
@@ -101,6 +135,9 @@ def format_quantity(quantity: str) -> str:
 
 def format_peptide_name(peptide: str) -> str:
     """Formats the peptide name for plotting."""
+    # TODO: Return a function like get_format_traj_name_fn
+    if peptide == "filtered":
+        return "Chignolin"
     if peptide.startswith("uncapped_"):
         peptide = peptide[len("uncapped_"):]
     if peptide.startswith("capped_"):
@@ -158,16 +195,18 @@ def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
         raise ValueError(f"Invalid pmf_type: {pmf_type}")
 
     if experiment == "Our_2AA":
-        num_dihedrals = 1
-    elif "2AA" in experiment:
-        num_dihedrals = 0
-    elif "4AA" in experiment:
         num_dihedrals = 2
-    elif "5AA" in experiment:
+    elif "2AA" in experiment:
+        num_dihedrals = 1
+    elif "4AA" in experiment:
         num_dihedrals = 3
+    elif "5AA" in experiment:
+        num_dihedrals = 4
+    elif experiment == "Chignolin":
+        num_dihedrals = 9
 
-    if pmf_type == "all":
-        num_dihedrals += 1
+    if pmf_type == "internal":
+        num_dihedrals -= 1
 
     return num_dihedrals
 
@@ -189,7 +228,7 @@ def get_JSD_results(results_df, quantity: str, name: str, key: str):
 
 
 def get_all_JSD_results(results_df):
-
+    """Helper to load all final JSD results."""
     JSD_results = {
         "JSD_backbone_torsions": {},
         "JSD_sidechain_torsions": {},
@@ -201,6 +240,8 @@ def get_all_JSD_results(results_df):
     traj_names = ["traj", "ref_traj", "ref_traj_10x", "ref_traj_100x"]
     if results_df.attrs["experiment"] == "Timewarp_2AA" and results_df.attrs["traj_name"] == "JAMUN":
         traj_names.append("TBG")
+        traj_names.append("TBG_20x")
+        traj_names.append("TBG_200x")
 
     for quantity in ["JSD_backbone_torsions", "JSD_sidechain_torsions", "JSD_all_torsions"]:
         for name in traj_names:
@@ -303,7 +344,8 @@ def plot_ramachandran_against_reference(results_df) -> None:
         gridspec_kw={
             'width_ratios': ones + [0.1] + ones,
             'hspace': 0.1
-        }
+        },
+        squeeze=False,
     )
     for i, row in results_df.iterrows():
         peptide = row["peptide"]
@@ -373,7 +415,7 @@ def plot_ramachandran_against_reference_shortened(results_df) -> None:
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
     ones = list(np.ones(num_dihedrals))
-    fig, axs = plt.subplots(len(results_df), 3 * num_dihedrals + 2, figsize=(12 * num_dihedrals, 4 * len(results_df)),gridspec_kw={'width_ratios': ones+[0.1]+ones+[0.1]+ones,'hspace':0.1})
+    fig, axs = plt.subplots(len(results_df), 3 * num_dihedrals + 2, figsize=(12 * num_dihedrals, 4 * len(results_df)),gridspec_kw={'width_ratios': ones+[0.1]+ones+[0.1]+ones,'hspace':0.1}, squeeze=False)
 
     for i, row in results_df.iterrows():
         peptide = row["peptide"]
@@ -455,7 +497,7 @@ def plot_ramachandran_against_TBG(results_df) -> None:
     format_traj_name_fn = get_format_traj_name_fn(results_df)
     
     ones = list(np.ones(num_dihedrals))
-    fig, axs = plt.subplots(len(results_df), 4 * num_dihedrals + 3, figsize=(12 * num_dihedrals, 4 * len(results_df)),gridspec_kw={'width_ratios': ones+[0.1]+ones+[0.1]+ones+[0.1]+ones,'hspace':0.1})
+    fig, axs = plt.subplots(len(results_df), 4 * num_dihedrals + 3, figsize=(12 * num_dihedrals, 4 * len(results_df)),gridspec_kw={'width_ratios': ones+[0.1]+ones+[0.1]+ones+[0.1]+ones,'hspace':0.1}, squeeze=False)
 
     for i, row in results_df.iterrows():
         peptide = row["peptide"]
@@ -464,7 +506,7 @@ def plot_ramachandran_against_TBG(results_df) -> None:
             plot_ramachandran_contour(row["results"]["PMFs"]["ref_traj"][f"pmf_{pmf_type}"], j, axs[i, j])
             plot_ramachandran_contour(row["results"]["PMFs"]["traj"][f"pmf_{pmf_type}"], j, axs[i, j + num_dihedrals + 1])
             plot_ramachandran_contour(row["results"]["PMFs"]["TBG"][f"pmf_{pmf_type}"], j, axs[i, j + 2 * num_dihedrals + 2])
-            plot_ramachandran_contour(row["results"]["PMFs"]["ref_traj_100x"][f"pmf_{pmf_type}"], j, axs[i, j + 3 * num_dihedrals + 3])
+            plot_ramachandran_contour(row["results"]["PMFs"]["TBG_200x"][f"pmf_{pmf_type}"], j, axs[i, j + 3 * num_dihedrals + 3])
 
         # Add labels.
         ax_index = num_dihedrals // 2
@@ -848,6 +890,7 @@ def plot_JSD_against_time(results_df):
     """Plot JSD against trajectory progress for all peptides."""
     JSD_results = get_all_JSD_results_against_time(results_df)
     format_traj_name_fn = get_format_traj_name_fn(results_df)
+    colors_fn = get_colors_fn(results_df)
 
     figs = {}
     for quantity in JSD_results:
@@ -857,13 +900,9 @@ def plot_JSD_against_time(results_df):
             progress = JSD_results[quantity][name]["progress"]
 
             # Plot mean line
-            if name == "traj":
-                color = "tab:orange"
-            else:
-                color = None
+            color = colors_fn(name)
 
             line, = plt.plot(progress, mean, label=format_traj_name_fn(name), color=color)
-            color = line.get_color()
             
             # Add shaded region for standard deviation
             plt.fill_between(
@@ -950,8 +989,52 @@ def make_JSD_table(JSD_final_results) -> pd.DataFrame:
     means_series = means_series.rename(lambda x: f"{x}_mean", axis=1)
     stds_series = stds_series.rename(lambda x: f"{x}_std", axis=1)
 
-    combined_series = pd.concat([means_series, stds_series], axis=1)
-    return combined_series
+    JSD_table = pd.concat([means_series, stds_series], axis=1)
+    return JSD_table
+
+
+def plot_JSD_table(results_df: pd.DataFrame, JSD_table: pd.DataFrame) -> None:
+    # Separate mean and std columns
+    mean_cols = [col for col in JSD_table.columns if col.endswith('_mean')]
+    std_cols = [col for col in JSD_table.columns if col.endswith('_std')]
+
+    # Create a figure with subplots
+    fig, axes = plt.subplots(2, 3, figsize=(10, 10))
+    axes = axes.flatten()
+
+    colors_fn = get_colors_fn(results_df)
+    colors_list = [colors_fn(idx) for idx in JSD_table.index]
+    
+    format_traj_name_fn = get_short_format_traj_name_fn(results_df)
+    traj_names = [format_traj_name_fn(name) for name in JSD_table.index]
+
+    # Plot each metric (mean with std error bars)
+    for i, (mean_col, std_col) in enumerate(zip(mean_cols, std_cols)):
+        metric_name = mean_col.replace('_mean', '').replace('JSD_', '')
+        
+        # Create bar plot
+        bars = axes[i].bar(
+            range(len(traj_names)), JSD_table[mean_col], 
+            yerr=JSD_table[std_col], capsize=5, color=colors_list
+        )
+        
+        # Set x-axis labels and rotate them
+        axes[i].set_xticks(range(len(traj_names)))
+        axes[i].set_xticklabels(traj_names, rotation=45, ha='right')
+        
+        # Set title and labels
+        axes[i].set_title(format_quantity(metric_name))
+        axes[i].set_ylabel('JSD Value')
+        
+        # Add a grid for better readability
+        axes[i].grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Add a legend with trajectory names
+    # fig.legend(bars, traj_names, loc='lower center', bbox_to_anchor=(0.5, 0), 
+    #            ncol=len(traj_names), title="Trajectory")
+
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # Adjust layout to make room for legend
+    plt.suptitle('Comparison of Jensen-Shannon Divergence Metrics', fontsize=16, y=0.98)
 
 
 def plot_TICA_0_speedups(results_df: pd.DataFrame) -> None:
@@ -996,7 +1079,9 @@ def plot_transition_matrices(results_df):
     """Plots the transition matrices for the sampled peptides."""
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
-    fig, axs = plt.subplots(2, len(results_df), figsize=(15, 5))
+    fig, axs = plt.subplots(2, len(results_df), figsize=(15, 5), squeeze=False)
+
+    # Get min and max values for color normalization
     for i, row in results_df.iterrows():
         peptide = row["peptide"]
         results = row["results"]["MSM_matrices"]["traj"]
@@ -1033,7 +1118,7 @@ def plot_transition_matrices(results_df):
 def plot_flux_matrices(results_df):
     """Plots the flux matrices for the sampled peptides."""
     format_traj_name_fn = get_format_traj_name_fn(results_df)
-    fig, axs = plt.subplots(2, len(results_df), figsize=(15, 5))
+    fig, axs = plt.subplots(2, len(results_df), figsize=(15, 5), squeeze=False)
 
     vmin = np.inf
     vmax = -np.inf
@@ -1113,6 +1198,10 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
 
     output_dir = os.path.join(output_dir, experiment, traj_name, f"ref={ref_traj_name}")
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Save logs.
+    file_handler = logging.FileHandler(os.path.join(output_dir, f"output.log"))
+    py_logger.addHandler(file_handler)
 
     py_logger.info(f"Plots will be saved to {output_dir}")
 
@@ -1217,6 +1306,10 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
     
     JSD_table = make_JSD_table(JSD_final_results)
     JSD_table.to_csv(os.path.join(output_dir, "JSDs.csv"))
+
+    plot_JSD_table(results_df, JSD_table)
+    plt.savefig(os.path.join(output_dir, "JSD_table.pdf"), dpi=300)
+    plt.close()
 
     plot_JSD_distribution(JSD_final_results, key="JSD_metastable_probs")
     plt.savefig(os.path.join(output_dir, "jsd_metastable_probs.pdf"), dpi=300)

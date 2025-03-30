@@ -220,23 +220,6 @@ def get_JAMUNReference_2AA_datasets(
 
     return {dataset.label(): dataset for dataset in datasets}
 
-def get_chignolin_reference_dataset(
-    data_path: str, split: str = "all"
-) -> Dict[str, data.MDtrajDataset]:
-    """Returns a dictionary mapping peptide names to our reference 2AA MDTraj trajectory."""
-
-    root = Path(data_path) / "fast-folding/processed/chignolin"
-    pdb_file = root / "filtered.pdb"
-
-    if split == "all":
-        traj_files = list(root.rglob("*.xtc"))
-    else:
-        traj_files = list((root / split).rglob("*.xtc"))
-
-    dataset = data.MDtrajDataset(root = str(root), pdb_file=str(pdb_file), traj_files=list(map(str, traj_files)), label="filtered")
-
-    return {"filtered" : dataset}
-
 
 def get_JAMUNReference_5AA_datasets(
     data_path: str, filter_codes: Optional[Sequence[str]] = None
@@ -309,24 +292,27 @@ def get_MDGen_5AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]]
     return {dataset.label(): dataset for dataset in datasets}
 
 
-def get_ChignolinReference_datasets(data_path: str, split: str = "all") -> Dict[str, data.MDtrajDataset]:
-    """Returns a dictionary mapping 'chignolin' to the datasets of Chignolin samples."""
-    def get_datasets_for_split(split: str):
-        return data.parse_datasets_from_directory(
-            root=f"{data_path}/fast-folding/processed/chignolin",
-            traj_pattern=f"{split}/^(.*).xtc",
-            pdb_file="filtered.pdb",
-        )
+def get_ChignolinReference_dataset(
+    data_path: str, split: str = "all"
+) -> Dict[str, data.MDtrajDataset]:
+    """Returns a dictionary mapping peptide names to our reference 2AA MDTraj trajectory."""
 
-    all_splits = ["train", "val", "test"]
-    if split in all_splits:
-        datasets = get_datasets_for_split(split)
-    elif split == "all":
-        datasets = sum([get_datasets_for_split(split) for split in all_splits], [])
+    root = Path(data_path) / "fast-folding/processed/chignolin"
+    pdb_file = root / "filtered.pdb"
+
+    if split == "all":
+        traj_files = list(root.rglob("*.xtc"))
     else:
-        raise ValueError(f"Invalid split: {split}")
+        traj_files = list((root / split).rglob("*.xtc"))
 
-    return {"chignolin": torch.utils.data.ConcatDataset(datasets)}
+    dataset = data.MDtrajDataset(
+        root = str(root),
+        pdb_file=str(pdb_file),
+        traj_files=list(map(str, traj_files)),
+        label="filtered"
+    )
+
+    return {"filtered" : dataset}
 
 
 def get_plot_path(plot_path: Optional[str] = None):
@@ -441,13 +427,9 @@ def load_trajectory_with_info(
             filter_codes=filter_codes,
         )[peptide]
     elif trajectory_name == "ChignolinReference":
-        if peptide != "chignolin":
-            raise ValueError("ChignolinReference only supports peptide 'chignolin'")
-        dataset = get_ChignolinReference_datasets(
+        dataset = get_ChignolinReference_dataset(
             data_path,
         )[peptide]
-    elif trajectory_name == "Chignolin":
-        dataset = get_chignolin_reference_dataset(data_path)[peptide]
     else:
         raise ValueError(f"Trajectory type {trajectory_name} not supported. Available options: JAMUN, MDGenReference, TimewarpReference, JAMUNReference_2AA, JAMUNReference_5AA, Chignolin")
 
