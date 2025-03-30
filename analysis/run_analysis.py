@@ -755,7 +755,6 @@ if __name__ == "__main__":
         args.wandb_run,
     )
 
-    raise ValueError(ref_traj)
     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
     py_logger.info(f"{args.trajectory} trajectory loaded: {traj} with info: {traj_info}")
     py_logger.info(f"{args.reference} reference trajectory loaded: {ref_traj} with info: {ref_traj_info}")
