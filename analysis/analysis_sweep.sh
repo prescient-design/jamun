@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=cpu
-#SBATCH --mem=8G
+#SBATCH --mem=32G
 #SBATCH --cpus-per-task=1
 #SBATCH --job-name=analysis_sweep
 #SBATCH --output=logs/%j_analysis_sweep.log

@@ -3,20 +3,17 @@ from typing import Dict, Optional, Any
 import os
 import pickle
 import argparse
-import functools
 
 import logging
 logging.getLogger('fontTools').setLevel(logging.ERROR)  # Only show errors, not warnings or info
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("analysis")
 
-import mdtraj as md
 import numpy as np
 import scipy.stats
-import pyemma
 import pandas as pd
-import lovelyplots
 import matplotlib.pyplot as plt
+import lovelyplots
 import matplotlib as mpl
 import matplotlib.colors
 mpl.rcParams['axes.formatter.useoffset'] = False
@@ -68,7 +65,7 @@ def load_results(results_dir: str, experiment: str, traj_name: str, ref_traj_nam
     return results_df
 
 
-def get_format_traj_name_fn(results_df):
+def get_format_traj_name_fn(results_df: pd.DataFrame):
     def format_traj_name_fn(traj_name: str) -> str:
         """Format the trajectory name for plotting"""
         known_names = {
@@ -76,9 +73,12 @@ def get_format_traj_name_fn(results_df):
             "ref_traj": "Reference",
             "ref_traj_10x": "Reference\n(10x shorter)",
             "ref_traj_100x": "Reference\n(100x shorter)",
+            "ref_traj_1000x": "Reference\n(1000x shorter)",
             "TBG": "TBG",
             "TBG_20x": "TBG\n(20x shorter)",
             "TBG_200x": "TBG\n(200x shorter)",
+            "JAMUN_0.2A": r"JAMUN\n($\sigma=0.2\AA$)",
+            "JAMUN_0.8A": r"JAMUN\n($\sigma=0.8\AA$)",
         }
         if traj_name in known_names:
             return known_names[traj_name]
@@ -87,17 +87,26 @@ def get_format_traj_name_fn(results_df):
     return format_traj_name_fn
 
 
-def get_short_format_traj_name_fn(results_df):
+def get_short_format_traj_name_fn(results_df: pd.DataFrame):
+    long_name = get_format_traj_name_fn(results_df)("traj")
+    if '\n' in long_name:
+        short_name = long_name.replace('\n', ' ')
+    else:
+        short_name = long_name
+
     def format_traj_name_fn(traj_name: str) -> str:
         """Format the trajectory name for plotting"""
         known_names = {
-            "traj": results_df.attrs["traj_name"],
+            "traj": short_name,
             "ref_traj": "Ref.",
             "ref_traj_10x": "Ref. (10x shorter)",
             "ref_traj_100x": "Ref. (100x shorter)",
+            "ref_traj_1000x": "Ref. (1000x shorter)",
             "TBG": "TBG",
             "TBG_20x": "TBG (20x shorter)",
             "TBG_200x": "TBG (200x shorter)",
+            "JAMUN_0.2A": r"JAMUN ($\sigma=0.2\AA$)",
+            "JAMUN_0.8A": r"JAMUN ($\sigma=0.8\AA$)",
         }
         if traj_name in known_names:
             return known_names[traj_name]
@@ -105,15 +114,20 @@ def get_short_format_traj_name_fn(results_df):
         return traj_name
     return format_traj_name_fn
 
-def get_colors_fn(results_df):
+
+def get_colors_fn(results_df: pd.DataFrame):
     colors = {
         'traj': '#FF7F0E',        # Orange
         'ref_traj': '#1F77B4',    # Dark blue
         'ref_traj_10x': '#6BAED6', # Medium blue
         'ref_traj_100x': '#BDD7E7', # Light blue
+        'ref_traj_1000x': '#F7FBFF', # Very light blue
         'TBG': '#2CA02C',         # Dark green
         'TBG_20x': '#74C476',     # Medium green
-        'TBG_200x': '#BAE4B3'     # Light green
+        'TBG_200x': '#BAE4B3',     # Light green
+        'JAMUN_0.2A': '#FFB366',  # Dark red
+        'JAMUN_0.8A': '#CC5500',  # Light red
+        'MDGen': '#DDA0DD', # Purple
     }
     return lambda traj_name: colors.get(traj_name, '#000000')  # Default to black if not found
 
@@ -142,12 +156,10 @@ def format_peptide_name(peptide: str) -> str:
         peptide = peptide[len("uncapped_"):]
     if peptide.startswith("capped_"):
         peptide = peptide[len("capped_"):]
-    if "_" in peptide:
-        return peptide.replace("_", "-")
     return utils.convert_to_one_letter_codes(peptide)
 
 
-def add_recursively(dict1, dict2, new_key_name):
+def add_recursively(dict1: Dict[str, Any], dict2: Dict[str, Any], new_key_name: str) -> None:
     """Recursively adds a key "traj" from dict2 to dict1 with the specified new_key_name."""
     if not isinstance(dict1, dict) or not isinstance(dict2, dict):
         return
@@ -202,7 +214,7 @@ def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
         num_dihedrals = 3
     elif "5AA" in experiment:
         num_dihedrals = 4
-    elif experiment == "Chignolin":
+    elif "Chignolin" in experiment:
         num_dihedrals = 9
 
     if pmf_type == "internal":
@@ -227,7 +239,7 @@ def get_JSD_results(results_df, quantity: str, name: str, key: str):
     return JSDs
 
 
-def get_all_JSD_results(results_df):
+def get_all_JSD_results(results_df: pd.DataFrame):
     """Helper to load all final JSD results."""
     JSD_results = {
         "JSD_backbone_torsions": {},
@@ -237,11 +249,11 @@ def get_all_JSD_results(results_df):
         "JSD_TICA-0,1": {},
         "JSD_metastable_probs": {},
     }
-    traj_names = ["traj", "ref_traj", "ref_traj_10x", "ref_traj_100x"]
-    if results_df.attrs["experiment"] == "Timewarp_2AA" and results_df.attrs["traj_name"] == "JAMUN":
-        traj_names.append("TBG")
-        traj_names.append("TBG_20x")
-        traj_names.append("TBG_200x")
+    traj_names = ["traj", "ref_traj"]
+    if results_df.attrs.get("extra_traj_names") is not None:
+        traj_names.extend(results_df.attrs["extra_traj_names"])
+    else:
+        traj_names = ["traj", "ref_traj", "ref_traj_10x", "ref_traj_100x"]
 
     for quantity in ["JSD_backbone_torsions", "JSD_sidechain_torsions", "JSD_all_torsions"]:
         for name in traj_names:
@@ -274,10 +286,10 @@ def get_JSD_results_against_time(results_df, quantity: str, name: str, key: str)
     for i, row in results_df.iterrows():  
         try:  
             results = row["results"][key]
+            progress = np.asarray(list(results[name].keys()))
         except KeyError:
             continue
 
-        progress = np.asarray(list(results[name].keys()))
         if JSD_vs_time["progress"] is None:
             JSD_vs_time["progress"] = progress
         
@@ -290,7 +302,7 @@ def get_JSD_results_against_time(results_df, quantity: str, name: str, key: str)
     return JSD_vs_time
 
 
-def get_all_JSD_results_against_time(results_df):
+def get_all_JSD_results_against_time(results_df: pd.DataFrame):
     """Helper to load all JSD vs time results."""
     
     JSD_results = {
@@ -302,11 +314,10 @@ def get_all_JSD_results_against_time(results_df):
         "JSD_metastable_probs": {},
     }
     traj_names = ["traj", "ref_traj"]
-    if results_df.attrs["experiment"] == "Timewarp_2AA" and results_df.attrs["traj_name"] == "JAMUN":
-        traj_names.append("TBG")
-        traj_names.append("TBG_20x")
-        traj_names.append("TBG_200x")
-
+    if results_df.attrs.get("extra_traj_names") is not None:
+        traj_names.extend(results_df.attrs["extra_traj_names"])
+    else:
+        traj_names = ["traj", "ref_traj", "ref_traj_10x", "ref_traj_100x"]
 
     for quantity in ["JSD_backbone_torsions", "JSD_sidechain_torsions", "JSD_all_torsions"]:
         for name in traj_names:
@@ -329,7 +340,7 @@ def get_all_JSD_results_against_time(results_df):
     return JSD_results
 
 
-def plot_ramachandran_against_reference(results_df) -> None:
+def plot_ramachandran_against_reference(results_df: pd.DataFrame) -> None:
     """Plots Ramachandran contours against the reference trajectory."""
     pmf_type = "all"
     experiment = results_df.attrs["experiment"]
@@ -406,7 +417,7 @@ def plot_ramachandran_against_reference(results_df) -> None:
 
 
 
-def plot_ramachandran_against_reference_shortened(results_df) -> None:
+def plot_ramachandran_against_reference_shortened(results_df: pd.DataFrame) -> None:
     """Plots Ramachandran contours against a shortened reference trajectory."""
     pmf_type = "all"
     experiment = results_df.attrs["experiment"]
@@ -487,146 +498,48 @@ def plot_ramachandran_against_reference_shortened(results_df) -> None:
     plt.subplots_adjust(hspace=0.06, wspace=0.04)
 
 
-
-def plot_ramachandran_against_TBG(results_df) -> None:
-    """Plots Ramachandran contours against the TBG trajectory."""
-    pmf_type = "all"
-    experiment = results_df.attrs["experiment"]
-    num_dihedrals = get_num_dihedrals(experiment, pmf_type)
-    label_offset = 0.0 if num_dihedrals % 2 == 0 else 0.5
-    format_traj_name_fn = get_format_traj_name_fn(results_df)
-    
-    ones = list(np.ones(num_dihedrals))
-    fig, axs = plt.subplots(len(results_df), 4 * num_dihedrals + 3, figsize=(12 * num_dihedrals, 4 * len(results_df)),gridspec_kw={'width_ratios': ones+[0.1]+ones+[0.1]+ones+[0.1]+ones,'hspace':0.1}, squeeze=False)
-
-    for i, row in results_df.iterrows():
-        peptide = row["peptide"]
-
-        for j in range(num_dihedrals):
-            plot_ramachandran_contour(row["results"]["PMFs"]["ref_traj"][f"pmf_{pmf_type}"], j, axs[i, j])
-            plot_ramachandran_contour(row["results"]["PMFs"]["traj"][f"pmf_{pmf_type}"], j, axs[i, j + num_dihedrals + 1])
-            plot_ramachandran_contour(row["results"]["PMFs"]["TBG"][f"pmf_{pmf_type}"], j, axs[i, j + 2 * num_dihedrals + 2])
-            plot_ramachandran_contour(row["results"]["PMFs"]["TBG_200x"][f"pmf_{pmf_type}"], j, axs[i, j + 3 * num_dihedrals + 3])
-
-        # Add labels.
-        ax_index = num_dihedrals // 2
-        axs[0, ax_index].text(
-            label_offset,
-            1.4,
-            format_traj_name_fn("ref_traj"),
-            horizontalalignment="center",
-            verticalalignment="top",
-            transform=axs[0, ax_index].transAxes,
-            fontsize=22,
-        )
-
-        ax_index = num_dihedrals // 2 + num_dihedrals + 1
-        axs[0, ax_index].text(
-            label_offset,
-            1.4,
-            format_traj_name_fn("traj"),
-            horizontalalignment="center",
-            verticalalignment="top",
-            transform=axs[0, ax_index].transAxes,
-            fontsize=22,
-        )
-        
-        ax_index = num_dihedrals // 2 + 2 * num_dihedrals + 2
-        axs[0, ax_index].text(
-            label_offset,
-            1.4,
-            format_traj_name_fn("TBG"),
-            horizontalalignment="center",
-            verticalalignment="top",
-            transform=axs[0, ax_index].transAxes,
-            fontsize=22,
-        )
-
-        ax_index = num_dihedrals // 2 + 3 * num_dihedrals + 3
-        axs[0, ax_index].text(
-            label_offset,
-            1.4,
-            format_traj_name_fn("ref_traj_100x"),
-            horizontalalignment="center",
-            verticalalignment="top",
-            transform=axs[0, ax_index].transAxes,
-            fontsize=22,
-        )
-
-        ax_index = -1
-        axs[i, ax_index].text(
-            1.1,
-            0.5,
-            format_peptide_name(peptide),
-            rotation=90,
-            verticalalignment="center",
-            horizontalalignment="center",
-            transform=axs[i, ax_index].transAxes,
-            fontsize=18,
-        )
-
-        axs[i, num_dihedrals].axis("off")
-        axs[i, 2 * num_dihedrals + 1].axis("off")
-        axs[i, 3 * num_dihedrals + 2].axis("off")
-
-        if i != len(axs) - 1:
-            for j in range(len(axs[i])):
-                axs[i, j].set_xticks([])
-                axs[i, j].set_xlabel("")
-
-        for j in range(1,len(axs[i])):
-            axs[i, j].set_yticks([])
-            axs[i, j].set_ylabel("")
-            
-
-    plt.subplots_adjust(hspace=0.06, wspace=0.04)
-
-
-
-def plot_ramachandran_for_single_peptide(results_df, peptide) -> None:
-    """Plots Ramachandran contours for a single peptide."""
+def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide: str) -> None:
+    """Plots Ramachandran contours for a single peptide against all trajectories."""
     pmf_type = "all"
     experiment = results_df.attrs["experiment"]
     num_dihedrals = get_num_dihedrals(experiment, pmf_type)
     format_traj_name_fn = get_format_traj_name_fn(results_df)
     
     row = results_df[results_df["peptide"] == peptide].iloc[0]
-    fig, axs = plt.subplots(2, num_dihedrals, figsize=(4 * num_dihedrals, 8), squeeze=False)
-    for j in range(num_dihedrals):
-        plot_ramachandran_contour(row["results"]["PMFs"]["ref_traj"][f"pmf_{pmf_type}"], j, axs[0, j])
-        plot_ramachandran_contour(row["results"]["PMFs"]["traj"][f"pmf_{pmf_type}"], j, axs[1, j])
+    trajs = row["results"]["PMFs"].keys()
+    trajs = ["ref_traj"] + [traj for traj in trajs if traj not in ["ref_traj", "ref_traj_10x", "ref_traj_100x", "ref_traj_1000x", "TBG_200x"]]
 
-    for i in range(2):
-        for j in range(1,len(axs[i])):
+    if len(trajs) == 2:
+        trajs = ["ref_traj", "traj", "ref_traj_10x"]
+
+    fig, axs = plt.subplots(len(trajs), num_dihedrals, figsize=(max(3 * num_dihedrals, 12), 8), squeeze=False)
+    for j in range(num_dihedrals):
+        for k, traj in enumerate(trajs):
+            plot_ramachandran_contour(row["results"]["PMFs"][traj][f"pmf_{pmf_type}"], j, axs[k, j])
+
+    for i in range(len(axs)):
+        for j in range(1, len(axs[i])):
             axs[i, j].set_yticks([])
             axs[i, j].set_ylabel("")
 
-    for j in range(len(axs[0])):
-        axs[0, j].set_xticks([])
-        axs[0, j].set_xlabel("")
+    for i in range(len(axs) - 1):
+        for j in range(len(axs[i])):
+            axs[i, j].set_xticks([])
+            axs[i, j].set_xlabel("")
         
     # Add labels.
-    axs[0, -1].text(
-        1.1,
-        0.5,
-        format_traj_name_fn("ref_traj"),
-        rotation=90,
-        verticalalignment="center",
-        horizontalalignment="center",
-        transform=axs[0, -1].transAxes,
-    )
-    axs[1, -1].text(
-        1.1,
-        0.5,
-        format_traj_name_fn("traj"),
-        rotation=90,
-        verticalalignment="center",
-        horizontalalignment="center",
-        transform=axs[1, -1].transAxes,
-    )
+    for k, traj in enumerate(trajs):
+        axs[k, -1].text(
+            1.15,
+            0.5,
+            format_traj_name_fn(traj),
+            rotation=90,
+            verticalalignment="center",
+            horizontalalignment="center",
+            transform=axs[k, -1].transAxes,
+        )
     fig.suptitle(format_peptide_name(peptide))
-    plt.subplots_adjust(hspace=0.06, wspace=0.04)
-
+    plt.subplots_adjust(hspace=0.07, wspace=0.07)
 
 
 def plot_torsion_histograms(results_df) -> None:
@@ -730,8 +643,8 @@ def collect_torsion_angle_decorrelation_times(results_df) -> None:
         results = row["results"]["torsion_decorrelations"]
 
         for feat in results:
-            ref_decorrelation_time = results[feat]["ref_traj_decorrelation_time"]
-            traj_decorrelation_time = results[feat]["traj_decorrelation_time"]
+            ref_decorrelation_time = results[feat]["ref_traj"]["decorrelation_time"]
+            traj_decorrelation_time = results[feat]["traj"]["decorrelation_time"]
 
             if 'PHI' in feat or 'PSI' in feat:
                 torsion_type = "backbone"
@@ -756,7 +669,7 @@ def collect_torsion_angle_decorrelation_times(results_df) -> None:
     return torsion_decorrelation_times, total_count
     
 
-def plot_backbone_decorrelation_times(results_df, torsion_decorrelation_times: Dict[str, Dict[str, np.ndarray]]) -> None:
+def plot_backbone_decorrelation_times(results_df: pd.DataFrame, torsion_decorrelation_times: Dict[str, Dict[str, np.ndarray]]) -> None:
     # Scatter plot of probabilities.
     format_traj_name_fn = get_format_traj_name_fn(results_df)
     plt.scatter(torsion_decorrelation_times["ref_traj"]["backbone"], torsion_decorrelation_times["traj"]["backbone"], alpha=0.3, edgecolors="none", color='tab:blue')
@@ -790,7 +703,7 @@ def plot_backbone_decorrelation_speedups(torsion_decorrelation_times):
     """Plots the speedups of backbone torsion decorrelation times."""
     backbone_torsion_speedups = torsion_decorrelation_times["ref_traj"]["backbone"] / torsion_decorrelation_times["traj"]["backbone"]
 
-    bins = np.logspace(np.log10(np.min(backbone_torsion_speedups)), np.log10(np.max(backbone_torsion_speedups)), 21)
+    bins = np.geomspace(np.min(backbone_torsion_speedups), np.max(backbone_torsion_speedups) + 1e-5, 21)
     plt.hist(backbone_torsion_speedups, bins=bins)
     plt.xscale("log")
     plt.xlabel("Speedup Factor")
@@ -834,7 +747,7 @@ def plot_sidechain_decorrelation_times(results_df, torsion_decorrelation_times: 
 def plot_sidechain_decorrelation_speedups(torsion_decorrelation_times) -> None:
     sidechain_torsion_speedups = torsion_decorrelation_times["ref_traj"]["sidechain"] / torsion_decorrelation_times["traj"]["sidechain"]
 
-    bins = np.geomspace(np.min(sidechain_torsion_speedups), np.max(sidechain_torsion_speedups), 21)
+    bins = np.geomspace(np.min(sidechain_torsion_speedups), np.max(sidechain_torsion_speedups) + 1e-5, 21)
     plt.hist(sidechain_torsion_speedups, bins=bins)
     plt.xscale("log")
     plt.xlabel("Speedup Factor")
@@ -856,7 +769,7 @@ def plot_JSD_distribution(JSD_final_results, key: str):
     plt.tight_layout()
 
 
-def plot_metastable_probs(results_df):
+def plot_metastable_probs(results_df: pd.DataFrame):
     """Plot metastable state probabilities against the reference trajectory."""
     metastable_probs = collect_metastable_probs(results_df)
     format_traj_name_fn = get_format_traj_name_fn(results_df)
@@ -886,7 +799,7 @@ def plot_metastable_probs(results_df):
     # plt.tight_layout()
 
 
-def plot_JSD_against_time(results_df):
+def plot_JSD_against_time(results_df: pd.DataFrame):
     """Plot JSD against trajectory progress for all peptides."""
     JSD_results = get_all_JSD_results_against_time(results_df)
     format_traj_name_fn = get_format_traj_name_fn(results_df)
@@ -924,7 +837,7 @@ def plot_JSD_against_time(results_df):
     return figs
 
 
-def plot_TICA_histograms(results_df):
+def plot_TICA_histograms(results_df: pd.DataFrame):
     """Plots TICA histograms for the sampled peptides."""
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
@@ -967,10 +880,9 @@ def collect_TICA_0_speedups(results_df: pd.DataFrame) -> np.ndarray:
     """Collects the speedups of TICA-0 decorrelation times from the results DataFrame."""
     tica_0_speedups = []
     for i, row in results_df.iterrows():
-        peptide = row["peptide"]
         results = row["results"]["TICA_decorrelations"]
         
-        speedup_factor = results['ref_traj_decorrelation_time'] / results['traj_decorrelation_time']
+        speedup_factor = results["ref_traj"]["decorrelation_time"] / results["traj"]["decorrelation_time"]
         if np.isnan(speedup_factor):
             continue
 
@@ -1042,6 +954,7 @@ def plot_TICA_0_speedups(results_df: pd.DataFrame) -> None:
     tica_0_speedups = collect_TICA_0_speedups(results_df)
     py_logger.info(f"Number of systems with valid decorrelations: {len(tica_0_speedups)} out of {len(results_df)}")
 
+    # Scatter plot of speedups.
     bins = np.geomspace(np.min(tica_0_speedups), np.max(tica_0_speedups), 21)
     plt.hist(tica_0_speedups, bins=bins)
     plt.xscale("log")
@@ -1075,7 +988,7 @@ def collect_metastable_probs(results_df: pd.DataFrame) -> Dict[str, np.ndarray]:
     return metastable_probs
 
 
-def plot_transition_matrices(results_df):
+def plot_transition_matrices(results_df: pd.DataFrame):
     """Plots the transition matrices for the sampled peptides."""
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
@@ -1115,7 +1028,7 @@ def plot_transition_matrices(results_df):
     fig.colorbar(im, ax=axs, orientation='vertical', fraction=0.022)
 
 
-def plot_flux_matrices(results_df):
+def plot_flux_matrices(results_df: pd.DataFrame):
     """Plots the flux matrices for the sampled peptides."""
     format_traj_name_fn = get_format_traj_name_fn(results_df)
     fig, axs = plt.subplots(2, len(results_df), figsize=(15, 5), squeeze=False)
@@ -1167,7 +1080,7 @@ def plot_flux_matrices(results_df):
     fig.colorbar(im, ax=axs, orientation='vertical', fraction=0.022)
 
 
-def get_transition_matrix_correlations(results_df):
+def get_transition_matrix_correlations(results_df: pd.DataFrame):
     """Collects the transition matrix correlations from the results DataFrame."""
     correlations = []
     for i, row in results_df.iterrows():
@@ -1180,7 +1093,7 @@ def get_transition_matrix_correlations(results_df):
     return np.asarray(correlations)
 
 
-def get_flux_matrix_correlations(results_df):
+def get_flux_matrix_correlations(results_df: pd.DataFrame):
     """Collects the flux matrix correlations from the results DataFrame."""
     correlations = []
     for i, row in results_df.iterrows():
@@ -1191,6 +1104,54 @@ def get_flux_matrix_correlations(results_df):
         
         correlations.append(correlation)
     return np.asarray(correlations)
+
+
+def add_extra_trajectories(results_df: pd.DataFrame, results_dir: str, experiment: str, traj_name: str, ref_traj_name: str) -> pd.DataFrame:
+    """Adds extra trajectories to the results DataFrame."""
+    extra_results_dfs = None
+    if experiment == "Timewarp_2AA" and traj_name == "JAMUN":
+        extra_results_dfs = {
+            "TBG": load_results(results_dir, "Timewarp_2AA", "TBG", ref_traj_name),
+            "TBG_20x": load_results(results_dir, "Timewarp_2AA", "TBG_20x", ref_traj_name),
+            "TBG_200x": load_results(results_dir, "Timewarp_2AA", "TBG_200x", ref_traj_name)
+        }
+
+    if experiment == "Timewarp_4AA_0.4A" and traj_name == "JAMUN":
+        extra_results_dfs = {
+            "JAMUN_0.2A": load_results(results_dir, "Timewarp_4AA_0.2A", "JAMUN", ref_traj_name),
+            "JAMUN_0.8A": load_results(results_dir, "Timewarp_4AA_0.8A", "JAMUN", ref_traj_name),
+        }
+        results_df.attrs["traj_name"] = r"JAMUN ($\sigma=0.4\AA$)"
+        results_df.attrs["compare_JSD_against_reference"] = False
+
+    if experiment == "MDGen_4AA" and traj_name == "JAMUN":
+        extra_results_dfs = {
+            "MDGen": load_results(results_dir, experiment, "MDGenSamples_4AA", ref_traj_name),
+        }
+
+    if experiment == "Chignolin" and traj_name == "JAMUN_2x":
+        results_df.attrs["traj_name"] = "JAMUN"
+
+    if extra_results_dfs is None:
+        return
+
+    # Add extra results to the main results.
+    for name, extra_results_df in extra_results_dfs.items():
+        for i, row in results_df.iterrows():
+            peptide = row["peptide"]
+
+            try:
+                tbg_row = extra_results_df[extra_results_df["peptide"] == peptide].iloc[0]
+            except IndexError:
+                py_logger.warning(f"No results found for peptide {peptide} in {name}.")
+                continue
+
+            original_results = row["results"]
+            tbg_results = tbg_row["results"]
+
+            add_recursively(original_results, tbg_results, new_key_name=name)
+
+    results_df.attrs["extra_traj_names"] = list(extra_results_dfs.keys())
 
 
 def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir: str, output_dir: str) -> None:
@@ -1205,39 +1166,19 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
 
     py_logger.info(f"Plots will be saved to {output_dir}")
 
-    # Load All Trajectories
+    # Load all trajectories
     results_df = load_results(results_dir, experiment, traj_name, ref_traj_name)
 
-    # Also, load TBG results for the same experiment.      
-    if experiment == "Timewarp_2AA" and traj_name == "JAMUN":
-        tbg_results_dfs = {
-            "TBG": load_results(results_dir, "Timewarp_2AA", "TBG", ref_traj_name),
-            "TBG_20x": load_results(results_dir, "Timewarp_2AA", "TBG_20x", ref_traj_name),
-            "TBG_200x": load_results(results_dir, "Timewarp_2AA", "TBG_200x", ref_traj_name)
-        }
-
-        # Add TBG results to the main results.
-        for name, tbg_results_df in tbg_results_dfs.items():
-            for i, row in results_df.iterrows():
-                peptide = row["peptide"]
-
-                try:
-                    tbg_row = tbg_results_df[tbg_results_df["peptide"] == peptide].iloc[0]
-                except IndexError:
-                    raise ValueError(f"Warning: No TBG results found for peptide {peptide} in {name}.")
-    
-                original_results = row["results"]
-                tbg_results = tbg_row["results"]
-
-                add_recursively(original_results, tbg_results, new_key_name=name)
-
+    # Add any extra trajectories to compare.
+    add_extra_trajectories(results_df, results_dir, experiment, traj_name, ref_traj_name)    
     py_logger.info(f"Loaded {len(results_df)} results for {experiment}.")
 
     # Filter based on peptide names.
     if "5AA" in experiment:
         peptides = ["KTYDI", "NRLCQ", "VWSPF"]
         peptides = ["uncapped_" + peptide for peptide in peptides]
-        sampled_results_df = results_df[results_df["peptide"].isin(peptides)]
+        results_df = results_df[results_df["peptide"].isin(peptides)]
+        sampled_results_df = results_df.copy()
 
     else:
         # Sample 4 random peptides
@@ -1255,17 +1196,11 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
     plt.savefig(os.path.join(output_dir, "ramachandran_contours_with_shortened_reference.pdf"), dpi=300)
     plt.close()
 
-    # For experiment "Timewarp_2AA", plot the TBG results as well.
-    if experiment == "Timewarp_2AA":
-        plot_ramachandran_against_TBG(sampled_results_df)
-        plt.savefig(os.path.join(output_dir, "ramachandran_contours_with_TBG.pdf"), dpi=300)
-        plt.close()
-
     # Ramachandran Plots for a Single Peptide
-    peptide = sampled_results_df.iloc[0]["peptide"]
-    plot_ramachandran_for_single_peptide(sampled_results_df, peptide)
-    plt.savefig(os.path.join(output_dir, f"ramachandran_contours_{peptide}.pdf"), dpi=300)
-    plt.close()
+    for peptide in sampled_results_df["peptide"]:
+        plot_ramachandran_against_all_trajectories(sampled_results_df, peptide)
+        plt.savefig(os.path.join(output_dir, f"ramachandran_contours_{format_peptide_name(peptide)}.pdf"), dpi=300)
+        plt.close()
 
     # Torsion Histograms
     plot_torsion_histograms(sampled_results_df)
@@ -1305,10 +1240,10 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
     JSD_final_results = get_all_JSD_results(results_df)
     
     JSD_table = make_JSD_table(JSD_final_results)
-    JSD_table.to_csv(os.path.join(output_dir, "JSDs.csv"))
+    JSD_table.to_csv(os.path.join(output_dir, "jsd_table.csv"))
 
     plot_JSD_table(results_df, JSD_table)
-    plt.savefig(os.path.join(output_dir, "JSD_table.pdf"), dpi=300)
+    plt.savefig(os.path.join(output_dir, "jsd_table.pdf"), dpi=300)
     plt.close()
 
     plot_JSD_distribution(JSD_final_results, key="JSD_metastable_probs")
@@ -1327,9 +1262,12 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
     plt.close()
 
     # TICA Projection Decorrelation Speedups
-    plot_TICA_0_speedups(results_df)
-    plt.savefig(os.path.join(output_dir, "tica_0_speedups.pdf"), dpi=300)
-    plt.close()
+    try:
+        plot_TICA_0_speedups(results_df)
+        plt.savefig(os.path.join(output_dir, "tica_0_speedups.pdf"), dpi=300)
+        plt.close()
+    except ValueError:
+        py_logger.warning("No TICA-0 speedups found.")
 
     # MSM State Probabilities
     plot_metastable_probs(results_df)
@@ -1389,7 +1327,13 @@ if __name__ == "__main__":
 
     experiment = args.experiment
     traj_name = args.trajectory
+    if traj_name is None:
+        traj_name = os.listdir(os.path.join(analysis_dir, experiment))[0]
+
     ref_traj_name = args.reference
+    if ref_traj_name is None:
+        ref_traj_name = os.listdir(os.path.join(analysis_dir, experiment, traj_name))[0]
+        ref_traj_name = ref_traj_name[len("ref="):]
     
     py_logger.info(f"Experiment: {experiment}")
     py_logger.info(f"Trajectory: {traj_name}")

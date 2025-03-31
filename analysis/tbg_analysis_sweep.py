@@ -26,9 +26,9 @@ def main():
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Read all peptides.
+    # Read all test peptides.
     data_path = load_trajectory.get_data_path(args.data_path)
-    datasets = load_trajectory.get_TimewarpReference_datasets(data_path, peptide_type="2AA")
+    datasets = load_trajectory.get_TimewarpReference_datasets(data_path, peptide_type="2AA", split="test")
     peptides = list(sorted(datasets.keys()))
 
     # Choose row to analyze.

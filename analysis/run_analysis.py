@@ -285,19 +285,23 @@ def compute_torsion_decorrelations(traj_featurized: np.ndarray, ref_traj_featuri
     
     torsion_decorrelations = collections.defaultdict(dict)
     for i, feat in enumerate(feats.describe()):
-        baseline = np.sin(ref_traj[:,i]).mean()**2 + np.cos(ref_traj[:,i]).mean()**2
         
-        ref_traj_autocorrelations, ref_traj_decorrelation_time = autocorrelation_and_decorrelation_time(
-            ref_traj[:, i], baseline
-        )
-        torsion_decorrelations[feat]["ref_traj_autocorrelations"] = ref_traj_autocorrelations
-        torsion_decorrelations[feat]["ref_traj_decorrelation_time"] = ref_traj_decorrelation_time
+        torsion_decorrelations[feat]["ref_traj"] = {}
+        torsion_decorrelations[feat]["traj"] = {}
 
-        traj_autocorrelations, traj_decorrelation_time = autocorrelation_and_decorrelation_time(
-            traj[:, i], baseline
+        ref_baseline = np.sin(ref_traj[:, i]).mean()**2 + np.cos(ref_traj[:, i]).mean()**2
+        ref_traj_autocorrelations, ref_traj_decorrelation_time = autocorrelation_and_decorrelation_time(
+            ref_traj[:, i], ref_baseline
         )
-        torsion_decorrelations[feat]["traj_autocorrelations"] = traj_autocorrelations
-        torsion_decorrelations[feat]["traj_decorrelation_time"] = traj_decorrelation_time
+        torsion_decorrelations[feat]["ref_traj"]["autocorrelations"] = ref_traj_autocorrelations
+        torsion_decorrelations[feat]["ref_traj"]["decorrelation_time"] = ref_traj_decorrelation_time
+
+        traj_baseline = np.sin(traj[:, i]).mean()**2 + np.cos(traj[:, i]).mean()**2
+        traj_autocorrelations, traj_decorrelation_time = autocorrelation_and_decorrelation_time(
+            traj[:, i], traj_baseline
+        )
+        torsion_decorrelations[feat]["traj"]["autocorrelations"] = traj_autocorrelations
+        torsion_decorrelations[feat]["traj"]["decorrelation_time"] = traj_decorrelation_time
     
     return torsion_decorrelations
 
@@ -308,8 +312,8 @@ def compute_TICA(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray) -
     ref_traj_tica = tica.transform(ref_traj_featurized)
     traj_tica = tica.transform(traj_featurized)
     return {
-        "traj_tica": traj_tica,
-        "ref_traj_tica": ref_traj_tica,
+        "traj": traj_tica,
+        "ref_traj": ref_traj_tica,
         "tica": tica,
     }
 
@@ -383,10 +387,14 @@ def compute_TICA_decorrelations(traj_tica: np.ndarray, ref_traj_tica: np.ndarray
         traj_decorrelation_time = np.nan
 
     return {
-        "ref_autocorr": ref_autocorr,
-        "ref_traj_decorrelation_time": ref_traj_decorrelation_time,
-        "traj_autocorr": traj_autocorr,
-        "traj_decorrelation_time": traj_decorrelation_time
+        "ref_traj": {
+            "autocorr": ref_autocorr,
+            "decorrelation_time": ref_traj_decorrelation_time
+        },
+        "traj": {
+            "autocorr": traj_autocorr,
+            "decorrelation_time": traj_decorrelation_time
+        }
     }
 
 
@@ -583,8 +591,8 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     )
     py_logger.info(f"TICA computed.")
 
-    traj_tica = results["TICA"]["traj_tica"]
-    ref_traj_tica = results["TICA"]["ref_traj_tica"]
+    traj_tica = results["TICA"]["traj"]
+    ref_traj_tica = results["TICA"]["ref_traj"]
 
     traj_ticas_to_compare = {
         "traj": traj_tica,
@@ -674,8 +682,8 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
     if not args.no_delete_intermediates:
         del results["featurization"]["traj"]["traj_featurized"]
         del results["featurization"]["ref_traj"]["traj_featurized"]
-        del results["TICA"]["traj_tica"]
-        del results["TICA"]["ref_traj_tica"]
+        del results["TICA"]["traj"]
+        del results["TICA"]["ref_traj"]
 
     trajectory = args.trajectory
     if args.shorten_trajectory_factor is not None:
@@ -754,6 +762,15 @@ if __name__ == "__main__":
         args.run_path,
         args.wandb_run,
     )
+
+    # Remove OXT atom from MDGenReference trajectory, if comparing to MDGen samples.
+    if args.trajectory.startswith("MDGenSamples_"):
+        indices = ref_traj.topology.select('not name OXT')
+        ref_traj = ref_traj.atom_slice(indices)
+
+        # Renumber residue indices to start from 1.
+        for i, res in enumerate(traj.topology.residues):
+            res.resSeq = i + 1
 
     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
     py_logger.info(f"{args.trajectory} trajectory loaded: {traj} with info: {traj_info}")

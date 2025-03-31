@@ -45,9 +45,11 @@ def main():
     # Choose row to analyze.
     peptide = peptides[args.row_index]
 
-    trajectory = f"MDGen_4AA"
+    if args.peptide_type == "4AA":
+        trajectory = "MDGenSamples_4AA"
     if args.peptide_type == "5AA":
-        trajectory = f"MDGen_5AA"
+        trajectory = "MDGenSamples_5AA"
+
     analysis_sweep.run_analysis(
         peptide=peptide,
         trajectory=trajectory,

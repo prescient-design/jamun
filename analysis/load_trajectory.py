@@ -163,9 +163,12 @@ def get_TimewarpReference_datasets(
 ) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the Timewarp reference trajectory."""
     # Timewarp trajectory files are in one-letter format.
-    one_letter_filter_codes = ["".join([utils.convert_to_one_letter_code(aa) for aa in code]) for code in filter_codes]
-    assert len(set(one_letter_filter_codes)) == len(one_letter_filter_codes), "Filter codes must be unique"
-
+    if filter_codes is None:
+        one_letter_filter_codes = None
+    else:
+        one_letter_filter_codes = ["".join([utils.convert_to_one_letter_code(aa) for aa in code]) for code in filter_codes]
+        assert len(set(one_letter_filter_codes)) == len(one_letter_filter_codes), "Filter codes must be unique"
+    
     if peptide_type == "all":
         peptide_type_dirs = ["2AA-1-large", "4AA-large"]
     elif peptide_type == "2AA":
@@ -192,6 +195,9 @@ def get_TimewarpReference_datasets(
         datasets = sum([get_datasets_for_split(split) for split in all_splits], [])
     else:
         raise ValueError(f"Invalid split: {split}")
+
+    if filter_codes is None:
+        return {dataset.label(): dataset for dataset in datasets}
 
     # Remap keys.
     filter_codes_map = dict(zip(one_letter_filter_codes, filter_codes))
@@ -259,7 +265,7 @@ def get_JAMUNReference_5AA_datasets(
     return {dataset.label(): dataset for dataset in datasets}
 
 
-def get_TBG_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
+def get_TBGSamples_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the datasets of TBG samples."""
     datasets = data.parse_datasets_from_directory(
         root=f"{data_path}/tbg-samples/",
@@ -270,7 +276,7 @@ def get_TBG_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = Non
     return {dataset.label(): dataset for dataset in datasets}
 
 
-def get_MDGen_4AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
+def get_MDGenSamples_4AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the datasets of MDGen samples for 4AA systems."""
     datasets = data.parse_datasets_from_directory(
         root=f"{data_path}/mdgen-samples/4AA_test",
@@ -281,7 +287,7 @@ def get_MDGen_4AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]]
     return {dataset.label(): dataset for dataset in datasets}
 
 
-def get_MDGen_5AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
+def get_MDGenSamples_5AA_datasets(data_path: str, filter_codes: Optional[Sequence[str]] = None) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the datasets of MDGen samples for 5AA systems."""
     datasets = data.parse_datasets_from_directory(
         root=f"{data_path}/mdgen-samples/5AA_test",
@@ -412,17 +418,17 @@ def load_trajectory_with_info(
             filter_codes=filter_codes,
         )[peptide]
     elif trajectory_name == "TBG":
-        dataset = get_TBG_datasets(
+        dataset = get_TBGSamples_datasets(
             data_path,
             filter_codes=filter_codes,
         )[peptide]
-    elif trajectory_name == "MDGen_4AA":
-        dataset = get_MDGen_4AA_datasets(
+    elif trajectory_name == "MDGenSamples_4AA":
+        dataset = get_MDGenSamples_4AA_datasets(
             data_path,
             filter_codes=filter_codes,
         )[peptide]
-    elif trajectory_name == "MDGen_5AA":
-        dataset = get_MDGen_5AA_datasets(
+    elif trajectory_name == "MDGenSamples_5AA":
+        dataset = get_MDGenSamples_5AA_datasets(
             data_path,
             filter_codes=filter_codes,
         )[peptide]
