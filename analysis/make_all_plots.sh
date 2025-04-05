@@ -1,8 +1,8 @@
 #!/bin/bash
 
-source ../.env
+# source ../.env
 
-# export JAMUN_PLOT_PATH=plots
+export JAMUN_PLOT_PATH=plots
 
 python make_plots.py --experiment Our_2AA --plot-dir ${JAMUN_PLOT_PATH} --trajectory JAMUN
 python make_plots.py --experiment Timewarp_2AA --plot-dir ${JAMUN_PLOT_PATH} --trajectory JAMUN

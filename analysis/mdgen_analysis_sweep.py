@@ -7,11 +7,14 @@ sys.path.append("./")
 import load_trajectory
 import analysis_sweep
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Run analysis of TBG trajectories for multiple peptides")
+    parser = argparse.ArgumentParser(description="Run analysis of MDGen trajectories for multiple peptides")
     parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
     parser.add_argument(
-        "--row-index", type=int, help="Row index to analyze",
+        "--row-index",
+        type=int,
+        help="Row index to analyze",
     )
     parser.add_argument(
         "--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
@@ -38,9 +41,10 @@ def main():
         raise ValueError(f"Invalid peptide type: {args.peptide_type}")
 
     # List all peptides.
-    peptides = [os.path.basename(filename).split("_")[0] for filename in os.listdir(samples_path) if filename.endswith(".pdb")]
+    peptides = [
+        os.path.basename(filename).split("_")[0] for filename in os.listdir(samples_path) if filename.endswith(".pdb")
+    ]
     peptides = list(sorted(peptides))
-    print(f"Peptides: {peptides}")
 
     # Choose row to analyze.
     peptide = peptides[args.row_index]
@@ -57,7 +61,7 @@ def main():
         run_path=None,
         experiment=args.experiment,
         output_dir=args.output_dir,
-        shorten_trajectory_factor=args.shorten_trajectory_factor
+        shorten_trajectory_factor=args.shorten_trajectory_factor,
     )
 
 

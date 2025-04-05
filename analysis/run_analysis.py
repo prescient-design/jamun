@@ -30,7 +30,6 @@ warnings.filterwarnings("ignore", category=pyemma.util.exceptions.PyEMMA_Depreca
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-
 def subset_reference_trajectory(
     traj_md: md.Trajectory,
     ref_traj_md: md.Trajectory,
@@ -105,7 +104,6 @@ def compute_feature_histograms(traj_featurized_dict: Dict[str, np.ndarray]) -> D
     }
 
 
-
 def compute_PMF(
     traj_featurized: np.ndarray,
     feats: pyemma.coordinates.data.MDFeaturizer,
@@ -143,9 +141,7 @@ def compute_PMF(
     }
 
 
-def compute_dihedral_PMFs(
-    traj: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
-) -> Dict[str, np.ndarray]:
+def compute_dihedral_PMFs(traj: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer) -> Dict[str, np.ndarray]:
     """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
     return {
         "pmf_all": compute_PMF(traj, feats, internal_angles=False),
@@ -200,16 +196,10 @@ def compute_JSD_torsions(
 
     # Compute JSDs for backbone, sidechain, and all torsions.
     results["JSD_backbone_torsions"] = np.mean(
-        [
-            results["JSD_" + feat] for feat in feats.describe()
-            if feat.startswith("PHI") or feat.startswith("PSI")
-        ]
+        [results["JSD_" + feat] for feat in feats.describe() if feat.startswith("PHI") or feat.startswith("PSI")]
     )
     results["JSD_sidechain_torsions"] = np.mean(
-        [
-            results["JSD_" + feat] for feat in feats.describe()
-            if feat.startswith("CHI")
-        ]
+        [results["JSD_" + feat] for feat in feats.describe() if feat.startswith("CHI")]
     )
     results["JSD_all_torsions"] = np.mean(
         [
@@ -263,7 +253,9 @@ def compute_JSD_torsions_against_time(
     }
 
 
-def compute_torsion_decorrelations(traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer):
+def compute_torsion_decorrelations(
+    traj_featurized: np.ndarray, ref_traj_featurized: np.ndarray, feats: pyemma.coordinates.data.MDFeaturizer
+):
     """Computes decorrelations of torsion angles."""
 
     def autocorrelation_and_decorrelation_time(traj: np.ndarray, baseline: float) -> np.ndarray:
@@ -282,27 +274,26 @@ def compute_torsion_decorrelations(traj_featurized: np.ndarray, ref_traj_featuri
 
     ref_traj = ref_traj_featurized
     traj = traj_featurized
-    
+
     torsion_decorrelations = collections.defaultdict(dict)
     for i, feat in enumerate(feats.describe()):
-        
         torsion_decorrelations[feat]["ref_traj"] = {}
         torsion_decorrelations[feat]["traj"] = {}
 
-        ref_baseline = np.sin(ref_traj[:, i]).mean()**2 + np.cos(ref_traj[:, i]).mean()**2
+        ref_baseline = np.sin(ref_traj[:, i]).mean() ** 2 + np.cos(ref_traj[:, i]).mean() ** 2
         ref_traj_autocorrelations, ref_traj_decorrelation_time = autocorrelation_and_decorrelation_time(
             ref_traj[:, i], ref_baseline
         )
         torsion_decorrelations[feat]["ref_traj"]["autocorrelations"] = ref_traj_autocorrelations
         torsion_decorrelations[feat]["ref_traj"]["decorrelation_time"] = ref_traj_decorrelation_time
 
-        traj_baseline = np.sin(traj[:, i]).mean()**2 + np.cos(traj[:, i]).mean()**2
+        traj_baseline = np.sin(traj[:, i]).mean() ** 2 + np.cos(traj[:, i]).mean() ** 2
         traj_autocorrelations, traj_decorrelation_time = autocorrelation_and_decorrelation_time(
             traj[:, i], traj_baseline
         )
         torsion_decorrelations[feat]["traj"]["autocorrelations"] = traj_autocorrelations
         torsion_decorrelations[feat]["traj"]["decorrelation_time"] = traj_decorrelation_time
-    
+
     return torsion_decorrelations
 
 
@@ -338,9 +329,7 @@ def compute_JSD_TICA(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[s
     ref_p = np.histogram2d(
         *ref_traj_tica[:, :2].T, range=((tica_0_min, tica_0_max), (tica_1_min, tica_1_max)), bins=50
     )[0]
-    traj_p = np.histogram2d(
-        *traj_tica[:, :2].T, range=((tica_0_min, tica_0_max), (tica_1_min, tica_1_max)), bins=50
-    )[0]    
+    traj_p = np.histogram2d(*traj_tica[:, :2].T, range=((tica_0_min, tica_0_max), (tica_1_min, tica_1_max)), bins=50)[0]
     tica_01_jsd = distance.jensenshannon(ref_p.flatten(), traj_p.flatten())
 
     return {
@@ -366,16 +355,16 @@ def compute_JSD_TICA_against_time(
 
 def compute_TICA_decorrelations(traj_tica: np.ndarray, ref_traj_tica: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute autocorrelation and decorrelation times for TICA projections of trajectories."""
-    mu = ref_traj_tica[:,0].mean()
-    sigma = ref_traj_tica[:,0].std()
+    mu = ref_traj_tica[:, 0].mean()
+    sigma = ref_traj_tica[:, 0].std()
 
-    ref_traj_tica_0_normalized = (ref_traj_tica[:,0] - mu) / sigma
-    traj_tica_0_normalized = (traj_tica[:,0] - mu) / sigma
+    ref_traj_tica_0_normalized = (ref_traj_tica[:, 0] - mu) / sigma
+    traj_tica_0_normalized = (traj_tica[:, 0] - mu) / sigma
 
     nlag = min(len(ref_traj_tica_0_normalized) - 1, 100000)
     ref_autocorr = stattools.acovf(ref_traj_tica_0_normalized, nlag=nlag, adjusted=True, demean=False)
-    if np.any(ref_autocorr < 1/np.e):
-        ref_traj_decorrelation_time = np.where(ref_autocorr < 1/np.e)[0][0]
+    if np.any(ref_autocorr < 1 / np.e):
+        ref_traj_decorrelation_time = np.where(ref_autocorr < 1 / np.e)[0][0]
     else:
         ref_traj_decorrelation_time = np.nan
 
@@ -387,14 +376,8 @@ def compute_TICA_decorrelations(traj_tica: np.ndarray, ref_traj_tica: np.ndarray
         traj_decorrelation_time = np.nan
 
     return {
-        "ref_traj": {
-            "autocorr": ref_autocorr,
-            "decorrelation_time": ref_traj_decorrelation_time
-        },
-        "traj": {
-            "autocorr": traj_autocorr,
-            "decorrelation_time": traj_decorrelation_time
-        }
+        "ref_traj": {"autocorr": ref_autocorr, "decorrelation_time": ref_traj_decorrelation_time},
+        "traj": {"autocorr": traj_autocorr, "decorrelation_time": traj_decorrelation_time},
     }
 
 
@@ -456,7 +439,7 @@ def compute_MSM_transition_and_flux_matrices(
     MSM_info: Dict[str, Any],
 ) -> Dict[str, np.ndarray]:
     """Compute transition and flux matrices for a trajectory and reference trajectory according to a MSM."""
-    
+
     msm = MSM_info["msm"]
     pcca = MSM_info["pcca"]
     cmsm = MSM_info["cmsm"]
@@ -487,9 +470,7 @@ def compute_MSM_transition_and_flux_matrices(
     traj_flux_matrix = compute_flux_matrix(traj_transition_matrix, traj_pi)
 
     # Compute Spearman correlation between corresponding flux matrices and transition matrices.
-    flux_spearman_correlation = scipy.stats.spearmanr(
-        msm_flux_matrix, traj_flux_matrix, axis=None
-    ).statistic
+    flux_spearman_correlation = scipy.stats.spearmanr(msm_flux_matrix, traj_flux_matrix, axis=None).statistic
     transition_spearman_correlation = scipy.stats.spearmanr(
         msm_transition_matrix, traj_transition_matrix, axis=None
     ).statistic
@@ -545,9 +526,9 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     trajs_to_compare = {
         "traj": traj_featurized,
         "ref_traj": ref_traj_featurized,
-        "ref_traj_10x": ref_traj_featurized[:len(ref_traj_featurized) // 10],
-        "ref_traj_100x": ref_traj_featurized[:len(ref_traj_featurized) // 100],
-        "ref_traj_1000x": ref_traj_featurized[:len(ref_traj_featurized) // 1000],
+        "ref_traj_10x": ref_traj_featurized[: len(ref_traj_featurized) // 10],
+        "ref_traj_100x": ref_traj_featurized[: len(ref_traj_featurized) // 100],
+        "ref_traj_1000x": ref_traj_featurized[: len(ref_traj_featurized) // 1000],
     }
 
     # Compute PMFs.
@@ -597,17 +578,15 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     traj_ticas_to_compare = {
         "traj": traj_tica,
         "ref_traj": ref_traj_tica,
-        "ref_traj_10x": ref_traj_tica[:len(ref_traj_tica) // 10],
-        "ref_traj_100x": ref_traj_tica[:len(ref_traj_tica) // 100],
-        "ref_traj_1000x": ref_traj_tica[:len(ref_traj_tica) // 1000],
+        "ref_traj_10x": ref_traj_tica[: len(ref_traj_tica) // 10],
+        "ref_traj_100x": ref_traj_tica[: len(ref_traj_tica) // 100],
+        "ref_traj_1000x": ref_traj_tica[: len(ref_traj_tica) // 1000],
     }
 
     # Compute TICA stats.
     results["TICA_histograms"] = {}
     for key, tica in traj_ticas_to_compare.items():
-        results["TICA_histograms"][key] = compute_TICA_histogram_for_plotting(
-            tica
-        )
+        results["TICA_histograms"][key] = compute_TICA_histogram_for_plotting(tica)
     py_logger.info(f"Histograms of TICA projections computed.")
 
     results["JSD_TICA"] = {}
@@ -650,7 +629,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
             MSM_info,
         )
     py_logger.info(f"JSD of MSM state probabilities computed.")
-        
+
     results["JSD_MSM_against_time"] = {}
     for key, tica in traj_ticas_to_compare.items():
         results["JSD_MSM_against_time"][key] = compute_JSD_MSM_against_time(
@@ -704,8 +683,7 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
+    parser.add_argument("--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
     parser.add_argument(
         "--trajectory",
         type=str,
@@ -765,7 +743,7 @@ if __name__ == "__main__":
 
     # Remove OXT atom from MDGenReference trajectory, if comparing to MDGen samples.
     if args.trajectory.startswith("MDGenSamples_"):
-        indices = ref_traj.topology.select('not name OXT')
+        indices = ref_traj.topology.select("not name OXT")
         ref_traj = ref_traj.atom_slice(indices)
 
         # Renumber residue indices to start from 1.
