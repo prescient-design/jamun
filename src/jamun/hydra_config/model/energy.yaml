@@ -1,0 +1,22 @@
+defaults:
+  - arch: e3conv.yaml
+  - optim: adam.yaml
+  - lr_scheduler_config: null
+  - _self_
+
+
+max_radius: null
+average_squared_distance: null
+add_fixed_noise: false
+add_fixed_ones: false
+align_noisy_input_during_training: true
+align_noisy_input_during_evaluation: true
+mean_center: true
+mirror_augmentation_rate: 0.0
+use_torch_compile: true
+torch_compile_kwargs:
+  fullgraph: true
+  dynamic: true
+  mode: default
+
+_target_: jamun.model.EnergyModel

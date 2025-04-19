@@ -1,9 +1,13 @@
-from typing import Callable, Optional, Union
+from functools import partial
+from typing import Callable
 
 import e3nn
 import torch
 import torch_geometric
 from e3nn import o3
+from e3nn.o3 import Irreps
+from torch import Tensor
+from e3tools import scatter
 
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
 from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
@@ -14,9 +18,9 @@ class E3Conv(torch.nn.Module):
 
     def __init__(
         self,
-        irreps_out: Union[str, e3nn.o3.Irreps],
-        irreps_hidden: Union[str, e3nn.o3.Irreps],
-        irreps_sh: Union[str, e3nn.o3.Irreps],
+        irreps_out: str | Irreps,
+        irreps_hidden: str | Irreps,
+        irreps_sh: str | Irreps,
         hidden_layer_factory: Callable[..., torch.nn.Module],
         output_head_factory: Callable[..., torch.nn.Module],
         use_residue_information: bool,
@@ -32,6 +36,7 @@ class E3Conv(torch.nn.Module):
         num_atom_codes: int = 10,
         num_residue_types: int = 25,
         test_equivariance: bool = False,
+        reduce: str | None = None,
     ):
         super().__init__()
 
@@ -91,33 +96,18 @@ class E3Conv(torch.nn.Module):
 
         self.output_head = output_head_factory(irreps_in=self.irreps_hidden, irreps_out=self.irreps_out)
         self.output_gain = torch.nn.Parameter(torch.tensor(0.0))
+        self.reduce = reduce
 
     def forward(
         self,
-        data: torch_geometric.data.Batch,
-        c_noise: torch.Tensor,
+        pos: Tensor,
+        topology: torch_geometric.data.Batch,
+        c_noise: Tensor,
         effective_radial_cutoff: float,
     ) -> torch_geometric.data.Batch:
-        # Test equivariance on the first forward pass.
-        if self.test_equivariance:
-
-            def forward_wrapped(pos: torch.Tensor):
-                data_copy = data.clone()
-                data_copy.pos = pos
-                return self.forward(data_copy, c_noise, effective_radial_cutoff).pos
-
-            self.test_equivariance = False
-            e3nn.util.test.assert_equivariant(
-                forward_wrapped,
-                args_in=[data.pos],
-                irreps_in=[self.irreps_out],
-                irreps_out=[self.irreps_out],
-            )
-
         # Extract edge attributes.
-        pos = data['pos']
-        edge_index = data['edge_index']
-        bond_mask = data['bond_mask']
+        edge_index = topology["edge_index"]
+        bond_mask = topology["bond_mask"]
 
         src, dst = edge_index
         edge_vec = pos[src] - pos[dst]
@@ -134,7 +124,7 @@ class E3Conv(torch.nn.Module):
         )
         edge_attr = torch.cat((bonded_edge_attr, radial_edge_attr), dim=-1)
 
-        node_attr = self.atom_embedder(data)
+        node_attr = self.atom_embedder(topology)
         node_attr = self.initial_noise_scaling(node_attr, c_noise)
         node_attr = self.initial_projector(node_attr, edge_index, edge_attr, edge_sh)
         for scaling, skip, layer in zip(self.noise_scalings, self.skip_connections, self.layers):
@@ -142,5 +132,7 @@ class E3Conv(torch.nn.Module):
         node_attr = self.output_head(node_attr)
         node_attr = node_attr * self.output_gain
 
-        data['pos'] = node_attr
-        return data
+        if self.reduce is not None:
+            node_attr = scatter(node_attr, topology.batch, dim=0, reduce=self.reduce)
+
+        return node_attr
