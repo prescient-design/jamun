@@ -133,6 +133,8 @@ def get_colors_fn(results_df: pd.DataFrame):
         "JAMUN_0.2A": "#FFB366",  # Dark red
         "JAMUN_0.8A": "#CC5500",  # Light red
         "MDGen": "#DDA0DD",  # Purple
+        "Boltz-1": "#E34234",  # Red
+        "BioEmu": "#FF91A4",  # Pink
     }
     return lambda traj_name: colors.get(traj_name, "#000000")  # Default to black if not found
 
@@ -390,7 +392,7 @@ def plot_ramachandran_against_reference(results_df: pd.DataFrame) -> None:
             axs[i, j].set_yticks([])
             axs[i, j].set_ylabel("")
 
-    plt.subplots_adjust(hspace=0.06, wspace=0.04)
+    plt.subplots_adjust(hspace=0.08, wspace=0.04)
 
 
 def plot_ramachandran_against_reference_shortened(results_df: pd.DataFrame) -> None:
@@ -480,7 +482,7 @@ def plot_ramachandran_against_reference_shortened(results_df: pd.DataFrame) -> N
             axs[i, j].set_yticks([])
             axs[i, j].set_ylabel("")
 
-    plt.subplots_adjust(hspace=0.06, wspace=0.04)
+    plt.subplots_adjust(hspace=0.08, wspace=0.04)
 
 
 def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide: str) -> None:
@@ -528,7 +530,7 @@ def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide
             transform=axs[k, -1].transAxes,
         )
     fig.suptitle(format_peptide_name(peptide))
-    plt.subplots_adjust(hspace=0.06, wspace=0.04)
+    plt.subplots_adjust(hspace=0.08, wspace=0.04)
 
 
 def plot_torsion_histograms(results_df) -> None:
@@ -832,6 +834,7 @@ def plot_JSD_against_time(results_df: pd.DataFrame):
         plt.xlabel("Trajectory Progress")
         plt.ylabel("JSD")
         plt.ticklabel_format(useOffset=False, style="plain")
+        plt.grid(linestyle="--", alpha=0.5)
 
         fig = plt.gcf()
         figs[quantity] = fig
@@ -845,10 +848,9 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
     traj_names = ["ref_traj", "traj"]
-    if "TBG" in results_df.attrs.get("extra_traj_names", []):
-        traj_names.append("TBG")
-    if "MDGen" in results_df.attrs.get("extra_traj_names", []):
-        traj_names.append("MDGen")
+    for extra in ["TBG", "MDGen", "Boltz-1", "BioEmu"]:
+        if extra in results_df.attrs.get("extra_traj_names", []):
+            traj_names.append(extra)
 
     fig, axs = plt.subplots(nrows=len(results_df), ncols=len(traj_names), figsize=(6 * len(traj_names), 3.5 * len(results_df)), squeeze=False)
     for i, row in results_df.iterrows():
@@ -1170,12 +1172,15 @@ def add_extra_trajectories(
     if experiment == "Chignolin" and traj_name == "JAMUN_2x":
         results_df.attrs["traj_name"] = "JAMUN"
 
-    if experiment == "Our_5AA" and traj_name == "JAMUN":
-        boltz_results_df = load_results(results_dir, "Our_5AA", "BoltzSamples", ref_traj_name)
-        boltz_results_df["peptide"] = boltz_results_df["peptide"].apply(lambda x: "uncapped_" + x)
+    if experiment == "Our_5AA" and traj_name == "JAMUN":    
         extra_results_dfs = {
-            "Boltz-1": boltz_results_df,
+            "Boltz-1": load_results(results_dir, "Our_5AA", "BoltzSamples", ref_traj_name),
+            "BioEmu": load_results(results_dir, "Our_5AA", "BioEmuSamples", ref_traj_name),
         }
+
+        # Fix the peptide names in the results_df
+        for df in extra_results_dfs.values():
+            df["peptide"] = df["peptide"].apply(lambda x: "uncapped_" + x)
 
     if extra_results_dfs is None:
         return
@@ -1344,6 +1349,8 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
     plot_flux_matrices(sampled_results_df)
     plt.savefig(os.path.join(output_dir, "flux_matrices.pdf"), dpi=300)
     plt.close()
+
+    py_logger.info(f"Plots saved to {output_dir}")
 
 
 if __name__ == "__main__":

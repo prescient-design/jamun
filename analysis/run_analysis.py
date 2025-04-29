@@ -742,7 +742,7 @@ if __name__ == "__main__":
     )
 
     # Remove OXT atom from MDGenReference trajectory, if comparing to MDGen samples.
-    if args.trajectory.startswith("MDGenSamples_"):
+    if args.trajectory.startswith("MDGenSamples") or args.trajectory.startswith("BioEmuSamples"):
         indices = ref_traj.topology.select("not name OXT")
         ref_traj = ref_traj.atom_slice(indices)
 

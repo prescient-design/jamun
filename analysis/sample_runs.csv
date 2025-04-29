@@ -1,6 +1,8 @@
 experiment,wandb_sample_run_path,reference,trajectory
 Our_2AA,prescient-design/jamun/sc3roq1e,JAMUNReference_2AA,JAMUN
 Our_2AA,prescient-design/jamun/ur17v6od,JAMUNReference_2AA,JAMUN
+Our_2AA_new,prescient-design/jamun/kjuldgi4,JAMUNReference_2AA,JAMUN
+Our_2AA_new,prescient-design/jamun/vk1jwm33,JAMUNReference_2AA,JAMUN
 Timewarp_2AA,prescient-design/jamun/jls6fodw,TimewarpReference,JAMUN
 Timewarp_2AA,prescient-design/jamun/dss1dnyt,TimewarpReference,JAMUN
 Timewarp_4AA,prescient-design/jamun/xv2dsan8,TimewarpReference,JAMUN
