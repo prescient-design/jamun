@@ -1,4 +1,3 @@
-
 """Script to relax IDRome v4 all-atom data."""
 
 import argparse
@@ -10,7 +9,6 @@ from concurrent.futures import ProcessPoolExecutor
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("process_IDRome")
-
 
 
 def relax_structure(args, use_sbatch: bool = True) -> None:
@@ -28,7 +26,7 @@ def relax_structure(args, use_sbatch: bool = True) -> None:
         output_dir,
     ]
     if use_sbatch:
-        cmd = ['sbatch'] + cmd
+        cmd = ["sbatch"] + cmd
 
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -46,11 +44,20 @@ def relax_structure(args, use_sbatch: bool = True) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert IDRome v4 data to all-atom.')
-    parser.add_argument('--input-dir', help='Directory of all-atom trajectories (stored in each folder).', type=str, required=True)
-    parser.add_argument('--output-dir', '-o', help='Output directory to save relaxed all-atom trajectories (stored in each folder).', type=str, required=True)
-    parser.add_argument('--num-workers', type=int, default=multiprocessing.cpu_count(),
-                      help='Number of parallel workers')
+    parser = argparse.ArgumentParser(description="Convert IDRome v4 data to all-atom.")
+    parser.add_argument(
+        "--input-dir", help="Directory of all-atom trajectories (stored in each folder).", type=str, required=True
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        help="Output directory to save relaxed all-atom trajectories (stored in each folder).",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--num-workers", type=int, default=multiprocessing.cpu_count(), help="Number of parallel workers"
+    )
     args = parser.parse_args()
 
     # Run in parallel.
@@ -66,5 +73,3 @@ if __name__ == "__main__":
     )
     with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
         results = list(executor.map(relax_structure, preprocess_args))
-
-

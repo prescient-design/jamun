@@ -7,7 +7,6 @@ import mdtraj as md
 import numpy as np
 import pdbfixer
 from openmm import (
-
     CustomExternalForce,
     LangevinMiddleIntegrator,
     MonteCarloBarostat,
@@ -35,7 +34,7 @@ from openmm.unit import (
     nanometer,
     nanometers,
     picoseconds,
-    Quantity
+    Quantity,
 )
 
 Positions = List[Tuple[Vec3, ...]]
@@ -267,12 +266,12 @@ def minimize_energy(
         output_file = filename_with_prefix(output_file_prefix, extension="pdb")
         with open(output_file, "w") as f:
             PDBFile.writeFile(simulation.topology, pdb_positions, f)
-        
+
         py_logger.info(f"Minimized PDB file saved at: {os.path.abspath(output_file)}")
 
     if save_protein_only_file:
         pdb_positions = simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions()
-        
+
         mdtraj_topology = md.Topology.from_openmm(simulation.topology)
         protein_indices = mdtraj_topology.select("protein")
         positions_array = np.asarray(pdb_positions.value_in_unit(nanometer))
@@ -285,9 +284,8 @@ def minimize_energy(
         output_file_protein = filename_with_prefix(f"{output_file_prefix}_protein", extension="pdb")
         with open(output_file_protein, "w") as f:
             PDBFile.writeFile(topology_protein, minimized_positions_protein, f)
-    
-        py_logger.info(f"Minimized protein PDB file saved at: {os.path.abspath(output_file_protein)}")
 
+        py_logger.info(f"Minimized protein PDB file saved at: {os.path.abspath(output_file_protein)}")
 
     return minimized_positions, simulation
 

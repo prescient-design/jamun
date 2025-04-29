@@ -19,8 +19,8 @@ py_logger = logging.getLogger("process_IDRome")
 def to_all_atom(args, use_sbatch: bool = True) -> None:
     """Convert IDRome v4 data to all-atom with PULCHRA."""
     name, input_dir, output_dir = args
-    pdb_path = os.path.join(input_dir, name, 'top.pdb')
-    xtc_path = os.path.join(input_dir, name, 'traj.xtc')
+    pdb_path = os.path.join(input_dir, name, "top.pdb")
+    xtc_path = os.path.join(input_dir, name, "traj.xtc")
     os.makedirs(os.path.join(output_dir, name), exist_ok=True)
 
     top = md.load_topology(pdb_path)
@@ -72,11 +72,20 @@ def to_all_atom(args, use_sbatch: bool = True) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert IDRome v4 data to all-atom.')
-    parser.add_argument('--input-dir', help='Directory of trajectories (stored in each folder).', type=str, required=True)
-    parser.add_argument('--output-dir', '-o', help='Output directory to save all-atom trajectories (stored in each folder).', type=str, required=True)
-    parser.add_argument('--num-workers', type=int, default=multiprocessing.cpu_count() - 1,
-                        help='Number of parallel workers')
+    parser = argparse.ArgumentParser(description="Convert IDRome v4 data to all-atom.")
+    parser.add_argument(
+        "--input-dir", help="Directory of trajectories (stored in each folder).", type=str, required=True
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        help="Output directory to save all-atom trajectories (stored in each folder).",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--num-workers", type=int, default=multiprocessing.cpu_count() - 1, help="Number of parallel workers"
+    )
     args = parser.parse_args()
 
     # Run in parallel.
@@ -95,7 +104,7 @@ if __name__ == "__main__":
     # job_ids = []
     # for i in range(len(preprocess_args)):
     #     job_ids.append(to_all_atom(preprocess_args[i]))
-    
+
     with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
         job_ids = list(executor.map(to_all_atom, preprocess_args))
 
@@ -104,4 +113,3 @@ if __name__ == "__main__":
         wait_for_jobs(job_ids)
     else:
         py_logger.info("No jobs were submitted.")
-

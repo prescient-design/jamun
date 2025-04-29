@@ -18,8 +18,8 @@ py_logger = logging.getLogger("process_IDRome")
 
 def extract_frames(name: str, input_dir: str, output_dir: str) -> None:
     """Convert IDRome v4 data to all-atom with PULCHRA."""
-    pdb_path = os.path.join(input_dir, name, 'top.pdb')
-    xtc_path = os.path.join(input_dir, name, 'traj.xtc')
+    pdb_path = os.path.join(input_dir, name, "top.pdb")
+    xtc_path = os.path.join(input_dir, name, "traj.xtc")
     os.makedirs(os.path.join(output_dir, name), exist_ok=True)
 
     top = md.load_topology(pdb_path)
@@ -34,10 +34,17 @@ def extract_frames(name: str, input_dir: str, output_dir: str) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Extract frames from IDRome v4 trajectories.')
-    parser.add_argument('--name', help='Name of the trajectory.', type=str, required=True)
-    parser.add_argument('--input-dir', help='Directory of trajectories (stored in each folder).', type=str, required=True)
-    parser.add_argument('--output-dir', help='Output directory to save all-atom trajectories (stored in each folder).', type=str, required=True)
+    parser = argparse.ArgumentParser(description="Extract frames from IDRome v4 trajectories.")
+    parser.add_argument("--name", help="Name of the trajectory.", type=str, required=True)
+    parser.add_argument(
+        "--input-dir", help="Directory of trajectories (stored in each folder).", type=str, required=True
+    )
+    parser.add_argument(
+        "--output-dir",
+        help="Output directory to save all-atom trajectories (stored in each folder).",
+        type=str,
+        required=True,
+    )
     args = parser.parse_args()
 
     extract_frames(args.name, args.input_dir, args.output_dir)
