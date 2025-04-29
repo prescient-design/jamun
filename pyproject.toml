@@ -94,3 +94,8 @@ ignore = [
 
 [tool.uv]
 no-build-package = ["mdtraj"]
+
+[tool.pyright]
+exclude = [ ".venv" ]
+venvPath = "."
+venv = ".venv"
