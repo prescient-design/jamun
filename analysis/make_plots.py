@@ -133,7 +133,7 @@ def get_colors_fn(results_df: pd.DataFrame):
         "JAMUN_0.2A": "#FFB366",  # Dark red
         "JAMUN_0.8A": "#CC5500",  # Light red
         "MDGen": "#DDA0DD",  # Purple
-        "Boltz-1": "#E34234",  # Red
+        "Boltz-1": "#CF9FFF",  # Light violet
         "BioEmu": "#FF91A4",  # Pink
     }
     return lambda traj_name: colors.get(traj_name, "#000000")  # Default to black if not found
@@ -197,7 +197,7 @@ def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
     if pmf_type not in ["internal", "all"]:
         raise ValueError(f"Invalid pmf_type: {pmf_type}")
 
-    if experiment == "Our_2AA":
+    if "Our_2AA" in experiment:
         num_dihedrals = 2
     elif "2AA" in experiment:
         num_dihedrals = 1
@@ -239,11 +239,9 @@ def get_all_JSD_results(results_df: pd.DataFrame):
         "JSD_TICA-0,1": {},
         "JSD_metastable_probs": {},
     }
-    traj_names = ["traj", "ref_traj"]
+    traj_names = ["traj", "ref_traj", "ref_traj_10x", "ref_traj_100x"]
     if results_df.attrs.get("extra_traj_names") is not None:
         traj_names.extend(results_df.attrs["extra_traj_names"])
-    else:
-        traj_names = ["traj", "ref_traj", "ref_traj_10x", "ref_traj_100x"]
 
     for quantity in ["JSD_backbone_torsions", "JSD_sidechain_torsions", "JSD_all_torsions"]:
         for name in traj_names:
@@ -673,7 +671,7 @@ def plot_backbone_decorrelation_times(
     plt.yscale("log")
     plt.xlabel(format_traj_name_fn("ref_traj"))
     plt.ylabel(format_traj_name_fn("traj"))
-    plt.title("Decorrelation Times of Backbone Torsions")
+    # plt.title("Decorrelation Times of Backbone Torsions")
 
     # Fit line.
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
@@ -708,7 +706,8 @@ def plot_backbone_decorrelation_speedups(torsion_decorrelation_times):
     plt.xlabel("Speedup Factor")
     plt.xticks([1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3])
     plt.ylabel("Frequency")
-    plt.suptitle(f"Speedups of Backbone Torsion Decorrelation Times")
+    plt.axvline(1, color="gray", linestyle="--")
+    # plt.suptitle(f"Speedups of Backbone Torsion Decorrelation Times")
     plt.tight_layout()
 
 
@@ -728,7 +727,7 @@ def plot_sidechain_decorrelation_times(
     plt.yscale("log")
     plt.xlabel(format_traj_name_fn("ref_traj"))
     plt.ylabel(format_traj_name_fn("traj"))
-    plt.title("Decorrelation Times of Sidechain Torsions")
+    # plt.title("Decorrelation Times of Sidechain Torsions")
 
     # Fit line.
     slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
@@ -752,6 +751,7 @@ def plot_sidechain_decorrelation_times(
 
 
 def plot_sidechain_decorrelation_speedups(torsion_decorrelation_times) -> None:
+    """Plots the speedups of sidechain torsion decorrelation times."""
     sidechain_torsion_speedups = (
         torsion_decorrelation_times["ref_traj"]["sidechain"] / torsion_decorrelation_times["traj"]["sidechain"]
     )
@@ -760,8 +760,10 @@ def plot_sidechain_decorrelation_speedups(torsion_decorrelation_times) -> None:
     plt.hist(sidechain_torsion_speedups, bins=bins)
     plt.xscale("log")
     plt.xlabel("Speedup Factor")
+    plt.xticks([1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3])
     plt.ylabel("Frequency")
-    plt.suptitle(f"Speedups of Sidechain Torsion Decorrelation Times")
+    plt.axvline(1, color="gray", linestyle="--")
+    # plt.suptitle(f"Speedups of Sidechain Torsion Decorrelation Times")
     plt.tight_layout()
 
 
@@ -769,7 +771,7 @@ def plot_JSD_distribution(JSD_final_results, key: str):
     """Plot distribution of JSDs across systems."""
     JSD_MSM = JSD_final_results[key]["traj"]
     plt.hist(JSD_MSM)
-    plt.title("Jenson-Shannon Distances of Metastable State Probabilities")
+    # plt.title("Jenson-Shannon Distances of Metastable State Probabilities")
     plt.xlabel("JSD")
     plt.xticks(np.arange(0.1, JSD_MSM.max() + 0.1, 0.1))
     plt.ylabel("Frequency")
@@ -798,7 +800,7 @@ def plot_metastable_probs(results_df: pd.DataFrame):
     plt.plot(x_line, y_line, color="C2", linestyle="--")
     plt.text(0.35, 0.90, f"R² = {r_value**2:.3f}", transform=plt.gca().transAxes, color="C2")
 
-    plt.title("MSM State Probabilities", pad=10)
+    # plt.title("MSM State Probabilities", pad=10)
     plt.axis("square")
     plt.xlim((0, 1))
     plt.ylim((0, 1))
@@ -830,7 +832,7 @@ def plot_JSD_against_time(results_df: pd.DataFrame):
 
         plt.ylim(0, 1)
         plt.legend(bbox_to_anchor=(1.05, 0.5), loc="center left")
-        plt.title(f"JSD vs Trajectory Progress\n{format_quantity(quantity)}")
+        # plt.title(f"JSD vs Trajectory Progress\n{format_quantity(quantity)}")
         plt.xlabel("Trajectory Progress")
         plt.ylabel("JSD")
         plt.ticklabel_format(useOffset=False, style="plain")
@@ -881,7 +883,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
             transform=axs[i, -1].transAxes,
         )
 
-    plt.suptitle("TICA-0,1 Projections", fontsize="x-large")
+    # plt.suptitle("TICA-0,1 Projections", fontsize="x-large")
     plt.tight_layout()
 
 
@@ -960,7 +962,7 @@ def plot_JSD_table(results_df: pd.DataFrame, JSD_table: pd.DataFrame) -> None:
     #            ncol=len(traj_names), title="Trajectory")
 
     plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # Adjust layout to make room for legend
-    plt.suptitle("Comparison of Jensen-Shannon Divergence Metrics", fontsize=16, y=0.98)
+    # plt.suptitle("Comparison of Jensen-Shannon Divergence Metrics", fontsize=16, y=0.98)
 
 
 def plot_TICA_0_speedups(results_df: pd.DataFrame) -> None:
@@ -974,7 +976,7 @@ def plot_TICA_0_speedups(results_df: pd.DataFrame) -> None:
     plt.xscale("log")
     plt.xlabel("Speedup Factor")
     plt.ylabel("Frequency")
-    plt.suptitle(f"Speedups of TICA-0 Decorrelation Times")
+    # plt.suptitle(f"Speedups of TICA-0 Decorrelation Times")
     plt.tight_layout()
 
 
@@ -1292,7 +1294,7 @@ def make_plots(experiment: str, traj_name: str, ref_traj_name: str, results_dir:
     JSD_final_results = get_all_JSD_results(results_df)
 
     JSD_table = make_JSD_table(JSD_final_results)
-    JSD_table.to_csv(os.path.join(output_dir, "jsd_table.csv"))
+    JSD_table.to_csv(os.path.join(output_dir, "jsd_table.txt"))
 
     plot_JSD_table(results_df, JSD_table)
     plt.savefig(os.path.join(output_dir, "jsd_table.pdf"), dpi=300)
