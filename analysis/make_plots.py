@@ -617,7 +617,7 @@ def plot_distance_histograms(results_df) -> None:
     plt.tight_layout()
 
 
-def collect_torsion_angle_decorrelation_times(results_df) -> None:
+def collect_torsion_angle_decorrelation_times(results_df: pd.DataFrame) -> Tuple[Dict[str, Dict[str, np.ndarray]], Dict[str, int]]:
     """Collects the torsion angle decorrelation times from the results DataFrame."""
 
     torsion_decorrelation_times = {
@@ -707,6 +707,7 @@ def plot_backbone_decorrelation_speedups(torsion_decorrelation_times):
     plt.xticks([1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3])
     plt.ylabel("Frequency")
     plt.axvline(1, color="gray", linestyle="--")
+    plt.ticklabel_format(useOffset=False, style="plain", axis="y")
     # plt.suptitle(f"Speedups of Backbone Torsion Decorrelation Times")
     plt.tight_layout()
 
@@ -763,6 +764,7 @@ def plot_sidechain_decorrelation_speedups(torsion_decorrelation_times) -> None:
     plt.xticks([1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3])
     plt.ylabel("Frequency")
     plt.axvline(1, color="gray", linestyle="--")
+    plt.ticklabel_format(useOffset=False, style="plain", axis="y")
     # plt.suptitle(f"Speedups of Sidechain Torsion Decorrelation Times")
     plt.tight_layout()
 
@@ -976,6 +978,7 @@ def plot_TICA_0_speedups(results_df: pd.DataFrame) -> None:
     plt.xscale("log")
     plt.xlabel("Speedup Factor")
     plt.ylabel("Frequency")
+    plt.ticklabel_format(useOffset=False, style="plain", axis="y")
     # plt.suptitle(f"Speedups of TICA-0 Decorrelation Times")
     plt.tight_layout()
 
