@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Tuple
 import os
 import pickle
 import argparse
@@ -517,17 +517,24 @@ def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide
             axs[i, j].set_xlabel("")
 
     # Add labels.
-    for k, traj in enumerate(traj_names):
-        axs[k, -1].text(
+    for i, traj in enumerate(traj_names):
+        axs[i, -1].text(
             1.2,
             0.5,
             format_traj_name_fn(traj),
             rotation=90,
             verticalalignment="center",
             horizontalalignment="center",
-            transform=axs[k, -1].transAxes,
+            transform=axs[i, -1].transAxes,
         )
-    fig.suptitle(format_peptide_name(peptide))
+    axs[0, num_dihedrals // 2].text(
+        0.5, 1.2,
+        format_peptide_name(peptide),
+        transform=axs[0, 0].transAxes,
+        verticalalignment="center",
+        horizontalalignment="center",
+        fontsize=plt.rcParams['figure.titlesize']
+    )
     plt.subplots_adjust(hspace=0.08, wspace=0.04)
 
 
@@ -870,10 +877,9 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
             axs[i, j].set_xlim(axs[i, 0].get_xlim())
             axs[i, j].set_ylim(axs[i, 0].get_ylim())
 
-
         if i == 0:
             for j, traj in enumerate(traj_names):
-                axs[i, j].set_title(format_traj_name_fn(traj))
+                axs[i, j].set_title(format_traj_name_fn(traj), fontsize=18)
         
         axs[i, -1].text(
             1.4,
