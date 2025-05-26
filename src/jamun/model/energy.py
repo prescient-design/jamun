@@ -22,6 +22,22 @@ def xhat_f(y: Tensor, g: Callable) -> Tensor:
     return g_y - vjp_func(g_y - y, create_graph=True, retain_graph=True)[0]
 
 
+def jamun_normalization_factors(sigma: float, average_squared_distance: float, D: int = 3, device=None):
+    A = torch.as_tensor(average_squared_distance, device=device)
+    B = torch.as_tensor(2 * D * sigma**2, device=device)
+    sigma = torch.as_tensor(sigma, device=device)
+
+    c_in = 1.0 / torch.sqrt(A + B)
+    c_skip = A / (A + B)
+    c_out = torch.sqrt((A * B) / (A + B))
+    c_noise = torch.log(sigma) / 4
+    return c_in, c_skip, c_out, c_noise
+
+
+def norm_wrapper(y: Tensor, g: Callable, c_in: Tensor, c_skip: Tensor, c_out: Tensor) -> Tensor:
+    return c_skip * y + c_out * g(c_in * y)
+
+
 class EnergyModel(pl.LightningModule):
     """The main denoiser model."""
 
@@ -39,8 +55,6 @@ class EnergyModel(pl.LightningModule):
         mean_center: bool,
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
-        normalization_type: str | None = "JAMUN",
-        sigma_data: float | None = None,  # Only used if normalization_type is "EDM"
         lr_scheduler_config: dict | None = None,
         use_torch_compile: bool = True,
         torch_compile_kwargs: dict | None = None,
@@ -93,18 +107,6 @@ class EnergyModel(pl.LightningModule):
         self.mirror_augmentation_rate = mirror_augmentation_rate
         py_logger.info(f"Mirror augmentation rate: {self.mirror_augmentation_rate}")
 
-        self.normalization_type = normalization_type
-        if self.normalization_type is not None:
-            py_logger.info(f"Normalization type: {self.normalization_type}")
-        else:
-            py_logger.info("No normalization")
-
-        self.sigma_data = sigma_data
-        if self.normalization_type == "EDM" and self.sigma_data is None:
-            raise ValueError("sigma_data must be provided when normalization_type is 'EDM'")
-        elif self.normalization_type != "EDM" and self.sigma_data is not None:
-            raise ValueError("sigma_data can only be used when normalization_type is 'EDM'")
-
         self.bond_loss_coefficient = bond_loss_coefficient
 
     def add_noise(self, x: torch_geometric.data.Batch, sigma: float | Tensor) -> torch_geometric.data.Batch:
@@ -135,37 +137,6 @@ class EnergyModel(pl.LightningModule):
         """Compute the score function."""
         sigma = torch.as_tensor(sigma).to(y.pos)
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
-
-    def normalization_factors(self, sigma: float, D: int = 3) -> tuple[float, float, float, float]:
-        """Normalization factors for the input and output."""
-        sigma = torch.as_tensor(sigma)
-
-        if self.normalization_type is None:
-            return 1.0, 0.0, 1.0, sigma
-
-        if self.normalization_type == "EDM":
-            c_skip = (self.sigma_data**2) / (sigma**2 + self.sigma_data**2)
-            c_out = sigma * self.sigma_data / torch.sqrt(self.sigma_data**2 + sigma**2)
-            c_in = 1 / torch.sqrt(sigma**2 + self.sigma_data**2)
-            c_noise = torch.log(sigma / self.sigma_data) * 0.25
-            return c_in, c_skip, c_out, c_noise
-
-        if self.normalization_type == "JAMUN":
-            A = torch.as_tensor(self.average_squared_distance)
-            B = torch.as_tensor(2 * D * sigma**2)
-
-            c_in = 1.0 / torch.sqrt(A + B)
-            c_skip = A / (A + B)
-            c_out = torch.sqrt((A * B) / (A + B))
-            c_noise = torch.log(sigma) / 4
-            return c_in, c_skip, c_out, c_noise
-
-        raise ValueError(f"Unknown normalization type: {self.normalization_type}")
-
-    def loss_weight(self, sigma: float, D: int = 3) -> float:
-        """Loss weight for this graph."""
-        _, _, c_out, _ = self.normalization_factors(sigma, D)
-        return 1 / (c_out**2)
 
     def effective_radial_cutoff(self, sigma: float | Tensor) -> Tensor:
         """Compute the effective radial cutoff for the noise level."""
@@ -204,11 +175,12 @@ class EnergyModel(pl.LightningModule):
     def xhat_normalized(self, y: torch_geometric.data.Batch, sigma: float | Tensor) -> torch_geometric.data.Batch:
         """Compute the denoised prediction using the normalization factors from JAMUN."""
         sigma = torch.as_tensor(sigma).to(y.pos)
-        D = y.pos.shape[-1]
 
         # Compute the normalization factors.
         with torch.cuda.nvtx.range("normalization_factors"):
-            c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, D)
+            c_in, c_skip, c_out, c_noise = jamun_normalization_factors(
+                sigma, self.average_squared_distance, device=y.pos.device
+            )
         radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
 
         # Adjust dimensions.
@@ -221,18 +193,14 @@ class EnergyModel(pl.LightningModule):
         with torch.cuda.nvtx.range("add_edges"):
             y = self.add_edges(y, radial_cutoff)
 
-        with torch.cuda.nvtx.range("scale_y"):
-            y_scaled = y.clone("pos")
-            y_scaled.pos = y.pos * c_in
-
         with torch.cuda.nvtx.range("clone_y"):
             xhat = y.clone("pos")
 
+        g = functools.partial(self.g, topology=y, c_noise=c_noise, effective_radial_cutoff=radial_cutoff)
+        h = functools.partial(norm_wrapper, g=g, c_in=c_in, c_skip=c_skip, c_out=c_out)
+
         with torch.cuda.nvtx.range("g"):
-            xhat.pos = torch.compile(xhat_f, disable=not self.use_torch_compile, **self.torch_compile_kwargs)(
-                y.pos * c_in,
-                functools.partial(self.g, topology=y, c_noise=c_noise, effective_radial_cutoff=radial_cutoff),
-            )
+            xhat.pos = torch.compile(xhat_f, disable=not self.use_torch_compile, **self.torch_compile_kwargs)(y.pos, h)
 
         return xhat
 
@@ -309,10 +277,12 @@ class EnergyModel(pl.LightningModule):
             rmsd = torch.sqrt(mse)
             scaled_rmsd = rmsd / (sigma * np.sqrt(D))
 
+        _, _, c_out, _ = jamun_normalization_factors(sigma, self.average_squared_distance, device=xhat.pos.device)
+
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
             loss = mse * x.loss_weight
-            loss = loss * self.loss_weight(sigma, D)
+            loss = loss / (c_out**2)
 
         return loss, {
             "mse": mse,
