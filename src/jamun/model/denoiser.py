@@ -4,9 +4,8 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import lightning.pytorch as pl
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch_geometric
-from e3tools import scatter, radius_graph
+from e3tools import radius_graph, scatter
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 
@@ -29,7 +28,7 @@ class Denoiser(pl.LightningModule):
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
         normalization_type: Optional[str] = "JAMUN",
-        sigma_data: Optional[float] = None, # Only used if normalization_type is "EDM"
+        sigma_data: Optional[float] = None,  # Only used if normalization_type is "EDM"
         lr_scheduler_config: Optional[Dict] = None,
         use_torch_compile: bool = True,
         torch_compile_kwargs: Optional[Dict] = None,
@@ -90,7 +89,7 @@ class Denoiser(pl.LightningModule):
             py_logger.info(f"Normalization type: {self.normalization_type}")
         else:
             py_logger.info("No normalization")
-        
+
         self.sigma_data = sigma_data
         if self.normalization_type == "EDM" and self.sigma_data is None:
             raise ValueError("sigma_data must be provided when normalization_type is 'EDM'")
@@ -131,7 +130,7 @@ class Denoiser(pl.LightningModule):
     def normalization_factors(self, sigma: float, D: int = 3) -> Tuple[float, float, float, float]:
         """Normalization factors for the input and output."""
         sigma = torch.as_tensor(sigma)
-        
+
         if self.normalization_type is None:
             return 1.0, 0.0, 1.0, sigma
 
@@ -252,7 +251,6 @@ class Denoiser(pl.LightningModule):
     ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
         """Add noise to the input and denoise it."""
         with torch.no_grad():
-
             if self.mean_center:
                 with torch.cuda.nvtx.range("mean_center_x"):
                     x = mean_center(x)
@@ -291,26 +289,25 @@ class Denoiser(pl.LightningModule):
 
         # Compute the raw loss.
         with torch.cuda.nvtx.range("raw_coordinate_loss"):
-            raw_coordinate_loss = F.mse_loss(xhat.pos, x.pos, reduction="none")
-            raw_coordinate_loss = raw_coordinate_loss.sum(dim=-1)
-
-        # Compute the scaled RMSD.
-        with torch.cuda.nvtx.range("scaled_rmsd"):
-            scaled_rmsd = torch.sqrt(raw_coordinate_loss) / (sigma * np.sqrt(D))
+            raw_coordinate_loss = (xhat.pos - x.pos).pow(2).sum(dim=-1)
 
         # Take the mean over each graph.
         with torch.cuda.nvtx.range("mean_over_graphs"):
-            raw_coordinate_loss = scatter(raw_coordinate_loss, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
-            scaled_rmsd = scatter(scaled_rmsd, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+            mse = scatter(raw_coordinate_loss, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+
+        # Compute the scaled RMSD.
+        with torch.cuda.nvtx.range("scaled_rmsd"):
+            rmsd = torch.sqrt(mse)
+            scaled_rmsd = rmsd / (sigma * np.sqrt(D))
 
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
-            scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
-            scaled_coordinate_loss *= self.loss_weight(sigma, D)
+            loss = mse * x.loss_weight
+            loss = loss * self.loss_weight(sigma, D)
 
-        return scaled_coordinate_loss, {
-            "coordinate_loss": scaled_coordinate_loss,
-            "raw_coordinate_loss": raw_coordinate_loss,
+        return loss, {
+            "mse": mse,
+            "rmsd": rmsd,
             "scaled_rmsd": scaled_rmsd,
         }
 
@@ -330,7 +327,9 @@ class Denoiser(pl.LightningModule):
             sigma = self.sigma_distribution.sample().to(self.device)
 
         loss, aux = self.noise_and_compute_loss(
-            batch, sigma, align_noisy_input=self.align_noisy_input_during_training,
+            batch,
+            sigma,
+            align_noisy_input=self.align_noisy_input_during_training,
         )
 
         # Average the loss and other metrics over all graphs.
@@ -349,9 +348,7 @@ class Denoiser(pl.LightningModule):
     def validation_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during validation."""
         sigma = self.sigma_distribution.sample().to(self.device)
-        loss, aux = self.noise_and_compute_loss(
-            batch, sigma, align_noisy_input=self.align_noisy_input_during_training
-        )
+        loss, aux = self.noise_and_compute_loss(batch, sigma, align_noisy_input=self.align_noisy_input_during_training)
 
         # Average the loss and other metrics over all graphs.
         aux["loss"] = loss

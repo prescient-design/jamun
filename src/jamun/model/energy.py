@@ -5,7 +5,6 @@ from typing import Callable
 import lightning.pytorch as pl
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch_geometric
 from e3tools import radius_graph, scatter
 from torch import Tensor
@@ -299,26 +298,25 @@ class EnergyModel(pl.LightningModule):
 
         # Compute the raw loss.
         with torch.cuda.nvtx.range("raw_coordinate_loss"):
-            raw_coordinate_loss = F.mse_loss(xhat.pos, x.pos, reduction="none")
-            raw_coordinate_loss = raw_coordinate_loss.sum(dim=-1)
-
-        # Compute the scaled RMSD.
-        with torch.cuda.nvtx.range("scaled_rmsd"):
-            scaled_rmsd = torch.sqrt(raw_coordinate_loss) / (sigma * np.sqrt(D))
+            raw_coordinate_loss = (xhat.pos - x.pos).pow(2).sum(dim=-1)
 
         # Take the mean over each graph.
         with torch.cuda.nvtx.range("mean_over_graphs"):
-            raw_coordinate_loss = scatter(raw_coordinate_loss, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
-            scaled_rmsd = scatter(scaled_rmsd, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+            mse = scatter(raw_coordinate_loss, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+
+        # Compute the scaled RMSD.
+        with torch.cuda.nvtx.range("scaled_rmsd"):
+            rmsd = torch.sqrt(mse)
+            scaled_rmsd = rmsd / (sigma * np.sqrt(D))
 
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
-            scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
-            scaled_coordinate_loss *= self.loss_weight(sigma, D)
+            loss = mse * x.loss_weight
+            loss = loss * self.loss_weight(sigma, D)
 
-        return scaled_coordinate_loss, {
-            "coordinate_loss": scaled_coordinate_loss,
-            "raw_coordinate_loss": raw_coordinate_loss,
+        return loss, {
+            "mse": mse,
+            "rmsd": rmsd,
             "scaled_rmsd": scaled_rmsd,
         }
 
