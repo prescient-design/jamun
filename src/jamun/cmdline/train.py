@@ -4,6 +4,7 @@ import sys
 import traceback
 
 import dotenv
+import e3nn
 import hydra
 import lightning
 import torch
@@ -11,13 +12,12 @@ import wandb
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
-import e3nn
 e3nn.set_optimization_defaults(jit_script_fx=False)
 
-import jamun
-from jamun.hydra import instantiate_dict_cfg
-from jamun.hydra.utils import format_resolver
-from jamun.utils import compute_average_squared_distance_from_datasets, dist_log, find_checkpoint
+import jamun  # noqa: E402
+from jamun.hydra import instantiate_dict_cfg  # noqa: E402
+from jamun.hydra.utils import format_resolver  # noqa: E402
+from jamun.utils import compute_average_squared_distance_from_datasets, dist_log, find_checkpoint  # noqa: E402
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
@@ -31,6 +31,7 @@ def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     cutoff = cfg.model.max_radius
     average_squared_distance = compute_average_squared_distance_from_datasets(train_datasets, cutoff)
     return average_squared_distance
+
 
 def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
@@ -93,8 +94,7 @@ def run(cfg):
             profile_art.add_file(trace)
         profile_art.save()
 
-    if rank_zero_only.rank == 0:
-        dist_log(f"{torch.cuda.max_memory_allocated()=:0.2e}")
+    dist_log(f"{torch.cuda.max_memory_allocated()=:0.2e}")
 
     if wandb_logger:
         wandb.finish()
