@@ -10,6 +10,7 @@ import pandas as pd
 import tqdm
 
 from jamun import data, utils
+import utils_sdf as analysis_utils_sdf
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("analysis")
@@ -51,7 +52,8 @@ def search_for_JAMUN_files(root_path: str) -> List[str]:
 
 def get_sampling_rate(name: str, peptide: str, experiment: str) -> float:
     """Returns (approximate) sampling rates in seconds per sample."""
-    raise NotImplementedError("Sampling rate calculation is not implemented yet.")
+    raise NotImplementedError("Sampling rate calculation is not verified yet.")
+
     if name == "JAMUN":
         rates_csv = os.path.join(find_project_root(), "analysis", "sampling_times", "JAMUN.csv")
         df = pd.read_csv(rates_csv)
@@ -134,7 +136,7 @@ def get_MDGenReference_datasets(
     data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the MDGen reference trajectory."""
-
+    
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
         return data.parse_datasets_from_directory(
@@ -305,6 +307,31 @@ def get_JAMUNReference_5AA_datasets(
         return {filter_codes_map[dataset.label()]: dataset for dataset in datasets}
 
     return {dataset.label(): dataset for dataset in datasets}
+
+
+def get_CrempReference_trajectories(
+    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
+) -> Dict[str, md.Trajectory]:
+    """Returns a dictionary mapping peptide names to our reference Cremp sdf trajectory."""
+
+    def get_datasets_for_split(split: str):
+        """Helper function to get datasets for a given split."""
+        return data.parse_datasets_from_directory_new(
+            root=f"{data_path}",
+            traj_pattern= "^(.*).npz",
+            topology_pattern= "^(.*).sdf",
+            as_sdf=True,
+            filter_codes=filter_codes,
+        )
+
+    if split in ["train", "val", "test"]:
+        datasets = get_datasets_for_split(split)
+    elif split == "all":
+        datasets = get_datasets_for_split("train") + get_datasets_for_split("val") + get_datasets_for_split("test")
+    else:
+        raise ValueError(f"Invalid split: {split}")
+
+    return {dataset.label(): dataset.trajectory for dataset in datasets}
 
 
 def get_TBGSamples_datasets(

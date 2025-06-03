@@ -2,14 +2,7 @@ from typing import Dict, Optional, Any, Tuple
 import os
 import pickle
 import argparse
-
 import logging
-
-logging.getLogger("fontTools").setLevel(logging.ERROR)
-logging.getLogger("numexpr.utils").setLevel(logging.ERROR)
-
-logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
-py_logger = logging.getLogger("analysis")
 
 import numpy as np
 import scipy.stats
@@ -19,18 +12,24 @@ import lovelyplots
 import matplotlib as mpl
 import matplotlib.colors
 
-mpl.rcParams["axes.formatter.useoffset"] = False
-mpl.rcParams["axes.formatter.limits"] = (-10000, 10000)  # Controls range before scientific notation is used
-plt.style.use("ipynb")
-
 from jamun import utils
 
+# TODO: Fix imports.
 import sys
-
 sys.path.append("./")
 
 import pyemma_helper
 import load_trajectory
+
+mpl.rcParams["axes.formatter.useoffset"] = False
+mpl.rcParams["axes.formatter.limits"] = (-10000, 10000)  # Controls range before scientific notation is used
+plt.style.use("ipynb")
+
+logging.getLogger("fontTools").setLevel(logging.ERROR)
+logging.getLogger("numexpr.utils").setLevel(logging.ERROR)
+
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
+py_logger = logging.getLogger("analysis")
 
 
 def load_results(results_dir: str, experiment: str, traj_name: str, ref_traj_name: str) -> pd.DataFrame:
@@ -166,7 +165,6 @@ def format_peptide_name(peptide: str) -> str:
     return utils.convert_to_one_letter_codes(peptide)
 
 
-
 def plot_ramachandran_contour(results: Dict[str, Any], dihedral_index: int, ax: Optional[plt.Axes] = None) -> plt.Axes:
     """Plots the Ramachandran contour plot of a trajectory."""
 
@@ -192,8 +190,13 @@ def plot_ramachandran_contour(results: Dict[str, Any], dihedral_index: int, ax: 
 
 
 def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
-    # "internal" for psi_2 - phi_2, psi_3 - phi_3, etc.
-    # "all" for psi_1 - phi_2, psi_2 - phi_3, etc.
+    """
+    Returns the number of dihedrals for a given experiment and PMF type.
+       
+        pmf_type = "internal" for psi_2 - phi_2, psi_3 - phi_3, etc.
+        pmf_type = "all" for psi_1 - phi_2, psi_2 - phi_3, etc.
+    """
+    
     if pmf_type not in ["internal", "all"]:
         raise ValueError(f"Invalid pmf_type: {pmf_type}")
 
@@ -207,6 +210,10 @@ def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
         num_dihedrals = 4
     elif "Chignolin" in experiment:
         num_dihedrals = 9
+    elif "Cremp_4AA_long_train" in experiment:
+        num_dihedrals = 4
+    elif "Cremp_4AA_5AA" in experiment:
+        num_dihedrals = 6
 
     if pmf_type == "internal":
         num_dihedrals -= 1

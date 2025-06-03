@@ -1,0 +1,44 @@
+# @package _global_
+
+defaults:
+  - override /callbacks:
+    - sampler/save_trajectory.yaml
+  - _self_
+
+init_datasets:
+  _target_: jamun.data.parse_datasets_from_directory_new
+  root: "/data/bucket/kleinhej/cremp-preprocessed/"
+  traj_pattern: "^(.*).npz"
+  topology_pattern: "^(.*).sdf"
+  filter_codes_csv: "/data/davidsd5/jamun_run/test_4mer_5mer_6mer.csv"
+  filter_codes_csv_header: "sequence"
+  as_sdf: true
+  subsample: 1
+
+num_sampling_steps_per_batch: 10000
+num_batches: 10
+num_init_samples_per_dataset: 1
+repeat_init_samples: 1
+continue_chain: true
+
+# New Macrocycle model
+#wandb_train_run_path: prescient-design/jamun/bca9l8if # This is the run path of the training produced from the run from Ameya 
+# This is the Darcy's 4mer run path
+wandb_train_run_path: prescient-design/jamun/68ve91dj
+
+
+checkpoint_type: best_so_far
+sigma: 0.04
+M: 1.0
+delta: 0.04
+friction: 1.0
+inverse_temperature: 1.0
+score_fn_clip: null
+
+sampler:
+  _target_: jamun.sampling.Sampler
+  devices: 1
+
+logger:
+  wandb:
+    group: sample_macrocycle
