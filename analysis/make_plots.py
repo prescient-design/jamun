@@ -530,7 +530,7 @@ def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide
     axs[0, num_dihedrals // 2].text(
         0.5, 1.2,
         format_peptide_name(peptide),
-        transform=axs[0, 0].transAxes,
+        transform=axs[0, num_dihedrals // 2].transAxes,
         verticalalignment="center",
         horizontalalignment="center",
         fontsize=plt.rcParams['figure.titlesize']
@@ -859,9 +859,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
     traj_names = ["ref_traj", "traj"]
-    for extra in ["TBG", "MDGen", "Boltz-1", "BioEmu"]:
-        if extra in results_df.attrs.get("extra_traj_names", []):
-            traj_names.append(extra)
+    traj_names.extend(results_df.attrs.get("extra_traj_names", []))
 
     fig, axs = plt.subplots(nrows=len(results_df), ncols=len(traj_names), figsize=(6 * len(traj_names), 3.5 * len(results_df)), squeeze=False)
     for i, row in results_df.iterrows():
@@ -879,7 +877,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
 
         if i == 0:
             for j, traj in enumerate(traj_names):
-                axs[i, j].set_title(format_traj_name_fn(traj), fontsize=18)
+                axs[i, j].set_title(format_traj_name_fn(traj), fontsize=28)
         
         axs[i, -1].text(
             1.4,
@@ -889,6 +887,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
             verticalalignment="center",
             horizontalalignment="center",
             transform=axs[i, -1].transAxes,
+            fontsize=28,
         )
 
     # plt.suptitle("TICA-0,1 Projections", fontsize="x-large")
