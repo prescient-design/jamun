@@ -5,12 +5,27 @@ from typing import Any, Dict
 import wandb
 
 
+def get_wandb_run_cwd(wandb_run_path: str) -> str:
+    """Get the wandb run directory."""
+    run = wandb.Api().run(wandb_run_path)
+    return run.config["cwd"]
+
+
 def get_wandb_run_config(wandb_run_path: str) -> Dict[str, Any]:
     """Get the wandb run config."""
     run = wandb.Api().run(wandb_run_path)
     py_logger = logging.getLogger("jamun")
     py_logger.info(f"Loading checkpoint corresponding to wandb run {run.name} at {run.url}")
     return run.config["cfg"]
+
+
+def get_run_path_for_wandb_run(wandb_run_path: str) -> str:
+    """Returns the path to the run directory given a wandb run path."""
+    cfg = get_wandb_run_config(wandb_run_path)
+    run_path = os.path.join(cfg["paths"]["run_path"])
+    if run_path.startswith("./"):
+        run_path = get_wandb_run_cwd(wandb_run_path)
+    return os.path.abspath(run_path)
 
 
 def find_checkpoint_directory(wandb_train_run_path: str) -> str:

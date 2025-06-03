@@ -1,14 +1,15 @@
 import logging
-from typing import Callable, Optional, Tuple, Union, Dict
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import lightning.pytorch as pl
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch_geometric
-import torch_scatter
+from e3tools import scatter, radius_graph
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
+
 
 class Denoiser(pl.LightningModule):
     """The main denoiser model."""
@@ -27,6 +28,8 @@ class Denoiser(pl.LightningModule):
         mean_center: bool,
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
+        normalization_type: Optional[str] = "JAMUN",
+        sigma_data: Optional[float] = None, # Only used if normalization_type is "EDM"
         lr_scheduler_config: Optional[Dict] = None,
         use_torch_compile: bool = True,
         torch_compile_kwargs: Optional[Dict] = None,
@@ -82,6 +85,18 @@ class Denoiser(pl.LightningModule):
         self.mirror_augmentation_rate = mirror_augmentation_rate
         py_logger.info(f"Mirror augmentation rate: {self.mirror_augmentation_rate}")
 
+        self.normalization_type = normalization_type
+        if self.normalization_type is not None:
+            py_logger.info(f"Normalization type: {self.normalization_type}")
+        else:
+            py_logger.info("No normalization")
+        
+        self.sigma_data = sigma_data
+        if self.normalization_type == "EDM" and self.sigma_data is None:
+            raise ValueError("sigma_data must be provided when normalization_type is 'EDM'")
+        elif self.normalization_type != "EDM" and self.sigma_data is not None:
+            raise ValueError("sigma_data can only be used when normalization_type is 'EDM'")
+
         self.bond_loss_coefficient = bond_loss_coefficient
 
     def add_noise(self, x: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
@@ -113,22 +128,35 @@ class Denoiser(pl.LightningModule):
         sigma = torch.as_tensor(sigma).to(y.pos)
         return (self.xhat(y, sigma).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
-    @classmethod
-    def normalization_factors(cls, sigma: float, average_squared_distance: float, D: int = 3) -> Tuple[float, float, float, float]:
+    def normalization_factors(self, sigma: float, D: int = 3) -> Tuple[float, float, float, float]:
         """Normalization factors for the input and output."""
-        A = torch.as_tensor(average_squared_distance)
-        B = torch.as_tensor(2 * D * sigma**2)
+        sigma = torch.as_tensor(sigma)
+        
+        if self.normalization_type is None:
+            return 1.0, 0.0, 1.0, sigma
 
-        c_in = 1.0 / torch.sqrt(A + B)
-        c_skip = A / (A + B)
-        c_out = torch.sqrt((A * B) / (A + B))
-        c_noise = torch.log(sigma) / 4
-        return c_in, c_skip, c_out, c_noise
+        if self.normalization_type == "EDM":
+            c_skip = (self.sigma_data**2) / (sigma**2 + self.sigma_data**2)
+            c_out = sigma * self.sigma_data / torch.sqrt(self.sigma_data**2 + sigma**2)
+            c_in = 1 / torch.sqrt(sigma**2 + self.sigma_data**2)
+            c_noise = torch.log(sigma / self.sigma_data) * 0.25
+            return c_in, c_skip, c_out, c_noise
 
-    @classmethod
-    def loss_weight(cls, sigma: float, average_squared_distance: float, D: int = 3) -> float:
+        if self.normalization_type == "JAMUN":
+            A = torch.as_tensor(self.average_squared_distance)
+            B = torch.as_tensor(2 * D * sigma**2)
+
+            c_in = 1.0 / torch.sqrt(A + B)
+            c_skip = A / (A + B)
+            c_out = torch.sqrt((A * B) / (A + B))
+            c_noise = torch.log(sigma) / 4
+            return c_in, c_skip, c_out, c_noise
+
+        raise ValueError(f"Unknown normalization type: {self.normalization_type}")
+
+    def loss_weight(self, sigma: float, D: int = 3) -> float:
         """Loss weight for this graph."""
-        _, _, c_out, _ = cls.normalization_factors(sigma, average_squared_distance, D)
+        _, _, c_out, _ = self.normalization_factors(sigma, D)
         return 1 / (c_out**2)
 
     def effective_radial_cutoff(self, sigma: Union[float, torch.Tensor]) -> torch.Tensor:
@@ -144,11 +172,11 @@ class Denoiser(pl.LightningModule):
 
         # Our dataloader already adds the bonded edges.
         bonded_edge_index = y.edge_index
-        
-        with torch.cuda.nvtx.range("radial_graph"):
-            radial_edge_index = torch_geometric.nn.radius_graph(y.pos, radial_cutoff, batch)
 
-        with torch.cuda.nvtx.range("concatenate_edges"):    
+        with torch.cuda.nvtx.range("radial_graph"):
+            radial_edge_index = radius_graph(y.pos, radial_cutoff, batch)
+
+        with torch.cuda.nvtx.range("concatenate_edges"):
             edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
             if bonded_edge_index.numel() == 0:
                 bond_mask = torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device)
@@ -174,7 +202,7 @@ class Denoiser(pl.LightningModule):
 
         # Compute the normalization factors.
         with torch.cuda.nvtx.range("normalization_factors"):
-            c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, self.average_squared_distance, D)
+            c_in, c_skip, c_out, c_noise = self.normalization_factors(sigma, D)
         radial_cutoff = self.effective_radial_cutoff(sigma) / c_in
 
         # Adjust dimensions.
@@ -233,7 +261,7 @@ class Denoiser(pl.LightningModule):
 
             with torch.cuda.nvtx.range("add_noise"):
                 y = self.add_noise(x, sigma)
-    
+
             if self.mean_center:
                 with torch.cuda.nvtx.range("mean_center_y"):
                     y = mean_center(y)
@@ -269,16 +297,16 @@ class Denoiser(pl.LightningModule):
         # Compute the scaled RMSD.
         with torch.cuda.nvtx.range("scaled_rmsd"):
             scaled_rmsd = torch.sqrt(raw_coordinate_loss) / (sigma * np.sqrt(D))
-    
+
         # Take the mean over each graph.
         with torch.cuda.nvtx.range("mean_over_graphs"):
-            raw_coordinate_loss = torch_scatter.scatter_mean(raw_coordinate_loss, x.batch, dim_size=x.num_graphs)
-            scaled_rmsd = torch_scatter.scatter_mean(scaled_rmsd, x.batch, dim_size=x.num_graphs)
-    
+            raw_coordinate_loss = scatter(raw_coordinate_loss, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+            scaled_rmsd = scatter(scaled_rmsd, x.batch, dim=0, dim_size=x.num_graphs, reduce="mean")
+
         # Account for the loss weight across graphs and noise levels.
         with torch.cuda.nvtx.range("loss_weight"):
             scaled_coordinate_loss = raw_coordinate_loss * x.loss_weight
-            scaled_coordinate_loss *= self.loss_weight(sigma, self.average_squared_distance, D)
+            scaled_coordinate_loss *= self.loss_weight(sigma, D)
 
         return scaled_coordinate_loss, {
             "coordinate_loss": scaled_coordinate_loss,

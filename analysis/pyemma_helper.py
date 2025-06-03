@@ -165,7 +165,7 @@ def plot_free_energy(
     """
     if legacy:
         warn(
-            "Legacy mode is deprecated is will be removed in the" " next major release. Until then use legacy=False",
+            "Legacy mode is deprecated is will be removed in the next major release. Until then use legacy=False",
             DeprecationWarning,
         )
         if vmin is None:
@@ -241,9 +241,7 @@ def plot_feature_histograms(
             if isinstance(feature_labels, _MDFeaturizer):
                 feature_labels = feature_labels.describe()
             else:
-                raise ValueError(
-                    "feature_labels must be a list of feature labels, " "a pyemma featurizer object or None."
-                )
+                raise ValueError("feature_labels must be a list of feature labels, a pyemma featurizer object or None.")
 
     # make nice plots if user does not decide on color and transparency
     if "color" not in kwargs.keys():

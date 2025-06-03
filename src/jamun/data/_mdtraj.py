@@ -147,6 +147,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
         pdb_file = os.path.join(self.root, pdb_file)
         traj_files = [os.path.join(self.root, filename) for filename in traj_files]
+       
+        self.traj_files = traj_files
+        self.pdb_file = pdb_file
 
         if traj_files[0].endswith(".npz") or traj_files[0].endswith(".npy"):
             self.traj = md.load(pdb_file)
@@ -213,4 +216,10 @@ class MDtrajDataset(torch.utils.data.Dataset):
     def trajectory(self) -> md.Trajectory:
         return self.traj
 
+    @property
+    def trajectory_files(self) -> Sequence[str]:
+        return self.traj_files
 
+    @property
+    def topology_file(self) -> str:
+        return self.pdb_file

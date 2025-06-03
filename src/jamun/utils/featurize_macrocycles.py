@@ -1,7 +1,7 @@
+import importlib.resources
 import pickle
 from pathlib import Path
-from typing import Any, Callable, Dict, Set, Iterator, List, Literal, Optional, Union, Tuple, FrozenSet
-
+from typing import Any, Dict, FrozenSet, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -12,8 +12,19 @@ from rdkit.Chem.rdchem import ChiralType, HybridizationType
 # Constants for encoding
 ATOMIC_NUMS = list(range(1, 100))
 PEPTIDE_CHIRAL_TAGS = {"L": 1, "D": -1, None: 0}
-CHIRAL_TAGS = {ChiralType.CHI_TETRAHEDRAL_CW: -1, ChiralType.CHI_TETRAHEDRAL_CCW: 1, ChiralType.CHI_UNSPECIFIED: 0, ChiralType.CHI_OTHER: 0}
-HYBRIDIZATION_TYPES = [HybridizationType.SP, HybridizationType.SP2, HybridizationType.SP3, HybridizationType.SP3D, HybridizationType.SP3D2]
+CHIRAL_TAGS = {
+    ChiralType.CHI_TETRAHEDRAL_CW: -1,
+    ChiralType.CHI_TETRAHEDRAL_CCW: 1,
+    ChiralType.CHI_UNSPECIFIED: 0,
+    ChiralType.CHI_OTHER: 0,
+}
+HYBRIDIZATION_TYPES = [
+    HybridizationType.SP,
+    HybridizationType.SP2,
+    HybridizationType.SP3,
+    HybridizationType.SP3D,
+    HybridizationType.SP3D2,
+]
 DEGREES = [0, 1, 2, 3, 4, 5]
 VALENCES = [0, 1, 2, 3, 4, 5, 6]
 NUM_HYDROGENS = [0, 1, 2, 3, 4]
@@ -34,7 +45,7 @@ RING_SIZE_FEATURE_NAMES = [f"ringsize{rs}" for rs in RING_SIZES]  # No "unknown"
 NUM_RING_FEATURE_NAMES = [f"numring{nr}" for nr in NUM_RINGS] + ["numringUNK"]
 
 # Constants and data for amino acids
-AMINO_ACID_DATA_PATH = "/data/bucket/kleinhej/cremp/amino_acids.csv"
+AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "amino_acids.csv"
 AMINO_ACID_DATA = pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa")
 AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].map(Chem.MolFromSmiles)
 
@@ -62,8 +73,7 @@ SIDE_CHAIN_TORSIONS_SMARTS_DICT = {
 
 # Updating for proline which doesn't conform to the generic pattern
 AMINO_ACID_TORSIONS_SMARTS_DICT = {
-    name: GENERIC_AMINO_ACID_SMARTS.replace("[*]", smarts)
-    for name, smarts in SIDE_CHAIN_TORSIONS_SMARTS_DICT.items()
+    name: GENERIC_AMINO_ACID_SMARTS.replace("[*]", smarts) for name, smarts in SIDE_CHAIN_TORSIONS_SMARTS_DICT.items()
 }
 AMINO_ACID_TORSIONS_SMARTS_DICT["proline"] = (
     "[$([CX3](=[OX1]))]"
@@ -80,9 +90,8 @@ AMINO_ACIDS_WITH_SYMMETRY = {"leucine", "phenylalanine", "tyrosine", "valine"}
 # Carboxyl before nitrogen corresponds to N-to-C direction of peptide
 PEPTIDE_PATTERN = Chem.MolFromSmarts("[OX1]=[C;R][N;R]")
 
-def get_macrocycle_idxs(
-    mol: Chem.Mol, min_size: int = 9, n_to_c: bool = True
-) -> Optional[List[int]]:
+
+def get_macrocycle_idxs(mol: Chem.Mol, min_size: int = 9, n_to_c: bool = True) -> Optional[List[int]]:
     sssr = Chem.GetSymmSSSR(mol)
     if len(sssr) > 0:
         largest_ring = max(sssr, key=len)
@@ -93,6 +102,7 @@ def get_macrocycle_idxs(
             return idxs
     return None
 
+
 def get_wrapped_overlapping_sublists(list_: List[Any], size: int) -> Iterator[List[Any]]:
     for idx in range(len(list_)):
         idxs = [idx]
@@ -102,15 +112,14 @@ def get_wrapped_overlapping_sublists(list_: List[Any], size: int) -> Iterator[Li
         yield [list_[i] for i in idxs]
 
 
-def get_overlapping_sublists(
-    list_: List[Any], size: int, wrap: bool = True
-) -> Iterator[List[Any]]:
+def get_overlapping_sublists(list_: List[Any], size: int, wrap: bool = True) -> Iterator[List[Any]]:
     if wrap:
         for item in get_wrapped_overlapping_sublists(list_, size):
             yield item
     else:
         for i in range(len(list_) - size + 1):
             yield list_[i : i + size]
+
 
 def macrocycle_idxs_in_n_to_c_direction(mol: Chem.Mol, macrocycle_idxs: List[int]) -> List[int]:
     # Obtain carbon and nitrogen idxs in peptide bonds in the molecule
@@ -137,6 +146,7 @@ def macrocycle_idxs_in_n_to_c_direction(mol: Chem.Mol, macrocycle_idxs: List[int
 
     return macrocycle_idxs
 
+
 def extract_macrocycle(mol: Chem.Mol) -> Chem.Mol:
     macrocycle_idxs = get_macrocycle_idxs(mol)
     if macrocycle_idxs is None:
@@ -154,6 +164,7 @@ def extract_macrocycle(mol: Chem.Mol) -> Chem.Mol:
 
     new_mol = rwmol.GetMol()
     return new_mol
+
 
 def combine_mols(mols: List[Chem.Mol]) -> Chem.Mol:
     """Combine multiple molecules with one conformer each into one molecule with multiple
@@ -281,18 +292,20 @@ def _dfs(
 
     return traversal
 
+
 def one_k_encoding(value: Any, choices: List[Any], include_unknown: bool = True) -> List[int]:
     """Create a one-hot encoding with an extra category for uncommon values."""
     encoding = [0] * (len(choices) + include_unknown)
     try:
         idx = choices.index(value)
-    except ValueError:
+    except ValueError as e:
         if include_unknown:
             idx = -1
         else:
-            raise ValueError(f"Cannot encode '{value}' because it is not in {choices}")
+            raise ValueError(f"Cannot encode '{value}' because it is not in {choices}") from e
     encoding[idx] = 1
     return encoding
+
 
 def featurize_macrocycle_atoms(
     mol: Chem.Mol,
@@ -306,7 +319,9 @@ def featurize_macrocycle_atoms(
     """Create a sequence of features for each atom in `macrocycle_idxs`."""
     atom_features = {}
     ring_info = mol.GetRingInfo()
-    morgan_fingerprint_generator = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=size, includeChirality=True)
+    morgan_fingerprint_generator = rdFingerprintGenerator.GetMorganGenerator(
+        radius=radius, fpSize=size, includeChirality=True
+    )
     fingerprint_feature_names = [f"fp{i}" for i in range(size)]
 
     if macrocycle_idxs is None:
@@ -365,6 +380,7 @@ def featurize_macrocycle_atoms(
 
     return atom_features
 
+
 def featurize_macrocycle_atoms_from_file(
     path: Union[str, Path],
     use_peptide_stereo: bool = True,
@@ -392,9 +408,11 @@ def featurize_macrocycle_atoms_from_file(
         return mol, features
     return features
 
+
 def get_amino_acid_stereo(symbol: str) -> Optional[str]:
     stereo = AMINO_ACID_DATA.loc[symbol]["alpha_carbon_stereo"]
     return stereo if isinstance(stereo, str) else None
+
 
 def get_residues(
     mol: Chem.Mol,
@@ -423,9 +441,7 @@ def get_residues(
         frozenset(
             side_chain_idx
             for atom_idx in atom_idxs
-            for side_chain_idx in dfs(
-                atom_idx, mol, blocked_idxs=macrocycle_idxs, include_hydrogens=False
-            )
+            for side_chain_idx in dfs(atom_idx, mol, blocked_idxs=macrocycle_idxs, include_hydrogens=False)
         )
         for atom_idxs in backbone_idxs
     ]
@@ -434,12 +450,15 @@ def get_residues(
     for atom_idxs in residue_idxs:
         try:
             residue = potential_residue_idxs[atom_idxs]
-        except KeyError:
-            raise Exception(f"Cannot determine residue for backbone indices '{list(atom_idxs)}' of '{Chem.MolToSmiles(Chem.RemoveHs(mol))}'")
+        except KeyError as e:
+            raise KeyError(
+                f"Cannot determine residue for backbone indices '{list(atom_idxs)}' of '{Chem.MolToSmiles(Chem.RemoveHs(mol))}'"
+            ) from e
         else:
             residue_dict[atom_idxs] = residue
 
     return residue_dict
+
 
 def get_side_chain_torsion_idxs(mol: Chem.Mol) -> Dict[int, List[int]]:
     """Get the indices of atoms in the side chains that we want to calculate internal coordinates for."""
@@ -458,4 +477,3 @@ def get_side_chain_torsion_idxs(mol: Chem.Mol) -> Dict[int, List[int]]:
                 side_chain_torsion_idxs[alpha_carbon] = list(match)
 
     return side_chain_torsion_idxs
-

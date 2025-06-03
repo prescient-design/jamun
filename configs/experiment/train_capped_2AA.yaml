@@ -21,6 +21,7 @@ data:
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
+        num_frames: 320000
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -29,6 +30,7 @@ data:
         pdb_pattern: "^(.*).pdb"
         subsample: 100
         max_datasets: 20
+        num_frames: 320000
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -37,6 +39,7 @@ data:
         pdb_pattern: "^(.*).pdb"
         subsample: 100
         max_datasets: 20
+        num_frames: 320000
 
 trainer:
   val_check_interval: 0.1

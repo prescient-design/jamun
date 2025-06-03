@@ -29,8 +29,9 @@ nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
   jamun_train --config-dir=/homefs/home/daigavaa/jamun/configs \
-    experiment=train_uncapped_2AA.yaml \
+    experiment=train_uncapped_4AA.yaml \
+    ++model.sigma_distribution.sigma=0.04 \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
-    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","uncapped_2AA"] \
+    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","uncapped_4AA"] \
     ++run_key=$RUN_KEY

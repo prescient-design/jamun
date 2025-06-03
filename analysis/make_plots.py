@@ -2,14 +2,7 @@ from typing import Dict, Optional, Any, Tuple
 import os
 import pickle
 import argparse
-
 import logging
-
-logging.getLogger("fontTools").setLevel(logging.ERROR)
-logging.getLogger("numexpr.utils").setLevel(logging.ERROR)
-
-logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
-py_logger = logging.getLogger("analysis")
 
 import numpy as np
 import scipy.stats
@@ -19,18 +12,24 @@ import lovelyplots
 import matplotlib as mpl
 import matplotlib.colors
 
-mpl.rcParams["axes.formatter.useoffset"] = False
-mpl.rcParams["axes.formatter.limits"] = (-10000, 10000)  # Controls range before scientific notation is used
-plt.style.use("ipynb")
-
 from jamun import utils
 
+# TODO: Fix imports.
 import sys
-
 sys.path.append("./")
 
 import pyemma_helper
 import load_trajectory
+
+mpl.rcParams["axes.formatter.useoffset"] = False
+mpl.rcParams["axes.formatter.limits"] = (-10000, 10000)  # Controls range before scientific notation is used
+plt.style.use("ipynb")
+
+logging.getLogger("fontTools").setLevel(logging.ERROR)
+logging.getLogger("numexpr.utils").setLevel(logging.ERROR)
+
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
+py_logger = logging.getLogger("analysis")
 
 
 def load_results(results_dir: str, experiment: str, traj_name: str, ref_traj_name: str) -> pd.DataFrame:
@@ -166,7 +165,6 @@ def format_peptide_name(peptide: str) -> str:
     return utils.convert_to_one_letter_codes(peptide)
 
 
-
 def plot_ramachandran_contour(results: Dict[str, Any], dihedral_index: int, ax: Optional[plt.Axes] = None) -> plt.Axes:
     """Plots the Ramachandran contour plot of a trajectory."""
 
@@ -192,8 +190,13 @@ def plot_ramachandran_contour(results: Dict[str, Any], dihedral_index: int, ax: 
 
 
 def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
-    # "internal" for psi_2 - phi_2, psi_3 - phi_3, etc.
-    # "all" for psi_1 - phi_2, psi_2 - phi_3, etc.
+    """
+    Returns the number of dihedrals for a given experiment and PMF type.
+       
+        pmf_type = "internal" for psi_2 - phi_2, psi_3 - phi_3, etc.
+        pmf_type = "all" for psi_1 - phi_2, psi_2 - phi_3, etc.
+    """
+    
     if pmf_type not in ["internal", "all"]:
         raise ValueError(f"Invalid pmf_type: {pmf_type}")
 
@@ -534,7 +537,7 @@ def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide
     axs[0, num_dihedrals // 2].text(
         0.5, 1.2,
         format_peptide_name(peptide),
-        transform=axs[0, 0].transAxes,
+        transform=axs[0, num_dihedrals // 2].transAxes,
         verticalalignment="center",
         horizontalalignment="center",
         fontsize=plt.rcParams['figure.titlesize']
@@ -863,9 +866,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
     format_traj_name_fn = get_format_traj_name_fn(results_df)
 
     traj_names = ["ref_traj", "traj"]
-    for extra in ["TBG", "MDGen", "Boltz-1", "BioEmu"]:
-        if extra in results_df.attrs.get("extra_traj_names", []):
-            traj_names.append(extra)
+    traj_names.extend(results_df.attrs.get("extra_traj_names", []))
 
     fig, axs = plt.subplots(nrows=len(results_df), ncols=len(traj_names), figsize=(6 * len(traj_names), 3.5 * len(results_df)), squeeze=False)
     for i, row in results_df.iterrows():
@@ -883,7 +884,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
 
         if i == 0:
             for j, traj in enumerate(traj_names):
-                axs[i, j].set_title(format_traj_name_fn(traj), fontsize=18)
+                axs[i, j].set_title(format_traj_name_fn(traj), fontsize=28)
         
         axs[i, -1].text(
             1.4,
@@ -893,6 +894,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
             verticalalignment="center",
             horizontalalignment="center",
             transform=axs[i, -1].transAxes,
+            fontsize=28,
         )
 
     # plt.suptitle("TICA-0,1 Projections", fontsize="x-large")

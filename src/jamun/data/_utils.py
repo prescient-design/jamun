@@ -108,8 +108,8 @@ def parse_datasets_from_directory(
     for code in tqdm(codes, desc="Creating datasets"):
         dataset = dataset_class(
             root,
-            trajfiles=traj_files[code],
-            pdbfile=pdb_files[code],
+            traj_files=traj_files[code],
+            pdb_file=pdb_files[code],
             label=code,
             **dataset_kwargs,
         )

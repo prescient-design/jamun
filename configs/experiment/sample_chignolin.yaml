@@ -2,23 +2,19 @@
 
 defaults:
   - override /callbacks:
+    - sampler/measure_sampling_time.yaml
     - sampler/save_trajectory.yaml
   - _self_
 
-init_datasets:
-  _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/timewarp/4AA-large/test/"
-  traj_pattern: "^(.*)-traj-arrays.npz"
-  pdb_pattern: "^(.*)-traj-state0.pdb"
-  subsample: 1
-
-num_sampling_steps_per_batch: 20000
-num_batches: 5
+num_sampling_steps_per_batch: 50000
+num_batches: 20
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
-wandb_train_run_path: prescient-design/jamun/6297yugb
+# Chignolin
+wandb_train_run_path: prescient-design/jamun/mwpkaesx
+
 checkpoint_type: best_so_far
 sigma: 0.04
 M: 1.0
@@ -27,10 +23,17 @@ friction: 1.0
 inverse_temperature: 1.0
 score_fn_clip: null
 
+init_pdbs:
+  - ${paths.data_path}/fast-folding/processed/chignolin/filtered.pdb
+
+init_datasets:
+  _target_: jamun.data.create_dataset_from_pdbs
+  pdbfiles: ${init_pdbs}
+
 sampler:
   _target_: jamun.sampling.Sampler
   devices: 1
 
 logger:
   wandb:
-    group: sample_uncapped_4AA
+    group: sample_chignolin

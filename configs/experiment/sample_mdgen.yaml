@@ -6,27 +6,27 @@ defaults:
     - sampler/save_trajectory.yaml
   - _self_
 
-num_sampling_steps_per_batch: 10000
-num_batches: 10
+num_sampling_steps_per_batch: 100000
+num_batches: 2
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
 # MDGen
-wandb_train_run_path: prescient-design/jamun/fl0mbm3c
+wandb_train_run_path: prescient-design/jamun/brd51ln4
 
 checkpoint_type: best_so_far
 sigma: 0.04
 M: 1.0
 delta: 0.04
-friction: 10.0
+friction: 1.0
 inverse_temperature: 1.0
-score_fn_clip: 100.0
+score_fn_clip: null
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
   root: "${paths.data_path}/mdgen/data/4AA_sims_partitioned_chunked/test/"
-  traj_pattern: "^(....)_.*.xtc"
+  traj_pattern: "^(....)_chunk_1.xtc"
   pdb_pattern: "^(....).pdb"
   as_iterable: false
 

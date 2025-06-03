@@ -12,10 +12,10 @@ residue_code_embedding_dim: 32
 residue_index_embedding_dim: 8
 use_residue_sequence_index: false
 conv_factory:
-  _target_: jamun.e3tools.nn.ConvBlock
+  _target_: e3tools.nn.ConvBlock
   _partial_: true
   conv:
-    _target_: jamun.e3tools.nn.Conv
+    _target_: e3tools.nn.Conv
     _partial_: true
     use_torch_compile: true
     torch_compile_kwargs:

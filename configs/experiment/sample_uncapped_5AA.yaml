@@ -2,6 +2,7 @@
 
 defaults:
   - override /callbacks:
+    - sampler/measure_sampling_time.yaml
     - sampler/save_trajectory.yaml
   - _self_
 
@@ -12,8 +13,10 @@ repeat_init_samples: 1
 continue_chain: true
 
 # New 4AA
-wandb_train_run_path: prescient-design/jamun/6297yugb
+# wandb_train_run_path: prescient-design/jamun/6297yugb
 
+# MDGen
+wandb_train_run_path: prescient-design/jamun/brd51ln4
 
 # Put path to 5AA pdb here.
 # init_pdb: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
@@ -31,7 +34,7 @@ M: 1.0
 delta: 0.04
 friction: 1.0
 inverse_temperature: 1.0
-score_fn_clip: 100.0
+score_fn_clip: null
 
 init_datasets:
   _target_: jamun.data.create_dataset_from_pdbs

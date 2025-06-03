@@ -11,13 +11,13 @@ import torch
 torch.set_float32_matmul_precision('high')
 
 import e3nn
+import e3tools.nn
 e3nn.set_optimization_defaults(jit_script_fx=False)
 
 import jamun
 import jamun.data
 import jamun.model
 import jamun.model.arch
-import jamun.e3tools
 import jamun.distributions
 
 
@@ -59,11 +59,11 @@ arch = functools.partial(
     use_residue_information=True,
     use_residue_sequence_index=False,
     hidden_layer_factory=functools.partial(
-        jamun.e3tools.nn.ConvBlock,
-        conv=jamun.e3tools.nn.Conv,
+        e3tools.nn.ConvBlock,
+        conv=e3tools.nn.Conv,
     ),
     output_head_factory=functools.partial(
-        jamun.e3tools.nn.EquivariantMLP,
+        e3tools.nn.EquivariantMLP,
         irreps_hidden_list=["120x0e + 32x1e"]
     )
 )
