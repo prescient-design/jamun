@@ -6,6 +6,8 @@ import pandas as pd
 
 from jamun import data
 from jamun import utils
+import utils_sdf as analysis_utils_sdf
+
 
 
 def find_project_root() -> str:
@@ -28,6 +30,7 @@ def get_run_path_for_wandb_run(wandb_run_path: str) -> str:
 
 def get_peptides_in_JAMUN_run(run_path: str) -> Sequence[str]:
     """Returns the list of peptides sampled in a run and the output directory where they are stored."""
+    print(f"Getting peptides in JAMUN run {run_path}")
 
     if not os.path.exists(run_path):
         raise ValueError(f"Output directory {run_path} not found.")
@@ -56,18 +59,16 @@ def search_for_JAMUN_files(root_path: str) -> List[str]:
 
 
 def get_sampling_rate(name: str, peptide: str, experiment: str) -> float:
-    """Returns (approximate) sampling rates in seconds per sample."""
+    """Returns the sampling rates."""
 
     if name == "JAMUN":
-        rates_csv = os.path.join(find_project_root(), "analysis", "sampling_times", "JAMUN.csv")
+        rates_csv = os.path.join(find_project_root(), "analysis", "JAMUN_sampling_times.csv")
         df = pd.read_csv(rates_csv)
-        if experiment not in df["experiment"].values:
-            return None
         ms_per_sample = df[(df["experiment"] == experiment)]["ms_per_sample"].values[0]
         return ms_per_sample / 1000
 
     if name == "JAMUNReference_2AA":
-        rates_csv = os.path.join(find_project_root(), "analysis", "sampling_times", "JAMUNReference_2AA.csv")
+        rates_csv = os.path.join(find_project_root(), "analysis", "JAMUNReference_2AA_sampling_times.csv")
         df = pd.read_csv(rates_csv)
         seconds_per_10_samples = df[(df["peptide"] == peptide)]["seconds_per_10_samples"].values[0]
         return seconds_per_10_samples / 10
@@ -142,9 +143,9 @@ def get_MDGenReference_trajectories(
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
         return data.parse_datasets_from_directory(
-            root=f"{data_path}/mdgen/data/4AA_sims_partitioned_chunked/{split}/",
-            traj_pattern="^(....)_.*.xtc",
-            pdb_pattern="^(....).pdb",
+            root=f"{data_path}/mdgen/data/4AA_sims_partitioned/{split}/",
+            traj_pattern="^(.*).xtc",
+            pdb_pattern="^(.*).pdb",
             filter_codes=filter_codes,
         )
 
@@ -244,6 +245,29 @@ def get_JAMUNReference_5AA_trajectories(
     filter_codes_map = dict(zip(three_letter_filter_codes, filter_codes))
     return {filter_codes_map[dataset.label()]: dataset.trajectory for dataset in datasets}
 
+def get_CrempReference_trajectories(
+    data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
+) -> Dict[str, md.Trajectory]:
+    """Returns a dictionary mapping peptide names to our reference Cremp sdf trajectory."""
+
+    def get_datasets_for_split(split: str):
+        """Helper function to get datasets for a given split."""
+        return data.parse_datasets_from_directory_new(
+            root=f"{data_path}",
+            traj_pattern= "^(.*).npz",
+            topology_pattern= "^(.*).sdf",
+            as_sdf=True,
+            filter_codes=filter_codes,
+        )
+
+    if split in ["train", "val", "test"]:
+        datasets = get_datasets_for_split(split)
+    elif split == "all":
+        datasets = get_datasets_for_split("train") + get_datasets_for_split("val") + get_datasets_for_split("test")
+    else:
+        raise ValueError(f"Invalid split: {split}")
+
+    return {dataset.label(): dataset.trajectory for dataset in datasets}
 
 def get_TBG_trajectories(root: str) -> Dict[str, md.Trajectory]:
     """Returns a dictionary mapping peptide names to the TBG MDTraj trajectory."""

@@ -15,6 +15,7 @@ py_logger = logging.getLogger("analysis")
 # TODO: Fix imports
 sys.path.append("./")
 import utils as analysis_utils
+import utils_sdf as analysis_utils_sdf
 import load_trajectory as load_trajectory
 
 
@@ -29,14 +30,20 @@ def parse_args():
     parser.add_argument(
         "--trajectory",
         type=str,
-        choices=["JAMUN", "JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
+        choices=["JAMUN", "JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference", "CrempReference"],
         help="Type of trajectory to analyze",
     )
     parser.add_argument(
         "--reference",
         type=str,
-        choices=["JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference"],
+        choices=["JAMUNReference_2AA", "JAMUNReference_5AA", "MDGenReference", "TimewarpReference", "CrempReference"],
         help="Type of reference trajectory to compare against",
+    )
+    parser.add_argument(
+        "--same-sampling-time",
+        action="store_true",
+        default=False,
+        help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
     )
     parser.add_argument(
         "--run-path",
@@ -70,9 +77,9 @@ def load_trajectories_by_name(
     if args.data_path:
         JAMUN_DATA_PATH = args.data_path
     else:
-        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key("../.env", "JAMUN_DATA_PATH"))
+        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key(".env", "JAMUN_DATA_PATH"))
         if not JAMUN_DATA_PATH:
-            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path, environment variable or .env file")
+            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path or environment variable")
     py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
 
     filter_codes = [args.peptide]
@@ -107,6 +114,11 @@ def load_trajectories_by_name(
             JAMUN_DATA_PATH,
             filter_codes=filter_codes,
         )
+    elif name == "CrempReference":
+        return load_trajectory.get_CrempReference_trajectories(
+            JAMUN_DATA_PATH,
+            filter_codes=filter_codes,
+        )
     else:
         raise ValueError(f"Trajectory type {args.trajectory} not supported")
 
@@ -131,17 +143,129 @@ def load_trajectories(args) -> Tuple[md.Trajectory, md.Trajectory]:
 def subset_reference_trajectory(
     traj_md: md.Trajectory,
     ref_traj_md: md.Trajectory,
-    traj_seconds_per_sample: float,
-    ref_traj_seconds_per_sample: float,
-    base_factor: float = 1.0,
+    args: argparse.Namespace,
 ) -> md.Trajectory:
-    """Subset reference trajectory to match base_factor x length of the trajectory in actual sampling time."""
-    traj_time = traj_seconds_per_sample * traj_md.n_frames
-    ref_traj_time = ref_traj_seconds_per_sample * ref_traj_md.n_frames
-    factor = min(traj_time / ref_traj_time, 1) * base_factor
+    """Subset reference trajectory to match the length of the trajectory in actual sampling time."""
+    traj_samples_per_sec = load_trajectory.get_sampling_rate(args.trajectory, args.peptide, args.experiment)
+    if traj_samples_per_sec is None:
+        raise ValueError(f"Sampling rate not found for {args.trajectory}")
+
+    ref_traj_samples_per_sec = load_trajectory.get_sampling_rate(args.reference, args.peptide, args.experiment)
+    if ref_traj_samples_per_sec is None:
+        raise ValueError(f"Sampling rate not found for {args.reference}")
+
+    traj_time = traj_samples_per_sec * traj_md.n_frames
+    ref_traj_time = ref_traj_samples_per_sec * ref_traj_md.n_frames
+    factor = min(traj_time / ref_traj_time, 1)
     ref_traj_subset_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
     return ref_traj_subset_md
 
+def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str, Any]:
+    """Run analysis on the trajectories and return results dictionary."""
+
+    # Featurize trajectories.
+    results = {}
+    results["featurization"] = analysis_utils_sdf.featurize_trajectories_macrocycle(traj_md, sdf_file)
+
+    py_logger.info(f"Analysis_utils_sdf Featurization complete.")
+    traj_results = results["featurization"]["traj"]
+    traj_feats = traj_results["feats"]["torsions"]
+    traj_featurized_dict = traj_results["traj_featurized"]
+    traj_featurized = traj_featurized_dict["torsions"] 
+
+    ref_traj_results = results["featurization"]["ref_traj"]
+    ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
+    ref_traj_featurized = ref_traj_featurized_dict["torsions"]
+    py_logger.info(f"Featurization complete.")
+
+    py_logger.info(f"this is the traj results: {traj_results}")
+    py_logger.info(f"this is the ref traj results: {ref_traj_results}")
+    py_logger.info(f"this is the traj feats: {traj_feats}")
+    py_logger.info(f"this is the ref traj feats: {ref_traj_results['feats']}")
+    py_logger.info(f"this is the traj featurized dict: {traj_featurized_dict}")
+    py_logger.info(f"this is the ref traj featurized dict: {ref_traj_featurized_dict}")
+
+    py_logger.info(f"this is the traj featurized: {traj_featurized}") 
+    py_logger.info(f"this is the ref traj featurized: {ref_traj_featurized}")
+
+    # Compute feature histograms.
+    results["feature_histograms"] = analysis_utils.compute_feature_histograms(
+        traj_featurized_dict,
+        ref_traj_featurized_dict,
+    )
+    py_logger.info(f"Feature histograms computed.")
+
+    # Compute PMFs.
+    results["PMFs"] = analysis_utils_sdf.compute_PMFs_mc(
+        traj_featurized,
+        ref_traj_featurized,
+        traj_feats,
+    )
+    py_logger.info(f"PMFs computed.")
+
+    # Compute JSDs.
+    results["JSD_torsion_stats"] = analysis_utils.compute_JSD_torsion_stats(
+        traj_featurized,
+        ref_traj_featurized,
+        traj_feats,
+    )
+    py_logger.info(f"JSD torsion stats computed.")
+
+    # Compute JSDs of torsions against time.
+    results["JSD_torsion_stats_against_time"] = analysis_utils.compute_JSD_torsion_stats_against_time(
+        traj_featurized,
+        ref_traj_featurized,
+        traj_feats,
+    )
+    py_logger.info(f"JSD torsion stats as a function of time computed.")
+
+    traj_featurized_cossin = traj_featurized_dict["torsions_cossin"]
+    ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
+
+    # TICA analysis.
+    results["TICA"] = analysis_utils.compute_TICA(
+        traj_featurized_cossin,
+        ref_traj_featurized_cossin,
+    )
+    py_logger.info(f"TICA computed.")
+
+    traj_tica = results["TICA"]["traj_tica"]
+    ref_traj_tica = results["TICA"]["ref_traj_tica"]
+
+    # Compute TICA stats.
+    results["TICA_stats"] = analysis_utils.compute_TICA_stats(
+        traj_tica,
+        ref_traj_tica,
+    )
+    py_logger.info(f"TICA stats computed.")
+
+    # Compute autocorrelation stats.
+    results["autocorrelation_stats"] = analysis_utils.compute_autocorrelation_stats(
+        traj_tica,
+        ref_traj_tica,
+    )
+    py_logger.info(f"Autocorrelation stats computed.")
+
+    # Compute MSM stats.
+    # Sometimes, this fails because the reference trajectory is too short.
+    try:
+        results["MSM_stats"] = analysis_utils.compute_MSM_stats(
+            traj_tica,
+            ref_traj_tica,
+        )
+        py_logger.info(f"MSM stats computed.")
+
+        # Compute JSDs against time.
+        results["JSD_MSM_stats_against_time"] = analysis_utils.compute_JSD_MSM_stats_against_time(
+            traj_tica,
+            ref_traj_tica,
+        )
+        py_logger.info(f"JSD MSM stats as a function of time computed.")
+   
+    except IndexError:
+        py_logger.warning(f"MSM stats could not be computed.")
+
+    return results
 
 def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Any]:
     """Run analysis on the trajectories and return results dictionary."""
@@ -241,7 +365,7 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
     return results
 
 
-def save_results(results: Dict[str, Any], args: argparse.Namespace, output_path_suffix: Optional[str] = None) -> None:
+def save_results(results: Dict[str, Any], args: argparse.Namespace, is_benchmark_reference: bool) -> None:
     """Save analysis results to pickle file."""
 
     # Delete intermediate results, to reduce memory usage.
@@ -254,8 +378,8 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace, output_path_
     output_dir = os.path.join(args.output_dir, args.experiment, args.trajectory, f"ref={args.reference}")
     os.makedirs(output_dir, exist_ok=True)
 
-    if output_path_suffix:
-        output_path = os.path.join(output_dir, f"{args.peptide}_{output_path_suffix}.pkl")
+    if is_benchmark_reference:
+        output_path = os.path.join(output_dir, f"{args.peptide}_benchmark.pkl")
     else:
         output_path = os.path.join(output_dir, f"{args.peptide}.pkl")
 
@@ -263,7 +387,6 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace, output_path_
         pickle.dump({"results": results, "args": vars(args)}, f)
 
     py_logger.info(f"Results saved to: {os.path.abspath(output_path)}")
-
 
 def main():
     args = parse_args()
@@ -273,9 +396,15 @@ def main():
     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
     py_logger.info(f"{args.trajectory} trajectory loaded: {traj}")
     py_logger.info(f"{args.reference} reference trajectory loaded: {ref_traj}")
+    
+    # Construct the correct SDF file path.
+    sdf_file_path = os.path.join("/data/bucket/kleinhej/cremp-preprocessed", args.peptide + ".sdf")
+    if not os.path.exists(sdf_file_path):
+        py_logger.warning(f"SDF file {sdf_file_path} not found. Skipping analysis.")
+        return
 
     # Run analysis.
-    results = analyze_trajectories(traj, ref_traj)
+    results = analyze_trajectories_sdf(traj, sdf_file_path)
 
     # Save results.
     save_results(results, args, output_path_suffix=None)
@@ -296,6 +425,32 @@ def main():
         # ref_traj_subset_10x = subset_reference_trajectory(traj, ref_traj, traj_seconds_per_sample, ref_traj_seconds_per_sample, base_factor=10.0)
         # results = analyze_trajectories(ref_traj_subset_10x, ref_traj)
         # save_results(results, args, output_path_suffix="benchmark_10x")
+
+
+# def main():
+#     args = parse_args()
+
+#     # Load trajectories.
+#     traj, ref_traj = load_trajectories(args)
+#     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
+#     py_logger.info(f"{args.trajectory} trajectory loaded: {traj}")
+#     py_logger.info(f"{args.reference} reference trajectory loaded: {ref_traj}")
+
+#     # Run analysis.
+#     results = analyze_trajectories(traj, ref_traj)
+
+#     # Save results.
+#     save_results(results, args, is_benchmark_reference=False)
+
+#     if args.run_reference_benchmark:
+#         ref_traj_subset = subset_reference_trajectory(traj, ref_traj, args)
+#         py_logger.info(f"Reference trajectory subsetting complete.")
+
+#         # Run analysis again, this time with the subsetted reference trajectory.
+#         results = analyze_trajectories(ref_traj_subset, ref_traj)
+
+#         # Save results again.
+#         save_results(results, args, is_benchmark_reference=True)
 
 
 if __name__ == "__main__":
