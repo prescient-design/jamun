@@ -40,12 +40,6 @@ def parse_args():
         help="Type of reference trajectory to compare against",
     )
     parser.add_argument(
-        "--same-sampling-time",
-        action="store_true",
-        default=False,
-        help="If set, will subset reference trajectory to match the length of the trajectory in actual sampling time.",
-    )
-    parser.add_argument(
         "--run-path",
         type=str,
         help="Path to JAMUN run directory containing trajectory files",
@@ -77,9 +71,9 @@ def load_trajectories_by_name(
     if args.data_path:
         JAMUN_DATA_PATH = args.data_path
     else:
-        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key(".env", "JAMUN_DATA_PATH"))
+        JAMUN_DATA_PATH = os.environ.get("JAMUN_DATA_PATH", dotenv.get_key("../.env", "JAMUN_DATA_PATH"))
         if not JAMUN_DATA_PATH:
-            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path or environment variable")
+            raise ValueError("JAMUN_DATA_PATH must be provided either via --data-path, environment variable or .env file")
     py_logger.info(f"Using JAMUN_DATA_PATH: {JAMUN_DATA_PATH}")
 
     filter_codes = [args.peptide]
@@ -387,6 +381,7 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace, is_benchmark
         pickle.dump({"results": results, "args": vars(args)}, f)
 
     py_logger.info(f"Results saved to: {os.path.abspath(output_path)}")
+
 
 def main():
     args = parse_args()
