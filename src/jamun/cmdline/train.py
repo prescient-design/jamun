@@ -85,7 +85,7 @@ def run(cfg):
         )
     else:
         checkpoint_path = None
-
+    print(f'Saving checkpoints @ {checkpoint_path}')
     trainer.fit(model, datamodule=datamodule, ckpt_path=checkpoint_path)
 
     if wandb_logger and isinstance(trainer.profiler, lightning.pytorch.profilers.PyTorchProfiler):

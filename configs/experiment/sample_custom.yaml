@@ -43,3 +43,4 @@ sampler:
 logger:
   wandb:
     group: sample_custom
+    notes: sampling on AA

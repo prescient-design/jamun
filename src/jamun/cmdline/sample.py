@@ -2,6 +2,7 @@ import os
 import sys
 import traceback
 from typing import Sequence
+import pdb 
 
 import dotenv
 import e3nn
@@ -71,8 +72,9 @@ def run(cfg):
     # Overwrite the checkpoint path in the config.
     cfg.model.checkpoint_path = checkpoint_path
     model = hydra.utils.instantiate(cfg.model)
-
+    print(f'Checkpoint path at: {checkpoint_path}')
     init_datasets = hydra.utils.instantiate(cfg.init_datasets)
+    breakpoint()
     init_graphs = get_initial_graphs(
         init_datasets,
         num_init_samples_per_dataset=cfg.num_init_samples_per_dataset,

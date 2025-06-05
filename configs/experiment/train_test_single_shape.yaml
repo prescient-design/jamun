@@ -22,35 +22,36 @@ data:
       train:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-          trajfiles:
+          traj_files:
             - AA-traj-arrays.npz
-          pdbfile: AA-traj-state0.pdb
+          pdb_file: AA-traj-state0.pdb
           subsample: 100
-          label: "AA"
+          label: AA
 
       val:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-          trajfiles:
+          traj_files:
             - AA-traj-arrays.npz
-          pdbfile: AA-traj-state0.pdb
+          pdb_file: AA-traj-state0.pdb
           subsample: 100
-          label: "AA"
+          label: AA
 
       test:
         - _target_: jamun.data.MDtrajDataset
           root: "${paths.data_path}/timewarp/2AA-1-large/train/"
-          trajfiles:
+          traj_files:
             - AA-traj-arrays.npz
-          pdbfile: AA-traj-state0.pdb
+          pdb_file: AA-traj-state0.pdb
           subsample: 100
-          label: "AA"
+          label: AA
 
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 1
+  max_epochs: 200
 
 logger:
   wandb:
     group: train_test
+    notes: "alanine dipeptide"
