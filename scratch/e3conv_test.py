@@ -7,7 +7,6 @@ from e3nn import o3
 from e3nn.o3 import Irreps
 from e3tools import scatter
 from torch import Tensor
-
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
 from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
 
@@ -36,6 +35,7 @@ class E3Conv(torch.nn.Module):
         num_residue_types: int = 25,
         test_equivariance: bool = False,
         reduce: str | None = None,
+        N_structures: int = 1
     ):
         super().__init__()
 
@@ -45,7 +45,7 @@ class E3Conv(torch.nn.Module):
         self.irreps_sh = o3.Irreps(irreps_sh)
         self.n_layers = n_layers
         self.edge_attr_dim = edge_attr_dim
-
+        self.N_structures = N_structures
         self.sh = o3.SphericalHarmonics(irreps_out=self.irreps_sh, normalize=True, normalization="component")
         self.bonded_edge_attr_dim, self.radial_edge_attr_dim = self.edge_attr_dim // 2, (self.edge_attr_dim + 1) // 2
         self.embed_bondedness = torch.nn.Embedding(2, self.bonded_edge_attr_dim)
@@ -74,7 +74,7 @@ class E3Conv(torch.nn.Module):
         self.initial_projector = hidden_layer_factory(
             irreps_in=self.initial_noise_scaling.irreps_out,
             irreps_out=self.irreps_hidden,
-            irreps_sh=self.irreps_sh,
+            irreps_sh=N_structures*self.irreps_sh,
             edge_attr_dim=edge_attr_dim,
         )
 
@@ -86,7 +86,7 @@ class E3Conv(torch.nn.Module):
                 hidden_layer_factory(
                     irreps_in=self.irreps_hidden,
                     irreps_out=self.irreps_hidden,
-                    irreps_sh=self.irreps_sh,
+                    irreps_sh=N_structures*self.irreps_sh,
                     edge_attr_dim=self.edge_attr_dim,
                 )
             )
@@ -99,7 +99,7 @@ class E3Conv(torch.nn.Module):
 
     def forward(
         self,
-        pos: Tensor,
+        pos: Tensor, # should be [batch_size*N, 3T], T is the number of previous time-steps
         topology: torch_geometric.data.Batch,
         c_noise: Tensor,
         effective_radial_cutoff: float,
@@ -108,13 +108,19 @@ class E3Conv(torch.nn.Module):
         edge_index = topology["edge_index"]
         bond_mask = topology["bond_mask"]
 
-        src, dst = edge_index
-        edge_vec = pos[src] - pos[dst]
-        edge_sh = self.sh(edge_vec)
+        src, dst = edge_index                    # compute edge spherical harmonics over concat structures
+        positions = torch.split(pos, 3, dim=-1)
+        edge_sh = []
+        for block in positions: 
+            edge_vec = block[src] - block[dst]
+            edge_sh.append(self.sh(edge_vec))
+        edge_sh = torch.cat(edge_sh, dim=-1) 
+
         # print(f"Edge spherical harmonics: {type(edge_sh)}")
         bonded_edge_attr = self.embed_bondedness(bond_mask)
+        edge_vec_main = positions[0][src] - positions[0][dst]
         radial_edge_attr = e3nn.math.soft_one_hot_linspace(
-            edge_vec.norm(dim=1),
+            edge_vec_main.norm(dim=1),
             0.0,
             effective_radial_cutoff,
             self.radial_edge_attr_dim,

@@ -41,6 +41,7 @@ def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Dat
         num_residues=residue_sequence_index.max().item() + 1,
         edge_index=bonds,
         pos=None,
+        hidden_state=None
     )
     graph.residues = [x.residue.name for x in top.atoms]
     graph.atom_names = [x.name for x in top.atoms]
@@ -83,7 +84,7 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         self.graph, self.top, self.top_withH = preprocess_topology(topology)
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
-
+        self.graph.hidden_state = None
         # self.save_topology_pdb()
 
         if verbose:
@@ -179,6 +180,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.traj = self.traj.atom_slice(topology.select("protein and not type H"))
 
         self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
+        self.graph.hidden_state = torch.tensor(self.traj.xyz[-1], dtype=torch.float32)
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.dataset_label = self.label()
 
@@ -201,6 +203,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         graph = self.graph.clone()
         graph.pos = torch.tensor(self.traj.xyz[idx])
+        graph.hidden_state = [torch.tensor(self.traj.xyz[idx-1])]
         if self.transform:
             graph = self.transform(graph)
         return graph

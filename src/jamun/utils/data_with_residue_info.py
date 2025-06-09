@@ -1,6 +1,6 @@
 import torch
 import torch_geometric
-
+from typing import Any
 
 class DataWithResidueInformation(torch_geometric.data.Data):
     """Graph with residue-level information."""
@@ -13,7 +13,7 @@ class DataWithResidueInformation(torch_geometric.data.Data):
     residue_index: torch.Tensor  # batched version of residue_sequence_index
     num_residues: int
     loss_weight: float
-
+    hidden_state: Any 
     def __inc__(self, key, value, *args, **kwargs):
         del value, args, kwargs
         if key in [
@@ -24,6 +24,7 @@ class DataWithResidueInformation(torch_geometric.data.Data):
             "residue_sequence_index",
             "num_residues",
             "loss_weight",
+            "hidden_state"
         ]:
             return 0
         if key in ["edge_index"]:
