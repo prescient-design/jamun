@@ -11,7 +11,6 @@ import scipy.stats
 import mdtraj as md
 import pyemma.coordinates.data
 import numpy as np
-import mdtraj as md
 import pyemma
 import pyemma.coordinates.clustering
 from scipy.spatial import distance
@@ -21,6 +20,7 @@ from statsmodels.tsa import stattools
 sys.path.append("./")
 import load_trajectory
 import pyemma_helper
+import utils_sdf as analysis_utils_sdf
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("analysis")
@@ -79,7 +79,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     py_logger.info(f"this is the ref traj featurized: {ref_traj_featurized}")
 
     # Compute feature histograms.
-    results["feature_histograms"] = analysis_utils.compute_feature_histograms(
+    results["feature_histograms"] = compute_feature_histograms(
         traj_featurized_dict,
         ref_traj_featurized_dict,
     )
@@ -94,7 +94,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     py_logger.info(f"PMFs computed.")
 
     # Compute JSDs.
-    results["JSD_torsion_stats"] = analysis_utils.compute_JSD_torsion_stats(
+    results["JSD_torsion_stats"] = analysis_utils_sdf.compute_JSD_torsion_stats_mc(
         traj_featurized,
         ref_traj_featurized,
         traj_feats,
@@ -102,7 +102,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     py_logger.info(f"JSD torsion stats computed.")
 
     # Compute JSDs of torsions against time.
-    results["JSD_torsion_stats_against_time"] = analysis_utils.compute_JSD_torsion_stats_against_time(
+    results["JSD_torsion_stats_against_time"] = analysis_utils_sdf.compute_JSD_torsion_stats_against_time(
         traj_featurized,
         ref_traj_featurized,
         traj_feats,
@@ -113,7 +113,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
 
     # TICA analysis.
-    results["TICA"] = analysis_utils.compute_TICA(
+    results["TICA"] = compute_TICA(
         traj_featurized_cossin,
         ref_traj_featurized_cossin,
     )
@@ -122,24 +122,24 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     traj_tica = results["TICA"]["traj_tica"]
     ref_traj_tica = results["TICA"]["ref_traj_tica"]
 
-    # Compute TICA stats.
-    results["TICA_stats"] = analysis_utils.compute_TICA_stats(
-        traj_tica,
-        ref_traj_tica,
-    )
-    py_logger.info(f"TICA stats computed.")
+    # # Compute TICA stats.
+    # results["TICA_stats"] = compute_TICA_stats(
+    #     traj_tica,
+    #     ref_traj_tica,
+    # )
+    # py_logger.info(f"TICA stats computed.")
 
-    # Compute autocorrelation stats.
-    results["autocorrelation_stats"] = analysis_utils.compute_autocorrelation_stats(
-        traj_tica,
-        ref_traj_tica,
-    )
-    py_logger.info(f"Autocorrelation stats computed.")
+    # # Compute autocorrelation stats.
+    # results["autocorrelation_stats"] = compute_autocorrelation_stats(
+    #     traj_tica,
+    #     ref_traj_tica,
+    # )
+    # py_logger.info(f"Autocorrelation stats computed.")
 
     # Compute MSM stats.
     # Sometimes, this fails because the reference trajectory is too short.
     try:
-        results["MSM_stats"] = analysis_utils.compute_MSM_stats(
+        results["MSM_stats"] = compute_MSM_stats(
             traj_tica,
             ref_traj_tica,
         )
@@ -869,8 +869,11 @@ if __name__ == "__main__":
         traj = traj[: max(1, int(len(traj) // args.shorten_trajectory_factor))]
         py_logger.info(f"Shortened trajectory to {len(traj)} frames.")
 
+    if args.trajectory.startswith("cremp"):
     # Run analysis.
-    results = analyze_trajectories_sdf(traj, sdf_file_path)
+        results = analyze_trajectories_sdf(traj, ref_traj)
+    else:
+        results = analyze_trajectories(traj, ref_traj)
 
     # Add trajectory info to results.
     results["info"] = {

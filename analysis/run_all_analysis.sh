@@ -12,6 +12,11 @@ for experiment in Timewarp_4AA_0.2A Timewarp_4AA_0.4A Timewarp_4AA_0.8A; do
     sleep 5
 done
 
+for experiment in Cremp_4AA Cremp_4AA_5AA; do
+    sbatch analysis_sweep.sh jamun --experiment ${experiment} --output-dir ${JAMUN_ANALYSIS_PATH}  --csv sample_runs.csv
+    sleep 5
+done
+
 for experiment in Chignolin; do
     sbatch -a 0-1 analysis_sweep.sh jamun --experiment ${experiment} --output-dir ${JAMUN_ANALYSIS_PATH}  --csv sample_runs.csv
     sleep 5
@@ -36,4 +41,3 @@ sleep 5
 
 sbatch analysis_sweep.sh bioemu --experiment Our_5AA --output-dir ${JAMUN_ANALYSIS_PATH}
 sleep 5
-

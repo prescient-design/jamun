@@ -9,7 +9,6 @@ import pyemma
 import pyemma.coordinates.clustering
 import pandas as pd
 from scipy.spatial import distance
-from statsmodels.tsa import stattools
 import warnings
 from openbabel import pybel
 
@@ -29,8 +28,7 @@ import torch
 import torch.utils.data
 from rdkit import Chem
 
-from jamun import utils
-import utils as analysis_utils
+import run_analysis as analysis_utils
 import tempfile
 import openbabel
 

@@ -204,6 +204,45 @@ def analyze_TBG_trajectories(args):
         shorten_trajectory_factor=args.shorten_trajectory_factor,
     )
 
+def analyze_Cremp_trajectories(args):
+    """Analyze Cremp trajectories based on the provided arguments."""
+    # Make output directory if it doesn't exist.
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    # Read all peptides.
+    data_path = load_trajectory.get_data_path(args.data_path)
+    
+    if args.peptide_type == "4AA":
+        samples_path = os.path.join(data_path, "cremp", "4AA_test")
+    elif args.peptide_type == "4AA_5AA":
+        samples_path = os.path.join(data_path, "cremp", "4AA_5AA_test")
+    else:
+        raise ValueError(f"Invalid peptide type: {args.peptide_type}")
+    
+    # List all peptides by extracting names from .sdf files.
+    peptides = [
+        os.path.splitext(filename)[0] for filename in os.listdir(samples_path) if filename.endswith(".sdf")
+    ]
+    
+    peptides = list(sorted(peptides))
+    print(f"Peptides: {peptides}")
+    
+    # Choose row to analyze.
+    peptide = peptides[args.row_index]
+    
+    if args.peptide_type == "4AA":
+        trajectory = "Cremp_4AA"
+    if args.peptide_type == "4AA_5AA":
+        trajectory = "Cremp_4AA_5AA"
+
+    run_analysis(
+        peptide=peptide,
+        trajectory=trajectory,
+        reference="CrempReference",
+        run_path=None,
+        experiment=args.experiment,
+        output_dir=args.output_dir,
+    )
 
 def main():
     parser = argparse.ArgumentParser(description="Run analysis of trajectories for multiple peptides")
@@ -278,6 +317,17 @@ def main():
     )
     tbg_parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
 
+    # Cremp trajectory analysis
+    cremp_parser = subparsers.add_parser("cremp", help="Analyze Cremp sdf trajectoriesand JAMUN dcd trajs")
+    cremp_parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
+    cremp_parser.add_argument("--row-index", type=int, required=True, help="Row index to analyze")
+    cremp_parser.add_argument("--experiment", type=str, required=True, help="Experiment type")
+    cremp_parser.add_argument(
+        "--shorten-trajectory-factor", type=int, default=None, help="Factor to shorten trajectory by. Defaults to None."
+    )
+    cremp_parser.add_argument(
+        "--csv", type=str, required=True, help="CSV file containing information about wandb sampling runs"
+    )
     args = parser.parse_args()
 
 
@@ -291,6 +341,8 @@ def main():
         analyze_BioEmu_trajectories(args)
     elif args.analysis_type == "tbg":
         analyze_TBG_trajectories(args)
+    elif args.analysis_type == "cremp":
+        analyze_Cremp_trajectories(args)
     else:
         raise ValueError(f"Invalid analysis type: {args.analysis_type}")
 
