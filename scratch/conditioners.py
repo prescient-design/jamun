@@ -1,0 +1,33 @@
+import logging
+from typing import Callable, Dict, Optional, Tuple, Union
+
+import lightning.pytorch as pl
+import numpy as np
+import torch
+import torch_geometric
+from e3tools import radius_graph, scatter
+
+from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
+from jamun.utils.align import kabsch_algorithm
+
+
+
+class PositionConditioner(pl.LightningModule):
+    def __init__(self, **kwargs):
+        super().__init__()
+
+    def forward(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
+        conditioned_structures = []
+        for positions in y.hidden_state: 
+            aligned_positions = kabsch_algorithm(positions, y.pos, y.batch, y.num_graphs)
+            conditioned_structures.append(aligned_positions)
+        return conditioned_structures
+
+class SelfConditioner(pl.LightningModule):
+    def __init__(self, **kwargs):
+        super().__init__()
+
+    def forward(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
+        conditioned_structures = []
+        conditioned_structures.append(y.pos)
+        return conditioned_structures

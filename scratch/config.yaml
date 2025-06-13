@@ -39,7 +39,7 @@ data:
   use_residue_information: true
 model:
   arch:
-    _target_: jamun.model.arch.E3Conv
+    _target_: scratch.e3conv_test.E3Conv
     _partial_: true
     irreps_out: 1x1e
     irreps_hidden: 120x0e + 32x1e
@@ -102,7 +102,8 @@ logger:
     offline: false
     log_model: all
     group: train_test
-    notes: alanine dipeptide
+    notes: alanine dipeptide, without conditioning.
+    save_dir: 
 callbacks:
   timing:
     _target_: jamun.callbacks.Timing

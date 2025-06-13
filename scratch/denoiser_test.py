@@ -7,7 +7,7 @@ import torch
 import torch_geometric
 from e3tools import radius_graph, scatter
 
-from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing, 
+from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 from jamun.utils.align import kabsch_algorithm
 
 
@@ -33,6 +33,7 @@ class Denoiser(pl.LightningModule):
         lr_scheduler_config: Optional[Dict] = None,
         use_torch_compile: bool = True,
         torch_compile_kwargs: Optional[Dict] = None,
+        conditioner: Callable[..., list[torch.Tensor]] = None
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -98,14 +99,27 @@ class Denoiser(pl.LightningModule):
             raise ValueError("sigma_data can only be used when normalization_type is 'EDM'")
 
         self.bond_loss_coefficient = bond_loss_coefficient
-    
-    def conditioner(self, y: torch_geometric.data.Batch) -> torch.Tensor:
+        self.conditioning_module = conditioner
+        if self.conditioning_module is not None and not callable(self.conditioning_module):
+            raise ValueError("Conditioner must be a callable or None")
+        py_logger.info(f"Conditioner: {self.conditioning_module}")
+
+    def conditioner_default(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
         conditioned_structures = []
-        for positions in y.hidden_state: 
-            aligned_positions = kabsch_algorithm(positions, y.pos, y.batch, y.num_graphs)
-            conditioned_structures.append(aligned_positions)
+        # for positions in y.hidden_state: 
+        #     aligned_positions = kabsch_algorithm(positions, y.pos, y.batch, y.num_graphs)
+        #     conditioned_structures.append(aligned_positions)
+        conditioned_structures.append(y.pos)
         return conditioned_structures
 
+    def conditioner(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
+        if self.conditioning_module is None:
+            return self.conditioner_default(y)
+        elif callable(self.conditioning_module):
+            return self.conditioning_module(y)
+        else:
+            raise ValueError("Conditioner must be a callable or None")
+    
     def add_noise(self, x: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
         # pos [B, ...]
         sigma = unsqueeze_trailing(sigma, x.pos.ndim)
@@ -242,7 +256,7 @@ class Denoiser(pl.LightningModule):
             conditioned_structures = self.conditioner(y_scaled)
 
         with torch.cuda.nvtx.range("g"):    
-            g_pred = self.g(torch.cat([y_scaled.pos, *conditioned_structures]), topology=y_scaled, \
+            g_pred = self.g(torch.cat([y_scaled.pos, *conditioned_structures], dim=-1), topology=y_scaled, \
                             c_noise=c_noise, effective_radial_cutoff=radial_cutoff)
 
         xhat.pos = c_skip * y.pos + c_out * g_pred

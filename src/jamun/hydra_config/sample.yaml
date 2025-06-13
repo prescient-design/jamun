@@ -6,7 +6,7 @@ defaults:
   - paths: default
   - hydra: default
   - callbacks: sampler/default
-  - experiment: null
+  - experiment: sample_uncapped_single_shape_conditioning
 
 float32_matmul_precision: "high"
 

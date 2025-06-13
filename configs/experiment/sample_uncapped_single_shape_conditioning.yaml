@@ -26,7 +26,7 @@ repeat_init_samples: 1
 continue_chain: true
 
 # Add your wandb run path here
-# wandb_train_run_path: your-wandb-run-path
+wandb_train_run_path: sule-shashank/jamun/3wctzcjp
 
 checkpoint_type: best_so_far
 sigma: 0.04
@@ -50,4 +50,4 @@ sampler:
 logger:
   wandb:
     group: sample_custom
-    notes: Custom sampling with denoiser and conditioner 
+    notes: Custom sampling with denoiser and conditioner
