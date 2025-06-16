@@ -317,7 +317,7 @@ if wandb_logger_instance and hasattr(wandb_logger_instance, 'experiment') and wa
     
     try:
         wandb_logger_instance.experiment.config.update(
-            {"final_script_cfg": final_script_cfg_dict, "jamun_version_at_end": jamun.__version__, "script_cwd_at_end": os.getcwd()}
+            {"cfg": final_script_cfg_dict, "jamun_version_at_end": jamun.__version__, "script_cwd_at_end": os.getcwd()}
         )
         py_logger.info("Updated wandb.config with final_script_cfg.")
     except Exception as e:

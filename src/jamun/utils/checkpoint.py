@@ -16,7 +16,8 @@ def get_wandb_run_config(wandb_run_path: str) -> Dict[str, Any]:
     run = wandb.Api().run(wandb_run_path)
     py_logger = logging.getLogger("jamun")
     py_logger.info(f"Loading checkpoint corresponding to wandb run {run.name} at {run.url}")
-    return run.config["cfg"]
+    key = next(iter(run.config)) # the key might be named differently in the future
+    return run.config[key]
 
 
 def get_run_path_for_wandb_run(wandb_run_path: str) -> str:

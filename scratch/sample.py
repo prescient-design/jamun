@@ -51,7 +51,7 @@ def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
 
     # Breakpoint 0: After config is loaded
-    pdb.set_trace()  # Inspect full configuration
+    # pdb.set_trace()  # Inspect full configuration
 
     dist_log(f"{OmegaConf.to_yaml(log_cfg)}")
     dist_log(f"{os.getcwd()=}")
@@ -63,17 +63,19 @@ def run(cfg):
         dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
 
-    loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
-    wandb_logger = None
-    for logger in loggers:
-        if isinstance(logger, pl.loggers.WandbLogger):
-            wandb_logger = logger
+    # # Turned off wandb logging for now
+    # loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
+    # wandb_logger = None
+    # for logger in loggers:
+    #     if isinstance(logger, pl.loggers.WandbLogger):
+    #         wandb_logger = logger
 
-    if rank_zero_only.rank == 0 and wandb_logger:
-        dist_log(f"{wandb_logger.experiment.name=}")
-        wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
+    # if rank_zero_only.rank == 0 and wandb_logger:
+    #     dist_log(f"{wandb_logger.experiment.name=}")
+    #     wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
 
     # Load the checkpoint
+    print(f'Current working directory: {os.getcwd()}')
     checkpoint_path = find_checkpoint(
         wandb_train_run_path=cfg.get("wandb_train_run_path"),
         checkpoint_dir=cfg.get("checkpoint_dir"),

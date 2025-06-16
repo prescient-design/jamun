@@ -23,7 +23,22 @@ from jamun.utils import dist_log, find_checkpoint
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
+import logging
 
+# Setup logging
+logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
+logger = logging.getLogger("load_wandb_checkpoint")
+
+dotenv.load_dotenv("../.env", verbose=True) # Adjust path if script is not in scratch/
+JAMUN_DATA_PATH = os.getenv("JAMUN_DATA_PATH")
+JAMUN_ROOT_PATH = os.getenv("JAMUN_ROOT_PATH")
+
+project_root = "/homefs/home/sules/jamun" # Adjust if necessary
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+    logger.info(f"Added '{project_root}' to sys.path for module discovery.")
+else:
+    logger.info(f"'{project_root}' is already in sys.path.")
 
 def get_initial_graphs(
     datasets: Sequence[MDtrajDataset], num_init_samples_per_dataset: int, repeat: int = 1
@@ -51,7 +66,7 @@ def run(cfg):
     if matmul_prec := cfg.get("float32_matmul_precision"):
         dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
-
+    breakpoint()
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
     wandb_logger = None
     for logger in loggers:

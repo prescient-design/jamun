@@ -5,6 +5,7 @@ import os
 import sys
 import dotenv
 import logging 
+import traceback
 
 # --- Basic Setup ---
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
@@ -41,29 +42,26 @@ def print_config_sections(cfg):
 
 def run(cfg):
     """Main function to run the config loading and printing."""
-    # Print the loaded configuration
-    print_config_sections(cfg)
-    
-    # Print specific config values
-    if hasattr(cfg, 'model'):
-        print("\nModel target:", cfg.model._target_)
-    if hasattr(cfg, 'sampler'):
-        print("Sampler target:", cfg.sampler._target_)
+    try:
+        # Print the loaded configuration
+        print_config_sections(cfg)
+        
+        # Print specific config values
+        if hasattr(cfg, 'model'):
+            print("\nModel target:", cfg.model._target_)
+        if hasattr(cfg, 'sampler'):
+            print("Sampler target:", cfg.sampler._target_)
+    except Exception:
+        traceback.print_exc(file=sys.stderr)
+        raise
 
-def main():
-    # Initialize Hydra
-    with hydra.initialize(config_path="../src/jamun/hydra_config"):
-        # Compose the base configuration
-        base_cfg = hydra.compose(config_name="sample")
-    
-    # Compose the experiment configuration
-    experiment_cfg = hydra.compose(config_name="sample", overrides=["experiment=sample_uncapped_single_shape_conditioning"])
-    
-    # Merge configurations (experiment overrides base)
-    cfg = OmegaConf.merge(base_cfg, experiment_cfg)
-    
-    # Run with the merged configuration
-    run(cfg)
+@hydra.main(version_base=None, config_path="../src/jamun/hydra_config", config_name="sample")
+def main(cfg):
+    try:
+        run(cfg)
+    except Exception:
+        traceback.print_exc(file=sys.stderr)
+        raise
 
 if __name__ == "__main__":
     main()

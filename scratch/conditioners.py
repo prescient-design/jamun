@@ -13,6 +13,9 @@ from jamun.utils.align import kabsch_algorithm
 
 
 class PositionConditioner(pl.LightningModule):
+    """
+    Condition the hidden state on the position of the structure.
+    """
     def __init__(self, **kwargs):
         super().__init__()
 
@@ -24,6 +27,9 @@ class PositionConditioner(pl.LightningModule):
         return conditioned_structures
 
 class SelfConditioner(pl.LightningModule):
+    """
+    No conditioning, but add the position of the structure to itself to make it compatible with the denoiser.
+    """
     def __init__(self, **kwargs):
         super().__init__()
 
