@@ -23,10 +23,8 @@ def preprocess_sdf(sdf_file, output_file):
     for atom_set, residue in residues.items():
         if residue.startswith("Me"):
             residues[atom_set] = residue.replace("Me", "Me+")
-
     residue_sequence = [v for k, v in residues.items()]
     residue_to_sequence_index = {residue: index for index, residue in enumerate(residue_sequence)}
-
     atom_to_residue = {atom_idx: symbol for atom_idxs, symbol in residues.items() for atom_idx in atom_idxs}
     atom_to_residue = dict(sorted(atom_to_residue.items(), key=lambda x: x[0]))
     atom_to_residue_sequence_index = {
@@ -41,6 +39,37 @@ def preprocess_sdf(sdf_file, output_file):
     residue_sequence_index = np.asarray(
         [atom_to_residue_sequence_index[atom_idx] for atom_idx in range(len(atom_to_residue))], dtype=np.int64
     )
+    # Function to determine chirality based on residue naming
+    def determine_chirality(residue_name):
+        if residue_name.islower() or residue_name.startswith("Me") and residue_name[2:].islower():
+            return "D"  # Lowercase or "Me" followed by lowercase indicates D chirality
+        else:
+            return "L"  # Otherwise, it's L chirality
+
+    # Function to map chirality to index
+    def chirality_to_index(chirality):
+        return 1 if chirality == "D" else 0
+
+    # Determine residue chirality and chirality index
+    residue_chirality = [determine_chirality(residue) for residue in residue_sequence]
+    residue_chiral_index_per_residue = np.asarray(
+    [chirality_to_index(chirality) for chirality in residue_chirality], dtype=np.int64
+    )
+
+    # Map residue chirality index to each atom
+    atom_to_residue_chiral_index = {
+        atom_idx: residue_chiral_index_per_residue[residue_to_sequence_index[symbol]]
+        for atom_idx, symbol in atom_to_residue.items()
+    }
+    residue_chiral_index = np.asarray(
+        [atom_to_residue_chiral_index[atom_idx] for atom_idx in range(len(atom_to_residue))], dtype=np.int64
+    )
+
+    # residue_chiral_index = np.asarray(
+    #     [chirality_to_index(chirality) for chirality in residue_chirality], dtype=np.int64
+    # )
+    # print(f"Residue chirality index: {residue_chiral_index}")
+
     residue_code_index = np.asarray([v for v in atom_to_residue_index.values()], dtype=np.int64)
     atom_type_index = np.asarray([utils.encode_atom_type(atom_type) for atom_type in atom_types], dtype=np.int64)
 
@@ -54,6 +83,7 @@ def preprocess_sdf(sdf_file, output_file):
         edge_index=bonds,
         atom_type_index=atom_type_index,
         residue_code_index=residue_code_index,
+        residue_chiral_index=residue_chiral_index,
         residue_sequence_index=residue_sequence_index,
     )
     print(f"Preprocessed {sdf_file} and saved to {output_file}")

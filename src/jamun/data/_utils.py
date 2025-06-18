@@ -129,6 +129,7 @@ def parse_datasets_from_directory_new(
     filter_codes_csv_header: Optional[str] = None,
     as_iterable: bool = False,
     as_sdf: bool = False,
+    use_chiral: bool = False,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
@@ -190,13 +191,24 @@ def parse_datasets_from_directory_new(
 
     # Determine dataset class
     if as_sdf:
-        dataset_fn = lambda code: MDtrajSDFDataset(
+        if use_chiral:
+            dataset_fn = lambda code: MDtrajSDFDataset(
             root,
             traj_files=traj_files[code],
             sdf_file=topology_files[code],
             label=code,
+            use_chiral=True,
             **dataset_kwargs,
         )
+        else:
+            dataset_fn = lambda code: MDtrajSDFDataset(
+                root,
+                traj_files=traj_files[code],
+                sdf_file=topology_files[code],
+                label=code,
+                use_chiral=False,  # Pass the chirality flag
+                **dataset_kwargs,
+            )
     else:
         if as_iterable:
             dataset_fn = lambda code: MDtrajIterableDataset(

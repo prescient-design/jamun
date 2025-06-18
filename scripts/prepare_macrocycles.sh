@@ -6,6 +6,7 @@
 #SBATCH --output=logs/%j_prepare_macrocycles.log
 #SBATCH --error=logs/%j_prepare_macrocycles.err
 #SBATCH --array=0-1000
+#SBATCH --time=01:00:00
 
 eval "$(conda shell.bash hook)"
 conda activate jamun

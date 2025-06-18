@@ -209,35 +209,17 @@ def analyze_Cremp_trajectories(args):
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Read all peptides.
+    # Read all test peptides.
     data_path = load_trajectory.get_data_path(args.data_path)
-    
-    if args.peptide_type == "4AA":
-        samples_path = os.path.join(data_path, "cremp", "4AA_test")
-    elif args.peptide_type == "4AA_5AA":
-        samples_path = os.path.join(data_path, "cremp", "4AA_5AA_test")
-    else:
-        raise ValueError(f"Invalid peptide type: {args.peptide_type}")
-    
-    # List all peptides by extracting names from .sdf files.
-    peptides = [
-        os.path.splitext(filename)[0] for filename in os.listdir(samples_path) if filename.endswith(".sdf")
-    ]
-    
-    peptides = list(sorted(peptides))
-    print(f"Peptides: {peptides}")
-    
+    datasets = load_trajectory.get_CrempReference_datasets(data_path, peptide_type="2AA", split="test")
+    peptides = list(sorted(datasets.keys()))
+
     # Choose row to analyze.
     peptide = peptides[args.row_index]
-    
-    if args.peptide_type == "4AA":
-        trajectory = "Cremp_4AA"
-    if args.peptide_type == "4AA_5AA":
-        trajectory = "Cremp_4AA_5AA"
 
     run_analysis(
         peptide=peptide,
-        trajectory=trajectory,
+        trajectory="JAMUN",
         reference="CrempReference",
         run_path=None,
         experiment=args.experiment,

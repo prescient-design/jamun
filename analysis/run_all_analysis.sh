@@ -18,7 +18,7 @@ for experiment in Cremp_4AA Cremp_4AA_5AA; do
 done
 
 for experiment in Chignolin; do
-    sbatch -a 0-1 analysis_sweep.sh jamun --experiment ${experiment} --output-dir ${JAMUN_ANALYSIS_PATH}  --csv sample_runs.csv
+    sbatch -a 0-1 analysis_sweep.sh cremp --experiment ${experiment} --output-dir ${JAMUN_ANALYSIS_PATH}  --csv sample_runs.csv
     sleep 5
 done
 
