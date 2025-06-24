@@ -12,7 +12,7 @@ from jamun.utils.align import kabsch_algorithm
 
 
 class Denoiser(pl.LightningModule):
-    """The main denoiser model."""
+    """The main denoiser mode with conditional architecture."""
 
     def __init__(
         self,
@@ -33,7 +33,10 @@ class Denoiser(pl.LightningModule):
         lr_scheduler_config: Optional[Dict] = None,
         use_torch_compile: bool = True,
         torch_compile_kwargs: Optional[Dict] = None,
-        conditioner: Callable[..., list[torch.Tensor]] = None
+        conditioner: Callable[..., list[torch.Tensor]] = None,
+        multimeasurement: bool = False,
+        N_measurements_hidden: int = 1,
+        N_measurements: int = 1,
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -104,6 +107,10 @@ class Denoiser(pl.LightningModule):
             raise ValueError("Conditioner must be a callable or None")
         py_logger.info(f"Conditioner: {self.conditioning_module}")
 
+        self.multimeasurement = multimeasurement
+        self.N_measurements_hidden = N_measurements_hidden
+        self.N_measurements = N_measurements
+
     def conditioner_default(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
         conditioned_structures = []
         # for positions in y.hidden_state: 
@@ -124,7 +131,7 @@ class Denoiser(pl.LightningModule):
         # pos [B, ...]
         sigma = unsqueeze_trailing(sigma, x.pos.ndim)
 
-        y = x.clone("pos")
+        y = x.clone()
         if self.add_fixed_ones:
             noise = torch.ones_like(x.pos)
             hidden_noise = [torch.randn_like(x.hidden_state[i]) for i in range(len(x.hidden_state))]
@@ -148,6 +155,54 @@ class Denoiser(pl.LightningModule):
         if torch.rand(()) < self.mirror_augmentation_rate:
             y.pos = -y.pos
         return y
+
+    def add_noise_hiddens(
+        self,
+        x: torch_geometric.data.Batch,
+        N_measurements_hidden: int,
+        N_measurements: int,
+        sigma: Union[float, torch.Tensor],
+    ) -> torch_geometric.data.Batch:
+        """
+        Makes N_measurements_hidden number of noisy copies of the hidden states of x
+        and then for every noisy copy, makes N_measurements number of noisy copies of the positions of x.
+
+        Args:
+            x (Batch): A torch_geometric Batch object. Must have `pos` and `hidden_state` attributes.
+                        `hidden_state` is expected to be a list of tensors.
+            N_measurements_hidden (int): Number of noisy copies of hidden states.
+            N_measurements (int): Number of noisy copies of positions for each noisy hidden state.
+            sigma (float or torch.Tensor): The standard deviation of the Gaussian noise to add.
+
+        Returns:
+            Batch: A new Batch object containing all the noisy copies.
+        """
+        x_list = x.to_data_list()
+        noisy_y_list = []
+
+        for graph in x_list:
+            for _ in range(N_measurements_hidden):
+                # Create a noisy version of the hidden state
+                noisy_hidden_state = []
+                if hasattr(graph, "hidden_state") and graph.hidden_state is not None:
+                    for hs_tensor in graph.hidden_state:
+                        noise = torch.randn_like(hs_tensor) * sigma
+                        noisy_hidden_state.append(hs_tensor + noise)
+
+                for _ in range(N_measurements):
+                    noisy_graph = graph.clone()
+
+                    # Add noise to positions
+                    pos_noise = torch.randn_like(graph.pos) * sigma
+                    noisy_graph.pos = graph.pos + pos_noise
+
+                    # Assign the noisy hidden state
+                    if hasattr(graph, "hidden_state") and graph.hidden_state is not None:
+                        noisy_graph.hidden_state = [hs.clone() for hs in noisy_hidden_state]
+
+                    noisy_y_list.append(noisy_graph)
+
+        return torch_geometric.data.Batch.from_data_list(noisy_y_list)
 
     def score(self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
         """Compute the score function."""
@@ -242,7 +297,7 @@ class Denoiser(pl.LightningModule):
             y = self.add_edges(y, radial_cutoff)
 
         with torch.cuda.nvtx.range("scale_y"):
-            y_scaled = y.clone("pos")
+            y_scaled = y.clone()
             y_scaled.pos = y.pos * c_in
             scaled_hidden_state = []
             for positions in y_scaled.hidden_state:
@@ -250,7 +305,7 @@ class Denoiser(pl.LightningModule):
             y_scaled.hidden_state = scaled_hidden_state
 
         with torch.cuda.nvtx.range("clone_y"):
-            xhat = y.clone("pos")
+            xhat = y.clone()
 
         with torch.cuda.nvtx.range("conditioning"): 
             conditioned_structures = self.conditioner(y_scaled)
@@ -283,17 +338,41 @@ class Denoiser(pl.LightningModule):
         x: torch_geometric.data.Batch,
         sigma: Union[float, torch.Tensor],
         align_noisy_input: bool,
-    ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch]:
-        """Add noise to the input and denoise it."""
+    ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch, torch_geometric.data.Batch]:
+        """
+        Add noise to the input and denoise it.
+        Returns the target for the loss, the prediction, and the noisy input.
+        """
         with torch.no_grad():
             if self.mean_center:
-                with torch.cuda.nvtx.range("mean_center_x"):
-                    x = mean_center(x)
+                # Operate on a clone to avoid side effects on the original batch object.
+                x_processed = mean_center(x)
+            else:
+                x_processed = x
 
-            sigma = torch.as_tensor(sigma).to(x.pos)
+            sigma = torch.as_tensor(sigma).to(x_processed.pos)
 
-            with torch.cuda.nvtx.range("add_noise"):
-                y = self.add_noise(x, sigma)
+            if self.multimeasurement:
+                with torch.cuda.nvtx.range("add_noise_hiddens"):
+                    y = self.add_noise_hiddens(
+                        x_processed, self.N_measurements_hidden, self.N_measurements, sigma
+                    )
+
+                # Repeat x_processed to match y's batch size for alignment and loss calculation.
+                x_list = x_processed.to_data_list()
+                repeated_x_list = [
+                    graph.clone()
+                    for graph in x_list
+                    for _ in range(self.N_measurements_hidden * self.N_measurements)
+                ]
+                x_target = torch_geometric.data.Batch.from_data_list(repeated_x_list).to(
+                    x_processed.pos.device
+                )
+
+            else:
+                with torch.cuda.nvtx.range("add_noise"):
+                    y = self.add_noise(x_processed, sigma)
+                x_target = x_processed.clone()
 
             if self.mean_center:
                 with torch.cuda.nvtx.range("mean_center_y"):
@@ -302,12 +381,12 @@ class Denoiser(pl.LightningModule):
             # Aligning each batch.
             if align_noisy_input:
                 with torch.cuda.nvtx.range("align_A_to_B_batched"):
-                    y = align_A_to_B_batched(y, x)
+                    y = align_A_to_B_batched(y, x_target)
 
         with torch.cuda.nvtx.range("xhat"):
             xhat = self.xhat(y, sigma)
 
-        return xhat, y
+        return x_target, xhat, y
 
     def compute_loss(
         self,
@@ -353,8 +432,8 @@ class Denoiser(pl.LightningModule):
         align_noisy_input: bool,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Add noise to the input and compute the loss."""
-        xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
-        return self.compute_loss(x, xhat, sigma)
+        x_target, xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
+        return self.compute_loss(x_target, xhat, sigma)
 
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during training."""

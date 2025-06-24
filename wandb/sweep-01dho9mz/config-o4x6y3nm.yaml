@@ -1,0 +1,6 @@
+wandb_version: 1
+
+model.conditioner:
+  value:
+    N_structures: ${model.arch.N_structures}
+    _target_: jamun.model.conditioners.PositionConditioner

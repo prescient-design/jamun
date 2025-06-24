@@ -37,11 +37,11 @@ mkdir -p "${LOG_DIR_BASE}"
 # --- Application Execution ---
 # Navigate to the directory containing your script, if necessary
 # Assuming training_prototype.py is in /homefs/home/sules/jamun/scratch/
-SCRIPT_DIR="/homefs/home/sules/jamun/scratch"
-PYTHON_SCRIPT="training_prototype.py"
+# SCRIPT_DIR="/homefs/home/sules/jamun/scratch"
+# PYTHON_SCRIPT="training_prototype.py"
 
-echo "Changing directory to ${SCRIPT_DIR}"
-cd "${SCRIPT_DIR}" || { echo "Failed to cd to ${SCRIPT_DIR}"; exit 1; }
+# echo "Changing directory to ${SCRIPT_DIR}"
+# cd "${SCRIPT_DIR}" || { echo "Failed to cd to ${SCRIPT_DIR}"; exit 1; }
 
 echo "Starting Python script: ${PYTHON_SCRIPT}"
 # Run the Python script

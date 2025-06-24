@@ -1,0 +1,18 @@
+program: jamun_train
+method: grid
+project: jamun
+name: conditional_vs_self
+metric:
+  name: val/loss
+  goal: minimize
+parameters:
+  model.conditioner._target_:
+    values:
+      - jamun.model.conditioners.PositionConditioner
+      - jamun.model.conditioners.SelfConditioner
+
+command: 
+  - ${program}
+  - "--config-dir=configs"
+  - "experiment=train_test_single_shape_conditional"
+  - ${args_no_hyphens}

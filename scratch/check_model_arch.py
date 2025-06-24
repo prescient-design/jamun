@@ -33,24 +33,28 @@ JAMUN_ROOT_PATH = os.getenv("JAMUN_ROOT_PATH")
 # %%
 datasets = {
     "test": jamun.data.parse_datasets_from_directory(
-        root=f"{JAMUN_DATA_PATH}/timewarp/2AA-1-large/train/",
-        traj_pattern="^(.*)-traj-arrays.npz",
-        pdb_file="AA-traj-state0.pdb",
-        filter_codes=['AA'],
+        root=f"{JAMUN_DATA_PATH}/capped_diamines/timewarp_splits/train/",
+        traj_pattern="^(.*).xtc",
+        pdb_file="ALA_ALA.pdb",
+        filter_codes=['ALA_ALA'],
         as_iterable=False,
         subsample=100,
+        total_lag_time=10,
+        lag_subsample_rate=100,
         max_datasets=1,
     )
 }
 
+# %%
 datamodule = jamun.data.MDtrajDataModule(
     datasets=datasets,
-    batch_size=3,
+    batch_size=5,
     num_workers=2,
 )
 datamodule.setup('test')
 _, data_batch = next(enumerate(datamodule.test_dataloader()))
-
+print(f'Number of hidden states: {len(data_batch.hidden_state)}')
+print(f'Size of one hidden state: {data_batch.hidden_state[0].shape}')
 # %% test the new e3conv_test class 
 from e3conv_test import E3Conv
 import torch_geometric

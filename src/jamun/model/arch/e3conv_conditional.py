@@ -11,7 +11,7 @@ from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, Simp
 from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
 
 
-class E3Conv(torch.nn.Module):
+class E3ConvConditional(torch.nn.Module):
     """A simple E(3)-equivariant convolutional neural network, similar to NequIP."""
 
     def __init__(

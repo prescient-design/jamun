@@ -10,15 +10,21 @@ from e3tools import radius_graph, scatter
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 from jamun.utils.align import kabsch_algorithm
 
-
+class Conditioner(pl.LightningModule):
+    """
+    Base class for conditioners.
+    """
+    def __init__(self, N_structures: int, **kwargs):
+        super().__init__()
+        self.N_structures = N_structures
 
 class PositionConditioner(pl.LightningModule):
     """
     Condition the hidden state on the position of the structure.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, N_structures: int, **kwargs):
         super().__init__()
-
+        self.N_structures = N_structures
     def forward(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
         conditioned_structures = []
         for positions in y.hidden_state: 
@@ -30,10 +36,9 @@ class SelfConditioner(pl.LightningModule):
     """
     No conditioning, but add the position of the structure to itself to make it compatible with the denoiser.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, N_structures: int, **kwargs):
         super().__init__()
-
+        self.N_structures = N_structures
     def forward(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
-        conditioned_structures = []
-        conditioned_structures.append(y.pos)
-        return conditioned_structures
+        conditioned_structures = [y.pos for _ in range(self.N_structures-1)]
+        return conditioned_structures 
