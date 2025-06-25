@@ -72,7 +72,7 @@ def main(cfg):
     print("Testing forward pass...")
     with torch.no_grad():
         sigma = model.sigma_distribution.sample()
-        _, xhat, y = model.noise_and_denoise(batch, sigma, align_noisy_input=True)
+        x_target, xhat, y = model.noise_and_denoise(batch, sigma, align_noisy_input=True)
         
     print(f"Input shape: {batch.pos.shape}")
     print(f"Noisy shape: {y.pos.shape}")
@@ -80,7 +80,7 @@ def main(cfg):
     
     # Test loss computation
     print("Testing loss computation...")
-    loss, aux = model.compute_loss(batch, xhat, sigma)
+    loss, aux = model.compute_loss(x_target, xhat, sigma)
     print(f"Loss: {loss.mean().item():.4f}")
     print(f"Metrics: {aux}")
 

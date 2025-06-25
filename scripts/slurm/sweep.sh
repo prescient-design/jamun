@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 #SBATCH --partition gpu3
+#SBATCH --qos=preempt
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node=4 # Number of agents to run in parallel on this node
-#SBATCH --gpus-per-task=1   # Assign one GPU to each agent
+#SBATCH --ntasks-per-node=2 # Number of agents to run in parallel on this node
+#SBATCH --gpus-per-node=2   # Assign one GPU to each agent
 #SBATCH --cpus-per-task=8
 #SBATCH --time 3-0
 #SBATCH --mem-per-cpu=32G
@@ -30,4 +31,4 @@ echo "Starting ${SLURM_NTASKS} agents for sweep: ${SWEEP_ID}"
 # Launch multiple wandb agents in parallel using srun.
 # Each agent will poll the sweep server, get a configuration, and run one training job.
 # PyTorch Lightning will automatically use the single GPU assigned by Slurm to each task.
-srun wandb agent "${SWEEP_ID}" 
+wandb agent --count 1 "${SWEEP_ID}" 

@@ -39,10 +39,11 @@ def run(cfg):
     dist_log(f"{OmegaConf.to_yaml(log_cfg)}")
     dist_log(f"{os.getcwd()=}")
     dist_log(f"{torch.__config__.parallel_info()}")
+    dist_log(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
     dist_log(f"{os.sched_getaffinity(0)=}")
     
     # Set the start method to spawn to avoid issues with the default fork method.
-    # torch.multiprocessing.set_start_method("spawn", force=True)
+    torch.multiprocessing.set_start_method("spawn", force=True)
 
     # Compute data normalization.
     if cfg.get("compute_average_squared_distance_from_data"):
@@ -57,6 +58,20 @@ def run(cfg):
     if matmul_prec := cfg.get("float32_matmul_precision"):
         dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
+
+    # # If running under Slurm, ensure the number of devices matches the allocation.
+    # if "SLURM_GPUS_PER_TASK" in os.environ and torch.cuda.is_available():
+    #     dist_log(f"torch.cuda.device_count(): {torch.cuda.device_count()}")
+    #     try:
+    #         num_gpus = int(os.environ["SLURM_GPUS_PER_TASK"])
+    #         dist_log(f"Slurm-allocated GPUs per task: {num_gpus}")
+    #         # Explicitly create a list of device IDs [0, 1, ..., n-1] for Lightning.
+    #         device_ids = list(range(num_gpus))
+    #         # This will override any value from the config file, ensuring it matches the Slurm allocation.
+    #         cfg.trainer.devices = device_ids
+    #         dist_log(f"Explicitly set cfg.trainer.devices to {cfg.trainer.devices}")
+    #     except (ValueError, KeyError):
+    #         dist_log("Could not parse or find SLURM_GPUS_PER_TASK.")
 
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
     wandb_logger = None

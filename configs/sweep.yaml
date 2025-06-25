@@ -14,5 +14,6 @@ parameters:
 command: 
   - ${program}
   - "--config-dir=configs"
-  - "experiment=train_test_single_shape_conditional"
+  - "experiment=train_test_single_shape_conditional_one_traj"
+  - "++trainer.log_every_n_steps=10"
   - ${args_no_hyphens}

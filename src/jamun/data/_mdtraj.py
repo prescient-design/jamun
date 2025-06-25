@@ -218,6 +218,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
         # Get lagged indices if lag parameters are provided
         if total_lag_time is not None and lag_subsample_rate is not None:
+            self.traj = self.traj[start_frame : start_frame + num_frames] # accommodate for start_frame and num_frames
             lagged_indices = get_subsampled_indices(
                 self.traj.n_frames, subsample, total_lag_time, lag_subsample_rate
             )

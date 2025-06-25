@@ -1,0 +1,4 @@
+wandb_version: 1
+
+model.conditioner._target_:
+  value: jamun.model.conditioners.SelfConditioner

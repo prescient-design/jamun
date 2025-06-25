@@ -9,7 +9,7 @@ defaults:
 
 data:
   datamodule:
-    batch_size: 32
+    batch_size: 1
     num_workers: 2
     datasets:
       train:
@@ -19,9 +19,11 @@ data:
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
-        subsample: 100
+        subsample: 10
         total_lag_time: 5
-        lag_subsample_rate: 100
+        lag_subsample_rate: 1
+        start_frame: 0
+        num_frames: 11
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -30,9 +32,11 @@ data:
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
-        subsample: 100
+        subsample: 10
         total_lag_time: 5
-        lag_subsample_rate: 100
+        lag_subsample_rate: 1
+        start_frame: 1
+        num_frames: 11
 
 
       test:
@@ -42,9 +46,11 @@ data:
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
-        subsample: 100
+        subsample: 10
         total_lag_time: 5
-        lag_subsample_rate: 100
+        lag_subsample_rate: 1
+        start_frame: 2
+        num_frames: 11
 
 model:
   sigma_distribution:
@@ -59,6 +65,9 @@ model:
   conditioner:
     _target_: jamun.model.conditioners.PositionConditioner
     N_structures: ${model.arch.N_structures}
+  multimeasurement: true
+  N_measurements: 100
+  N_measurements_hidden: 1
 
 trainer:
   val_check_interval: 0.5
