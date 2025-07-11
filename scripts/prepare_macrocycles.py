@@ -7,6 +7,7 @@ from jamun import utils
 
 
 def preprocess_sdf(sdf_file, output_file):
+    print(sdf_file)
     suppl = Chem.SDMolSupplier(sdf_file)
     mols = [mol for mol in suppl if mol is not None]
 
@@ -20,9 +21,20 @@ def preprocess_sdf(sdf_file, output_file):
         [[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()] for bond in rdkit_mol.GetBonds()], dtype=np.int64
     ).T
     residues = utils.featurize_macrocycles.get_residues(rdkit_mol, residues_in_mol=None, macrocycle_idxs=None)
+    
+    # Normalize residue names using convert_to_canonical_residue_names
+    for atom_set, residue in residues.items():
+        try:
+            residues[atom_set] = utils.convert_to_canonical_residue_names(residue)
+        except ValueError as e:
+            print(f"Warning: {e}. Skipping residue normalization for {residue}.")
+    
+    # Replace "Me" with "Me+" in residue names
     for atom_set, residue in residues.items():
         if residue.startswith("Me"):
             residues[atom_set] = residue.replace("Me", "Me+")
+    
+
     residue_sequence = [v for k, v in residues.items()]
     residue_to_sequence_index = {residue: index for index, residue in enumerate(residue_sequence)}
     atom_to_residue = {atom_idx: symbol for atom_idxs, symbol in residues.items() for atom_idx in atom_idxs}
@@ -65,10 +77,6 @@ def preprocess_sdf(sdf_file, output_file):
         [atom_to_residue_chiral_index[atom_idx] for atom_idx in range(len(atom_to_residue))], dtype=np.int64
     )
 
-    # residue_chiral_index = np.asarray(
-    #     [chirality_to_index(chirality) for chirality in residue_chirality], dtype=np.int64
-    # )
-    # print(f"Residue chirality index: {residue_chiral_index}")
 
     residue_code_index = np.asarray([v for v in atom_to_residue_index.values()], dtype=np.int64)
     atom_type_index = np.asarray([utils.encode_atom_type(atom_type) for atom_type in atom_types], dtype=np.int64)

@@ -13,6 +13,7 @@ from .residue_metadata import (
     convert_to_one_letter_codes,
     convert_to_three_letter_code,
     convert_to_three_letter_codes,
+    convert_to_canonical_residue_names,
     encode_atom_code,
     encode_atom_type,
     encode_residue,

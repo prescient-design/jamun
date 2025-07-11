@@ -29,7 +29,7 @@ nvidia-smi
 
 srun --cpus-per-task 8 --cpu-bind=cores,verbose \
   jamun_train --config-dir=/homefs/home/davidsd5/jamun/jamun/configs \
-    experiment=train_macrocycles_4AA_chiral.yaml\
+    experiment=train_macrocycles_4AA_5AA_6AA.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
     ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train"] \

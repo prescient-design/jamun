@@ -43,13 +43,13 @@ def get_smiles_from_sdf(file_name):
             smiles_dict[name] = smi
     return smiles_dict
 
-# Convert SMILES to PDB format using Open Babel
-def convert_smiles_to_pdb(smiles_str, pdb_file_path):
-    obConversion = openbabel.OBConversion()
-    obConversion.SetInAndOutFormats("smi", "pdb")
-    obMol = openbabel.OBMol()
-    obConversion.ReadString(obMol, smiles_str)
-    obConversion.WriteFile(obMol, pdb_file_path)
+# # Convert SMILES to PDB format using Open Babel
+# def convert_smiles_to_pdb(smiles_str, pdb_file_path):
+#     obConversion = openbabel.OBConversion()
+#     obConversion.SetInAndOutFormats("smi", "pdb")
+#     obMol = openbabel.OBMol()
+#     obConversion.ReadString(obMol, smiles_str)
+#     obConversion.WriteFile(obMol, pdb_file_path)
 
 def convert_sdf_conformers_to_pdb(sdf_file: str, output_pdb_file: str):
     # Load the SDF file containing multiple conformers
@@ -195,6 +195,7 @@ def featurize_trajectory_with_backbone_atoms(traj: md.Trajectory, temp_pdb_file:
     traj_featurized = feats.transform(traj)
 
     return feats, traj_featurized, phi_feature_indices, psi_feature_indices
+
 def featurize_trajectories_macrocycle(traj_md: md.Trajectory, sdf_file: str) -> Dict[str, Dict[str, np.ndarray]]:
     """Featurize MDTraj trajectories with backbone, and sidechain torsion angles and distances using pyEMMA."""
     return {
@@ -217,7 +218,6 @@ def rename_atoms_in_topology(topology: md.Topology, atom_names: list) -> md.Topo
 # Function to load and featurize trajectories
 def load_and_featurize_trajectories(traj_md: md.Trajectory, sdf_file: str) -> Dict[str, Dict[str, np.ndarray]]:
     """ Covert SDF to PDB and featurize the trajectory with backbone, and sidechain torsion angles and distances using pyEMMA."""
-
     # Convert SDF to PDB and extract atom names
     convert_sdf_conformers_to_pdb(sdf_file, "temp_sdf.pdb")
     atom_names = extract_atom_names_from_pdb("temp_sdf.pdb")
@@ -289,8 +289,7 @@ def compute_PMF_mc(
     traj_featurized: np.ndarray,
     phi_indices: List[int],
     psi_indices: List[int],
-    ref_traj: np.ndarray,
-    num_bins: int = 50,
+    num_bins: int = 25,
     internal_angles: bool = False,
 ) -> Dict[str, np.ndarray]:
 
@@ -325,11 +324,11 @@ def compute_PMFs_mc(
     """Compute the potential of mean force (PMF) for a trajectory along a dihedral angle."""
     return {
         "traj": {
-            "pmf_all": compute_PMF_mc(traj, phi_indices, psi_indices, feats, internal_angles=False),
+            "pmf_all": compute_PMF_mc(traj, phi_indices, psi_indices, internal_angles=False),
             #"pmf_internal": compute_PMF_mc(traj, phi_indices, psi_indices, feats,  internal_angles=True),
         },
         "ref_traj": {
-            "pmf_all": compute_PMF_mc(ref_traj, phi_indices, psi_indices, feats, internal_angles=False),
+            "pmf_all": compute_PMF_mc(ref_traj, phi_indices, psi_indices, internal_angles=False),
             #"pmf_internal": compute_PMF_mc(ref_traj,phi_indices, psi_indices, feats, internal_angles=True),
         },
     }

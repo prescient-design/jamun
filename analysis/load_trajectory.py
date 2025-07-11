@@ -331,7 +331,8 @@ def get_CrempReference_trajectories(
     else:
         raise ValueError(f"Invalid split: {split}")
 
-    return {dataset.label(): dataset.trajectory for dataset in datasets}
+    return {dataset.label(): dataset for dataset in datasets}
+
 
 
 def get_TBGSamples_datasets(
@@ -557,16 +558,41 @@ def load_all_trajectories_with_info(
         datasets = get_ChignolinReference_dataset(
             data_path,
         )
+    elif trajectory_name == "CrempReference":
+        datasets = get_CrempReference_trajectories(
+            data_path,
+        )
     else:
         raise ValueError(
             f"Trajectory type {trajectory_name} not supported. Available options: JAMUN, MDGenReference, TimewarpReference, JAMUNReference_2AA, JAMUNReference_5AA, Chignolin"
         )
 
-    return {
-        key: (dataset.trajectory, {"trajectory_files": dataset.trajectory_files, "topology_file": dataset.topology_file})
-        for key, dataset in datasets.items()
-    }
-
+    # return {
+    #     key: (dataset.trajectory, {"trajectory_files": dataset.trajectory_files, "topology_file": dataset.topology_file})
+    #     for key, dataset in datasets.items()
+    # }
+    result = {}
+    for key, dataset in datasets.items():
+        if hasattr(dataset, "trajectory_files") and hasattr(dataset, "topology_file"):
+            result[key] = (
+                dataset.trajectory,
+                {
+                    "trajectory_files": dataset.trajectory_files,
+                    "topology_file": dataset.topology_file,
+                },
+            )
+        # For MDtrajSDFDataset
+        elif hasattr(dataset, "sdf_file") and hasattr(dataset, "traj_file"):
+            result[key] = (
+                dataset.trajectory,
+                {
+                    "trajectory_files": [dataset.traj_file],
+                    "topology_file": dataset.sdf_file,
+                },
+            )
+        else:
+            raise AttributeError(f"Unknown dataset type for key {key}: {type(dataset)} with attributes {dir(dataset)}")
+    return result
 
 def load_trajectory_with_info(
     trajectory_name: str,

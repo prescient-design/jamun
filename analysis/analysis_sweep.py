@@ -209,13 +209,31 @@ def analyze_Cremp_trajectories(args):
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Read all test peptides.
+    # Read all peptides.
     data_path = load_trajectory.get_data_path(args.data_path)
-    datasets = load_trajectory.get_CrempReference_datasets(data_path, peptide_type="2AA", split="test")
-    peptides = list(sorted(datasets.keys()))
-
+    
+    if args.peptide_type == "4AA":
+        samples_path =data_path
+    elif args.peptide_type == "5AA":
+        samples_path = os.path.join(data_path, "mdgen-samples", "5AA_test")
+    else:
+        raise ValueError(f"Invalid peptide type: {args.peptide_type}")
+    
+    # List all peptides.
+    peptides = [
+        os.path.splitext(filename)[0] for filename in os.listdir(samples_path) if filename.endswith(".sdf")
+    ]
+    peptides = list(sorted(peptides))
+    print(f"Peptides: {peptides}")
+    
     # Choose row to analyze.
     peptide = peptides[args.row_index]
+    
+    if args.peptide_type == "4AA":
+        trajectory = "CrempReference"
+    else:
+        raise ValueError(f"Invalid peptide type: {args.peptide_type}")
+    
 
     run_analysis(
         peptide=peptide,
@@ -301,6 +319,7 @@ def main():
 
     # Cremp trajectory analysis
     cremp_parser = subparsers.add_parser("cremp", help="Analyze Cremp sdf trajectoriesand JAMUN dcd trajs")
+    cremp_parser.add_argument("--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable.")
     cremp_parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
     cremp_parser.add_argument("--row-index", type=int, required=True, help="Row index to analyze")
     cremp_parser.add_argument("--experiment", type=str, required=True, help="Experiment type")

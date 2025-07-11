@@ -29,43 +29,40 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory_new
-        root: "/data/davidsd5/cremp_prepro/"
+        root: "/data/bucket/kleinhej/cremp-preprocessed/"
         traj_pattern: "^(.*).npz"
         topology_pattern: "^(.*).sdf"
-        filter_codes_csv: "/data/davidsd5/jamun_run/train_4mers.csv"
+        filter_codes_csv: "/data/davidsd5/jamun_run/train_456mers.csv"
         filter_codes_csv_header: "sequence"
         as_sdf: true
-        use_chiral: true
 
       val:
         _target_: jamun.data.parse_datasets_from_directory_new
-        root: "/data/davidsd5/cremp_prepro/"
+        root: "/data/bucket/kleinhej/cremp-preprocessed/"
         traj_pattern: "^(.*).npz"
         topology_pattern: "^(.*).sdf"
         max_datasets: 100
-        filter_codes_csv: "/data/davidsd5/jamun_run/val_4mers.csv"
+        filter_codes_csv: "/data/davidsd5/jamun_run/val_456.csv"
         filter_codes_csv_header: "sequence"
         as_sdf: true
-        use_chiral: true
 
       test:
         _target_: jamun.data.parse_datasets_from_directory_new
-        root: "/data/davidsd5/cremp_prepro/"
+        root: "/data/bucket/kleinhej/cremp-preprocessed/"
         traj_pattern: "^(.*).npz"
         topology_pattern: "^(.*).sdf"
-        filter_codes_csv: "/data/davidsd5/jamun_run/test_4mers.csv"
+        filter_codes_csv: "/data/davidsd5/jamun_run/test_456.csv"
         filter_codes_csv_header: "sequence"
         as_sdf: true
-        use_chiral: true
 
 trainer:
   val_check_interval: 10000
   limit_val_batches: 1000
   max_epochs: 100
 
-# resume_from_checkpoint: 
-#   wandb_train_run_path: "prescient-design/jamun/i27pn5g7"
-#   checkpoint_type: best_so_far
+resume_from_checkpoint: 
+  wandb_train_run_path: "prescient-design/jamun/gl7wrpki"
+  checkpoint_type: best_so_far
 
 logger:
   wandb:

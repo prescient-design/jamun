@@ -46,8 +46,28 @@ NUM_RING_FEATURE_NAMES = [f"numring{nr}" for nr in NUM_RINGS] + ["numringUNK"]
 
 # Constants and data for amino acids
 AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "amino_acids.csv"
-AMINO_ACID_DATA = pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa")
+NON_CANONICAL_AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "non_canonical_amino_acids.csv"
+# Load both canonical and noncanonical amino acids
+AMINO_ACID_DATA=pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa")
+# AMINO_ACID_DATA = pd.concat([
+#     pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa"),
+#     pd.read_csv(NON_CANONICAL_AMINO_ACID_DATA_PATH, index_col="aa")
+# ])
 AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].map(Chem.MolFromSmiles)
+# Constants and data for amino acids
+# AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "amino_acids.csv"
+# NON_CANONICAL_AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "non_canonical_amino_acids.csv"
+
+# # Load both canonical and noncanonical amino acids
+# AMINO_ACID_DATA = pd.concat([
+#     pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa"),
+#     pd.read_csv(NON_CANONICAL_AMINO_ACID_DATA_PATH, index_col="aa")
+# ])
+
+# # Ensure residue_smiles contains valid strings before mapping
+# AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].dropna().map(
+#     lambda x: Chem.MolFromSmiles(str(x)) if isinstance(x, str) else None
+# )
 
 RING_PEPTIDE_BOND_PATTERN = Chem.MolFromSmarts("[C;R:0](=[OX1:1])[C;R:2][N;R:3]")
 GENERIC_AMINO_ACID_SMARTS = "[$([CX3](=[OX1]))][NX3,NX4+][$([CX4H]([CX3](=[OX1])[O,N]))][*]"
@@ -458,7 +478,6 @@ def get_residues(
             residue_dict[atom_idxs] = residue
 
     return residue_dict
-
 
 def get_side_chain_torsion_idxs(mol: Chem.Mol) -> Dict[int, List[int]]:
     """Get the indices of atoms in the side chains that we want to calculate internal coordinates for."""

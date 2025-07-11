@@ -50,113 +50,6 @@ def subset_reference_trajectory(
     ref_traj_subset_md = ref_traj_md[: int(factor * ref_traj_md.n_frames)]
     return ref_traj_subset_md
 
-def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str, Any]:
-    """Run analysis on the trajectories and return results dictionary."""
-
-    # Featurize trajectories.
-    results = {}
-    results["featurization"] = analysis_utils_sdf.featurize_trajectories_macrocycle(traj_md, sdf_file)
-
-    py_logger.info(f"Analysis_utils_sdf Featurization complete.")
-    traj_results = results["featurization"]["traj"]
-    traj_feats = traj_results["feats"]["torsions"]
-    traj_featurized_dict = traj_results["traj_featurized"]
-    traj_featurized = traj_featurized_dict["torsions"] 
-
-    ref_traj_results = results["featurization"]["ref_traj"]
-    ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
-    ref_traj_featurized = ref_traj_featurized_dict["torsions"]
-    py_logger.info(f"Featurization complete.")
-
-    py_logger.info(f"this is the traj results: {traj_results}")
-    py_logger.info(f"this is the ref traj results: {ref_traj_results}")
-    py_logger.info(f"this is the traj feats: {traj_feats}")
-    py_logger.info(f"this is the ref traj feats: {ref_traj_results['feats']}")
-    py_logger.info(f"this is the traj featurized dict: {traj_featurized_dict}")
-    py_logger.info(f"this is the ref traj featurized dict: {ref_traj_featurized_dict}")
-
-    py_logger.info(f"this is the traj featurized: {traj_featurized}") 
-    py_logger.info(f"this is the ref traj featurized: {ref_traj_featurized}")
-
-    # Compute feature histograms.
-    results["feature_histograms"] = compute_feature_histograms(
-        traj_featurized_dict,
-        ref_traj_featurized_dict,
-    )
-    py_logger.info(f"Feature histograms computed.")
-
-    # Compute PMFs.
-    results["PMFs"] = analysis_utils_sdf.compute_PMFs_mc(
-        traj_featurized,
-        ref_traj_featurized,
-        traj_feats,
-    )
-    py_logger.info(f"PMFs computed.")
-
-    # Compute JSDs.
-    results["JSD_torsion_stats"] = analysis_utils_sdf.compute_JSD_torsion_stats_mc(
-        traj_featurized,
-        ref_traj_featurized,
-        traj_feats,
-    )
-    py_logger.info(f"JSD torsion stats computed.")
-
-    # Compute JSDs of torsions against time.
-    results["JSD_torsion_stats_against_time"] = analysis_utils_sdf.compute_JSD_torsion_stats_against_time(
-        traj_featurized,
-        ref_traj_featurized,
-        traj_feats,
-    )
-    py_logger.info(f"JSD torsion stats as a function of time computed.")
-
-    traj_featurized_cossin = traj_featurized_dict["torsions_cossin"]
-    ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
-
-    # TICA analysis.
-    results["TICA"] = compute_TICA(
-        traj_featurized_cossin,
-        ref_traj_featurized_cossin,
-    )
-    py_logger.info(f"TICA computed.")
-
-    traj_tica = results["TICA"]["traj_tica"]
-    ref_traj_tica = results["TICA"]["ref_traj_tica"]
-
-    # # Compute TICA stats.
-    # results["TICA_stats"] = compute_TICA_stats(
-    #     traj_tica,
-    #     ref_traj_tica,
-    # )
-    # py_logger.info(f"TICA stats computed.")
-
-    # # Compute autocorrelation stats.
-    # results["autocorrelation_stats"] = compute_autocorrelation_stats(
-    #     traj_tica,
-    #     ref_traj_tica,
-    # )
-    # py_logger.info(f"Autocorrelation stats computed.")
-
-    # Compute MSM stats.
-    # Sometimes, this fails because the reference trajectory is too short.
-    try:
-        results["MSM_stats"] = compute_MSM_stats(
-            traj_tica,
-            ref_traj_tica,
-        )
-        py_logger.info(f"MSM stats computed.")
-
-        # Compute JSDs against time.
-        results["JSD_MSM_stats_against_time"] = analysis_utils.compute_JSD_MSM_stats_against_time(
-            traj_tica,
-            ref_traj_tica,
-        )
-        py_logger.info(f"JSD MSM stats as a function of time computed.")
-   
-    except IndexError:
-        py_logger.warning(f"MSM stats could not be computed.")
-
-    return results
-
 def featurize_trajectory_with_torsions(
     traj: md.Trajectory, cossin: bool
 ) -> Tuple[pyemma.coordinates.featurizer, np.ndarray]:
@@ -600,7 +493,129 @@ def compute_MSM_transition_and_flux_matrices(
         "transition_spearman_correlation": transition_spearman_correlation,
     }
 
+def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str, Any]:
+    """Run analysis on the trajectories and return results dictionary."""
 
+    # Featurize trajectories.
+    results = {}
+    results["featurization"] = analysis_utils_sdf.featurize_trajectories_macrocycle(traj_md, sdf_file)
+
+    py_logger.info(f"Analysis_utils_sdf Featurization complete.")
+    traj_results = results["featurization"]["traj"]
+    py_logger.info(f"this is the traj results: {traj_results}")
+    traj_feats = traj_results["feats"]["torsions"]
+    #py_logger.info(f"this is the traj feats: {traj_feats}")
+    traj_featurized_dict = traj_results["traj_featurized"]
+    #py_logger.info(f"this is the traj featurized dict: {traj_featurized_dict}")
+    #py_logger.info(f"this is the traj featurized dict keys: {traj_featurized_dict.keys()}")
+    # Extract the torsions featurized data.
+    traj_featurized = traj_featurized_dict["torsions"] 
+    #py_logger.info(f"this is the traj featurized: {traj_featurized}")
+
+    ref_traj_results = results["featurization"]["ref_traj"]
+    py_logger.info(f"this is the ref traj results: {ref_traj_results}")
+    ref_traj_feats = ref_traj_results["feats"]["torsions"]
+    #py_logger.info(f"this is the ref traj feats: {ref_traj_feats}")
+    # Extract the torsions featurized data.
+    ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
+    #py_logger.info(f"this is the ref traj featurized dict: {ref_traj_featurized_dict}")
+    #py_logger.info(f"this is the ref traj featurized dict keys: {ref_traj_featurized_dict.keys()}")
+    # Extract the torsions featurized data.
+    ref_traj_featurized = ref_traj_featurized_dict["torsions"]
+    #py_logger.info(f"this is the ref traj featurized: {ref_traj_featurized}")   
+    #py_logger.info(f"Featurization complete.")
+
+    phi_indices= traj_featurized_dict.get("phi_indices", None)
+    psi_indices = traj_featurized_dict.get("psi_indices", None)
+    chi_indices = None
+    # Only keep entries that are 2D numpy arrays
+    filtered_traj_featurized_dict = {
+        k: v for k, v in traj_featurized_dict.items()
+        if isinstance(v, np.ndarray) and v.ndim == 2
+    }
+    # Only keep entries that are 2D numpy arrays
+    filtered_ref_featurized_dict = {
+        k: v for k, v in traj_featurized_dict.items()
+        if isinstance(v, np.ndarray) and v.ndim == 2
+    }
+    
+    # Compute feature histograms.
+    results["feature_histograms"] = {
+        "traj": compute_feature_histograms(filtered_traj_featurized_dict),
+        "ref_traj": compute_feature_histograms(filtered_ref_featurized_dict),
+    }
+
+    py_logger.info(f"Feature histograms computed.")
+
+    # We will compare the trajectory as well as the (shortened) reference trajectories.
+    trajs_to_compare = {
+    "traj": traj_featurized,
+    "ref_traj": traj_featurized,
+    "traj_10x": traj_featurized[: len(traj_featurized) // 10],
+    "traj_100x": traj_featurized[: len(traj_featurized) // 100],
+    "traj_1000x": traj_featurized[: len(traj_featurized) // 1000],
+    }
+
+    # Compute PMFs.
+    results["PMFs"] = {}
+    for key, traj in trajs_to_compare.items():
+        results["PMFs"][key] = analysis_utils_sdf.compute_PMFs_mc(
+            traj_featurized,
+            phi_indices,
+            psi_indices,
+            ref_traj_featurized,
+            traj_feats,)
+
+    py_logger.info(f"PMFs computed.")
+
+    # # Compute JSDs.
+    # results["JSD_torsion_stats"] = analysis_utils_sdf.compute_JSD_torsion_stats_mc(
+    #     traj_featurized,
+    #     ref_traj_featurized,
+    #     traj_feats,
+    # )
+    # py_logger.info(f"JSD torsion stats computed.")
+
+    # # Compute JSDs of torsions against time.
+    # results["JSD_torsion_stats_against_time"] = analysis_utils_sdf.compute_JSD_torsion_stats_against_time(
+    #     traj_featurized,
+    #     ref_traj_featurized,
+    #     traj_feats,
+    # )
+    # py_logger.info(f"JSD torsion stats as a function of time computed.")
+
+    # traj_featurized_cossin = traj_featurized_dict["torsions_cossin"]
+    # ref_traj_featurized_cossin = ref_traj_featurized_dict["torsions_cossin"]
+
+    # # TICA analysis.
+    # results["TICA"] = compute_TICA(
+    #     traj_featurized_cossin,
+    #     ref_traj_featurized_cossin,
+    # )
+    # py_logger.info(f"TICA computed.")
+
+    # traj_tica = results["TICA"]["traj_tica"]
+    # ref_traj_tica = results["TICA"]["ref_traj_tica"]
+
+    
+    # try:
+    #     results["MSM_stats"] = compute_MSM_stats(
+    #         traj_tica,
+    #         ref_traj_tica,
+    #     )
+    #     py_logger.info(f"MSM stats computed.")
+
+    #     # Compute JSDs against time.
+    #     results["JSD_MSM_stats_against_time"] = analysis_utils.compute_JSD_MSM_stats_against_time(
+    #         traj_tica,
+    #         ref_traj_tica,
+    #     )
+    #     py_logger.info(f"JSD MSM stats as a function of time computed.")
+   
+    # except IndexError:
+    #     py_logger.warning(f"MSM stats could not be computed.")
+
+    return results
 def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> Dict[str, Any]:
     """Run analysis on the trajectories and return results dictionary."""
 
@@ -769,12 +784,12 @@ def analyze_trajectories(traj_md: md.Trajectory, ref_traj_md: md.Trajectory) -> 
 def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
     """Save analysis results to pickle file."""
 
-    # Delete intermediate results, to reduce memory usage.
-    if not args.no_delete_intermediates:
-        del results["featurization"]["traj"]["traj_featurized"]
-        del results["featurization"]["ref_traj"]["traj_featurized"]
-        del results["TICA"]["traj"]
-        del results["TICA"]["ref_traj"]
+    # # Delete intermediate results, to reduce memory usage.
+    # if not args.no_delete_intermediates:
+    #     del results["featurization"]["traj"]["traj_featurized"]
+    #     del results["featurization"]["ref_traj"]["traj_featurized"]
+    #     del results["TICA"]["traj"]
+    #     del results["TICA"]["ref_traj"]
 
     trajectory = args.trajectory
     if args.shorten_trajectory_factor is not None:
@@ -790,51 +805,17 @@ def save_results(results: Dict[str, Any], args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Analyze molecular dynamics trajectories.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-
+    parser = argparse.ArgumentParser(description="Analyze molecular dynamics trajectories.",formatter_class=argparse.RawDescriptionHelpFormatter,)
     parser.add_argument("--peptide", type=str, required=True, help="Peptide sequence to analyze (e.g., FAFG)")
-    parser.add_argument(
-        "--trajectory",
-        type=str,
-        help="Type of trajectory to analyze",
-        required=True,
-    )
-    parser.add_argument(
-        "--shorten-trajectory-factor",
-        type=float,
-        default=None,
-        help="Factor to shorten the trajectory (e.g., 10.0 to use 1/10 of the trajectory)",
-    )
-    parser.add_argument(
-        "--reference",
-        type=str,
-        help="Type of reference trajectory to compare against",
-        required=True,
-    )
+    parser.add_argument("--trajectory",type=str,help="Type of trajectory to analyze",required=True,)
+    parser.add_argument("--shorten-trajectory-factor",type=float,default=None,help="Factor to shorten the trajectory (e.g., 10.0 to use 1/10 of the trajectory)",)
+    parser.add_argument("--reference",type=str,help="Type of reference trajectory to compare against",required=True,)
     parser.add_argument("--experiment", type=str, required=True, help="Experiment name for saving results")
-    parser.add_argument(
-        "--run-path",
-        type=str,
-        help="Path to JAMUN run directory containing trajectory files",
-    )
-    parser.add_argument(
-        "--wandb-run",
-        type=str,
-        help="Weights & Biases run paths for JAMUN sampling run. Can be used instead of --run-path",
-    )
-    parser.add_argument(
-        "--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
-    )
+    parser.add_argument("--run-path",type=str,help="Path to JAMUN run directory containing trajectory files",)
+    parser.add_argument("--wandb-run",type=str,help="Weights & Biases run paths for JAMUN sampling run. Can be used instead of --run-path",)
+    parser.add_argument("--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable.")
     parser.add_argument("--output-dir", type=str, default="analysis_results", help="Directory to save analysis results")
-    parser.add_argument(
-        "--no-delete-intermediates",
-        action="store_true",
-        default=False,
-        help="Don't delete intermediate results to reduce memory usage",
-    )
+    parser.add_argument("--no-delete-intermediates",action="store_true",default=False,help="Don't delete intermediate results to reduce memory usage",)
     args = parser.parse_args()
 
     # Load trajectories.
@@ -865,13 +846,30 @@ if __name__ == "__main__":
     py_logger.info(f"Successfully loaded trajectories for {args.peptide}:")
     py_logger.info(f"{args.trajectory} trajectory loaded: {traj} with info: {traj_info}")
     py_logger.info(f"{args.reference} reference trajectory loaded: {ref_traj} with info: {ref_traj_info}")
+    
+    
     if args.shorten_trajectory_factor is not None:
         traj = traj[: max(1, int(len(traj) // args.shorten_trajectory_factor))]
         py_logger.info(f"Shortened trajectory to {len(traj)} frames.")
+    
+    # Extract the file name
+    topology_path = ref_traj_info["topology_file"]
+    file_name = os.path.basename(topology_path)  # Pull out 'MeS.MeS.V.L.sdf'
 
-    if args.trajectory.startswith("cremp"):
+    # Modify the path
+    #new_directory = "/data/davidsd5/cremp/sdf_and_json/"  # Replace the base directory
+    new_directory = "/data/davidsd5/jamun_run/ringer_sample_sdf/"  # Replace the base directory
+    new_file_name = file_name  # Example: Prepend 'renamed_' to the filename
+    new_topology_file = os.path.join(new_directory, new_file_name)
+
+    # Update the dictionary
+    ref_traj_info["topology_file"] = new_topology_file
+    py_logger.info(f"Reference trajectory topology file renamed to: {new_topology_file}")
+    print(ref_traj_info)
+    
+    if args.reference =="CrempReference":
     # Run analysis.
-        results = analyze_trajectories_sdf(traj, ref_traj)
+        results = analyze_trajectories_sdf(traj,new_topology_file)
     else:
         results = analyze_trajectories(traj, ref_traj)
 
