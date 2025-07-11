@@ -43,6 +43,7 @@ def parse_datasets_from_directory(
     max_datasets_offset: Optional[int] = None,
     filter_codes: Optional[Sequence[str]] = None,
     as_iterable: bool = False,
+    label_override: Optional[str] = None,
     **dataset_kwargs,
 ) -> List[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
@@ -106,11 +107,15 @@ def parse_datasets_from_directory(
 
     datasets = []
     for code in tqdm(codes, desc="Creating datasets"):
+        if label_override is not None:
+            print(f"Label override: {label_override}")
+            code = str(label_override)
+
         dataset = dataset_class(
             root,
             traj_files=traj_files[code],
             pdb_file=pdb_files[code],
-            label=code,
+            label=code, # TODO: add a label override here. 
             **dataset_kwargs,
         )
         datasets.append(dataset)
