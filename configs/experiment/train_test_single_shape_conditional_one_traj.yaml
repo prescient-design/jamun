@@ -10,7 +10,7 @@ defaults:
 data:
   datamodule:
     batch_size: 1
-    num_workers: 2
+    num_workers: 4
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -71,10 +71,11 @@ model:
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 1000
+  max_epochs: 500
 
 
 logger:
   wandb:
     group: ALA_ALA, capped diamines, conditional denoiser
     notes: "Running on ALA_ALA capped diamine, conditional denoiser" 
+    tags: ["train", "capped_diamines", "conditional denoiser", "one_traj"]

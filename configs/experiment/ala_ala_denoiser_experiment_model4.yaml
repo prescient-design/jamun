@@ -1,4 +1,6 @@
 # @package _global_
+# Model 3: Denoiser with position conditioner, noise level sigma, 
+# but hidden states are repeated copies of y.pos (noise added by denoiser)
 
 defaults:
   - override /model: denoiser_conditional
@@ -12,19 +14,31 @@ data:
     batch_size: 32
     datasets:
       train:
-        _target_: jamun.data.parse_datasets_from_directory
+        _target_: jamun.data.parse_repeated_position_datasets_from_directory
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
         subsample: 1
-        total_lag_time: 5
+        total_lag_time: 2  # Two structures: current + 1 copy
         lag_subsample_rate: 1
-        num_frames: 10
+        num_frames: 10000
 
       val:
-        _target_: jamun.data.parse_datasets_from_directory
+        _target_: jamun.data.parse_repeated_position_datasets_from_directory
+        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        traj_pattern: "^(.*).xtc"
+        pdb_pattern: "^(.*).pdb"
+        filter_codes: ['ALA_ALA']
+        as_iterable: false
+        subsample: 1
+        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
+        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
+        num_frames: 100
+
+      test:
+        _target_: jamun.data.parse_repeated_position_datasets_from_directory
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
@@ -35,21 +49,10 @@ data:
         lag_subsample_rate: 1
         num_frames: 10
 
-      test:
-        _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
-        traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 1
-        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: 1
-        num_frames: 10
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
-    sigma: 0.04
+    sigma: 0.04  # Base sigma level for denoising
   arch:
     n_layers: 2
     N_structures: ${data.datamodule.datasets.train.total_lag_time}
@@ -59,13 +62,13 @@ model:
   conditioner:
     _target_: jamun.model.conditioners.PositionConditioner
     N_structures: ${model.arch.N_structures}
+    align_hidden_states: false
 
 trainer:
-  val_check_interval: 0.5
-  max_epochs: 500
-
+  max_epochs: 100
 
 logger:
   wandb:
-    group: ALA_ALA, capped diamines, conditional denoiser
-    notes: "Running on ALA_ALA capped diamine, conditional denoiser" 
+    group: ALA_ALA_noise_check
+    notes: "Model 4: Denoiser with PositionConditioner, 2 structures, sigma=0.04, hidden states not aligned" 
+    tags: ["noise_check", "high noise", "non-identical, i.i.d. measurements", "hidden states not aligned"]

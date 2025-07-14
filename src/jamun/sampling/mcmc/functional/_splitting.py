@@ -1,7 +1,7 @@
 import logging
 import math
 from typing import Callable, Optional, Tuple, Union
-
+from copy import deepcopy
 import torch
 from tqdm.auto import tqdm
 
@@ -26,9 +26,9 @@ def initialize_velocity(v_init: Union[str, torch.Tensor], y: torch.Tensor, u: fl
 def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_clip: Optional[float]) -> Callable:
     """Create a score function that is clipped and scaled by the inverse temperature."""
 
-    def score_fn_processed(y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def score_fn_processed(y: torch.Tensor, *args, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """Score function clipped and scaled by the inverse temperature."""
-        orig_score = score_fn(y).to(dtype=y.dtype)
+        orig_score = score_fn(y, *args, **kwargs).to(dtype=y.dtype)
         # Clip the score by norm.
         score = orig_score
         if score_fn_clip is not None:
@@ -176,3 +176,124 @@ def baoab(
         score_traj = torch.stack(score_traj)
 
     return y, v, y_traj, score_traj
+
+
+def aboba_memory(
+    y: torch.Tensor,
+    y_hist: list,
+    score_fn: Callable,
+    steps: int,
+    v_init: Union[str, torch.Tensor] = "zero",
+    save_trajectory=False,
+    save_every_n_steps=1,
+    burn_in_steps=0,
+    verbose=False,
+    cpu_offload=False,
+    delta: float = 1.0,
+    friction: float = 1.0,
+    M: float = 1.0,
+    inverse_temperature: float = 1.0,
+    score_fn_clip: Optional[float] = None,
+    **_,
+):
+    """ABOBA splitting scheme that updates a state history."""
+    i = 0
+    y_traj = [] if save_trajectory else None
+    score_traj = []
+    y_hist_traj = []
+    
+    # Initialize trajectory with initial state
+    if y_traj is not None and i >= burn_in_steps:
+        y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
+        score_traj.append(torch.zeros_like(y).detach().cpu() if cpu_offload else torch.zeros_like(y).detach())
+        y_hist_traj.append(list(y_hist))
+    
+    u = pow(M, -1)
+    zeta2 = math.sqrt(1 - math.exp(-2 * friction))
+    v = initialize_velocity(v_init=v_init, y=y, u=u)
+    score_fn_processed = create_score_fn(score_fn, inverse_temperature, score_fn_clip)
+
+    steps_iter = range(1, steps)
+    if verbose:
+        steps_iter = tqdm(steps_iter, leave=False, desc="ABOBA Memory")
+
+    for i in steps_iter:
+        y_current = y.clone().detach()
+        y = y + (delta / 2) * v
+        psi, orig_score = score_fn_processed(y, y_hist=y_hist)
+        v = v + u * (delta / 2) * psi
+        R = torch.randn_like(y)
+        vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
+        v = vhat + (delta / 2) * psi
+        y = y + (delta / 2) * v
+
+        if save_trajectory and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
+            y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
+            score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
+            y_hist_traj.append(list(y_hist))
+
+        y_hist.pop(-1)
+        y_hist.insert(0, y_current)
+
+    return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj
+
+
+def baoab_memory(
+    y: torch.Tensor,
+    y_hist: list,
+    score_fn: Callable,
+    steps: int,
+    v_init: Union[str, torch.Tensor] = "zero",
+    save_trajectory=False,
+    save_every_n_steps=1,
+    burn_in_steps=0,
+    verbose=False,
+    cpu_offload=False,
+    delta: float = 1.0,
+    friction: float = 1.0,
+    M: float = 1.0,
+    inverse_temperature: float = 1.0,
+    score_fn_clip: Optional[float] = None,
+    **_,
+):
+    """BAOAB splitting scheme that updates a state history."""
+    i = 0
+    y_traj = [] if save_trajectory else None
+    score_traj = []
+    y_hist_traj = []
+    
+    u = pow(M, -1)
+    zeta2 = math.sqrt(1 - math.exp(-2 * friction))
+    v = initialize_velocity(v_init=v_init, y=y, u=u)
+    score_fn_processed = create_score_fn(score_fn, inverse_temperature, score_fn_clip)
+
+    steps_iter = range(1, steps)
+    if verbose:
+        steps_iter = tqdm(steps_iter, leave=False, desc="BAOAB Memory")
+
+    psi, orig_score = score_fn_processed(y, y_hist=y_hist)
+    
+    # Initialize trajectory with initial state
+    if y_traj is not None and i >= burn_in_steps:
+        y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
+        score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
+        y_hist_traj.append(list(y_hist))
+
+    for i in steps_iter:
+        y_current = y.clone().detach()
+        v = v + u * (delta / 2) * psi # update with previous psi 
+        y = y + (delta / 2) * v # update with previous v 
+        R = torch.randn_like(y)
+        vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
+        y = y + (delta / 2) * vhat
+        y_hist.pop(-1) # remove the last element of the history
+        y_hist.insert(0, y_current) # present point is the first element of the history
+        psi, orig_score = score_fn_processed(y, y_hist=y_hist)
+        v = vhat + (delta / 2) * psi
+
+        if save_trajectory and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
+            y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
+            score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
+            y_hist_traj.append(list(y_hist))
+
+    return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj

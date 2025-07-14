@@ -215,9 +215,10 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
         if subsample is None or subsample == 0:
             subsample = 1
-
+        
         # Get lagged indices if lag parameters are provided
         if total_lag_time is not None and lag_subsample_rate is not None:
+            print(f"total_lag_time: {total_lag_time}, lag_subsample_rate: {lag_subsample_rate}")
             self.traj = self.traj[start_frame : start_frame + num_frames] # accommodate for start_frame and num_frames
             lagged_indices = get_subsampled_indices(
                 self.traj.n_frames, subsample, total_lag_time, lag_subsample_rate
@@ -231,6 +232,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
             self.traj = self.traj[subsampled_indices] # self.traj is permanently modified.
         else:
             # Regular subsampling without lag
+            print(f"subsample: {subsample}, regular subsampling")
             self.traj = self.traj[start_frame : start_frame + num_frames : subsample]
             self.hidden_state = None
             self.lagged_indices = None
@@ -245,7 +247,10 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.dataset_label = self.label()
-        self.graph.hidden_state = [self.hidden_state[0].xyz[i] for i in range(self.hidden_state[0].n_frames)]
+        if self.hidden_state is not None:
+            self.graph.hidden_state = [self.hidden_state[0].xyz[i] for i in range(self.hidden_state[0].n_frames)]
+        else:
+            self.graph.hidden_state = []
         if verbose:
             utils.dist_log(f"Dataset {self.label()}: Loading trajectory files {traj_files} and PDB file {pdb_file}.")
             utils.dist_log(
@@ -264,7 +269,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         graph = self.graph.clone()
         graph.pos = torch.tensor(self.traj.xyz[idx])
         
-        if self.lagged_indices is not None:
+        if self.hidden_state is not None:
             graph.hidden_state = [torch.tensor(self.hidden_state[idx].xyz[i]) for i in range(self.hidden_state[idx].n_frames)]
         else:
             graph.hidden_state = []

@@ -1,0 +1,7 @@
+defaults:
+  - mcmc: baoab_memory.yaml
+  - callbacks: null
+  - _self_
+
+_target_: jamun.sampling.walkjump.SingleMeasurementSamplerMemory
+sigma: ${sigma}

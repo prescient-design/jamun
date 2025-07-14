@@ -96,3 +96,57 @@ class Sampler:
                 self.fabric.log("sampler/global_step", batch_idx)
 
         self.fabric.call("on_sample_end", sampler=self)
+
+class SamplerMemory(Sampler):
+    """A sampler for molecular dynamics simulations that uses memory."""
+
+    def sample(
+        self,   
+        model,
+        batch_sampler,
+        num_batches: int,
+        init_graphs: torch_geometric.data.Data,
+        continue_chain: bool = False,
+    ):
+
+        self.fabric.launch()
+        self.fabric.setup(model)
+        model.eval()
+
+        init_graphs = init_graphs.to(self.fabric.device)
+        model_wrapped = utils.ModelSamplingWrapperMemory(
+            model=model,
+            init_graphs=init_graphs,
+            sigma=batch_sampler.sigma,
+        )
+
+        y_init = model_wrapped.sample_initial_noisy_positions()
+        y_hist_init = model_wrapped.sample_initial_noisy_history()
+        v_init = "gaussian"
+
+        self.fabric.call("on_sample_start", sampler=self)
+
+        batches = torch.arange(num_batches)
+        iterable = self.progbar_wrapper(batches, desc="Sampling", total=len(batches), leave=False)
+
+        with torch.inference_mode():
+            for batch_idx in iterable:
+                self.global_step = batch_idx
+
+                out = batch_sampler.sample(model=model_wrapped, y_init=y_init, v_init=v_init, y_hist_init=y_hist_init)
+                samples = model_wrapped.unbatch_samples(out)
+
+                # Start next chain from the end state of the previous chain?
+                if continue_chain:
+                    y_init = out["y"]
+                    v_init = out["v"]
+                    y_hist_init = out["y_hist"]
+                else:
+                    y_init = model_wrapped.sample_initial_noisy_positions()
+                    y_hist_init = model_wrapped.sample_initial_noisy_history()
+                    v_init = "gaussian"
+
+                self.fabric.call("on_after_sample_batch", sample=samples, sampler=self)
+                self.fabric.log("sampler/global_step", batch_idx)
+
+        self.fabric.call("on_sample_end", sampler=self)

@@ -13,39 +13,37 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "/data2/sules/fake_enhanced_data/ALA_ALA_organized/train"
         traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
+        pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
         as_iterable: false
-        subsample: 1
+        subsample: 10
         total_lag_time: 5
         lag_subsample_rate: 1
-        num_frames: 10
+        max_datasets: 5000
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "/data2/sules/fake_enhanced_data/ALA_ALA_organized/val"
         traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
+        pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
         as_iterable: false
-        subsample: 1
+        subsample: 10
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: 1
-        num_frames: 10
+        max_datasets: 5000
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "/data2/sules/fake_enhanced_data/ALA_ALA_organized/test"
         traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
+        pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
         as_iterable: false
-        subsample: 1
+        subsample: 10
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: 1
-        num_frames: 10
+        max_datasets: 5000
+
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
@@ -57,15 +55,15 @@ model:
   optim:
     lr: 0.002
   conditioner:
-    _target_: jamun.model.conditioners.PositionConditioner
+    _target_: jamun.model.conditioners.SelfConditioner
     N_structures: ${model.arch.N_structures}
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 500
-
+  max_epochs: 100
 
 logger:
   wandb:
-    group: ALA_ALA, capped diamines, conditional denoiser
-    notes: "Running on ALA_ALA capped diamine, conditional denoiser" 
+    group: ALA_ALA, enhanced sampling, conditional denoiser
+    notes: "Training conditional denoiser on ALA_ALA enhanced sampling data"
+    tags: ["train", "enhanced_sampling", "conditional_denoiser", "ALA_ALA"] 

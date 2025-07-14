@@ -3,11 +3,12 @@
 #SBATCH --partition gpu3
 #SBATCH --qos=preempt
 #SBATCH --nodes 1
-#SBATCH --ntasks-per-node 4
-#SBATCH --gpus-per-node 4
+#SBATCH --ntasks-per-node 1
+#SBATCH --gpus-per-node 1
 #SBATCH --cpus-per-task 8
 #SBATCH --time 3-0
 #SBATCH --mem-per-cpu=32G
+#SBATCH --array 4-10
 
 eval "$(conda shell.bash hook)"
 conda activate jamun

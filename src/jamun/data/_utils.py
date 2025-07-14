@@ -353,3 +353,97 @@ def create_dataset_from_pdbs(pdbfiles: str, label_prefix: Optional[str] = None) 
         datasets.append(dataset)
 
     return datasets
+
+
+def parse_repeated_position_datasets_from_directory(
+    root: str,
+    traj_pattern: str,
+    pdb_pattern: Optional[str] = None,
+    pdb_file: Optional[Sequence[str]] = None,
+    max_datasets: Optional[int] = None,
+    max_datasets_offset: Optional[int] = None,
+    filter_codes: Optional[Sequence[str]] = None,
+    as_iterable: bool = False,
+    label_override: Optional[str] = None,
+    **dataset_kwargs,
+) -> List:
+    """Helper function to create RepeatedPositionDataset objects from a directory of trajectory files."""
+    # Import here to avoid circular imports
+    from jamun.data.noisy_position_dataset import RepeatedPositionDataset
+    
+    # Print the dataset_kwargs for debugging
+    print(f"=== parse_repeated_position_datasets_from_directory dataset_kwargs ===")
+    print(f"dataset_kwargs: {dataset_kwargs}")
+    print(f"=== End dataset_kwargs ===")
+    
+    if pdb_file is not None and pdb_pattern is not None:
+        raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
+
+    traj_prefix, traj_pattern = os.path.split(traj_pattern)
+    traj_pattern_compiled = re.compile(traj_pattern)
+    if "*" in traj_prefix or "?" in traj_prefix:
+        raise ValueError("traj_prefix should not contain wildcards.")
+
+    traj_files = collections.defaultdict(list)
+    codes = set()
+    for entry in os.scandir(os.path.join(root, traj_prefix)):
+        match = traj_pattern_compiled.match(entry.name)
+        if not match:
+            continue
+
+        code = match.group(1)
+        codes.add(code)
+        traj_files[code].append(os.path.join(traj_prefix, entry.name))
+
+    if len(codes) == 0:
+        raise ValueError("No codes found in directory.")
+
+    pdb_files = {}
+    if pdb_pattern is not None:
+        pdb_prefix, pdb_pattern = os.path.split(pdb_pattern)
+        pdb_pattern_compiled = re.compile(pdb_pattern)
+        if "*" in pdb_prefix or "?" in pdb_prefix:
+            raise ValueError("pdb_prefix should not contain wildcards.")
+
+        for entry in os.scandir(os.path.join(root, pdb_prefix)):
+            match = pdb_pattern_compiled.match(entry.name)
+            if not match:
+                continue
+
+            code = match.group(1)
+            if code not in codes:
+                continue
+            pdb_files[code] = os.path.join(pdb_prefix, entry.name)
+    else:
+        for code in codes:
+            pdb_files[code] = pdb_file
+
+    # Filter out codes.
+    if filter_codes is not None:
+        codes = [code for code in codes if code in set(filter_codes)]
+
+    # Sort the codes and offset them, if necessary.
+    codes = list(sorted(codes))
+    if max_datasets_offset is not None:
+        codes = codes[max_datasets_offset:]
+    if max_datasets is not None:
+        codes = codes[:max_datasets]
+
+    if as_iterable:
+        raise ValueError("RepeatedPositionDataset does not support iterable mode")
+
+    datasets = []
+    for code in tqdm(codes, desc="Creating RepeatedPositionDatasets"):
+        if label_override is not None:
+            print(f"Label override: {label_override}")
+            code = str(label_override)
+
+        dataset = RepeatedPositionDataset(
+            root,
+            traj_files=traj_files[code],
+            pdb_file=pdb_files[code],
+            label=code,
+            **dataset_kwargs,
+        )
+        datasets.append(dataset)
+    return datasets

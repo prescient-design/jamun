@@ -43,7 +43,7 @@ data:
 
 trainer:
   val_check_interval: 0.1
-  max_epochs: 10
+  max_epochs: 20
 
 logger:
   wandb:

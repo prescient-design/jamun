@@ -22,8 +22,4 @@ conditioner:
   _target_: jamun.model.conditioners.PositionConditioner
   N_structures: ${model.arch.N_structures}
 
-multimeasurement: false
-N_measurements_hidden: 1
-N_measurements: 1
-
 _target_: jamun.model.denoiser_conditional.Denoiser 

@@ -66,7 +66,6 @@ def run(cfg):
     if matmul_prec := cfg.get("float32_matmul_precision"):
         dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
-    breakpoint()
     loggers = instantiate_dict_cfg(cfg.get("logger"), verbose=(rank_zero_only.rank == 0))
     wandb_logger = None
     for logger in loggers:
@@ -95,15 +94,13 @@ def run(cfg):
         num_init_samples_per_dataset=cfg.num_init_samples_per_dataset,
         repeat=cfg.repeat_init_samples,
     )
-
     callbacks = instantiate_dict_cfg(cfg.get("callbacks"), verbose=(rank_zero_only.rank == 0))
     sampler = hydra.utils.instantiate(cfg.sampler, callbacks=callbacks, loggers=loggers)
     batch_sampler = hydra.utils.instantiate(cfg.batch_sampler)
-
     if seed := cfg.get("seed"):
         # During sampling, we want ranks to generate different chains.
         pl.seed_everything(seed + sampler.fabric.global_rank)
-
+    breakpoint()
     # Run test-time adapation, if specified.
     if finetuning_cfg := cfg.get("finetune_on_init"):
         num_finetuning_steps = finetuning_cfg.get("num_steps")

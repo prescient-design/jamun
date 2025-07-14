@@ -1,17 +1,18 @@
 # @package _global_
 
-defaults:
-  - override /callbacks:
-    - sampler/save_trajectory.yaml
-  - _self_
+# defaults:
+#   - override /callbacks:
+#     - sampler/save_trajectory.yaml
+#   - _self_
 
 
 init_datasets:
   _target_: jamun.data.parse_datasets_from_directory
-  root: "${paths.data_path}/capped_diamines/timewarp_splits/test"
+  root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
   traj_pattern: "^(.*).xtc"
   pdb_pattern: "^(.*).pdb"
   subsample: 1
+  filter_codes: ['ALA_ALA']
   num_frames: 60000
 
 
@@ -22,15 +23,15 @@ repeat_init_samples: 1
 continue_chain: true
 
 # New 2AA
-wandb_train_run_path: prescient-design/jamun/yfz3vpzg
+wandb_train_run_path: sule-shashank/jamun/vxpxronn
 
 checkpoint_type: best_so_far
-sigma: 0.04
+sigma: 0.01
 M: 1.0
-delta: 0.04
+delta: ${sigma}
 friction: 1.0
 inverse_temperature: 1.0
-score_fn_clip: 100.0
+score_fn_clip: null
 
 sampler:
   _target_: jamun.sampling.Sampler
@@ -39,3 +40,4 @@ sampler:
 logger:
   wandb:
     group: sample_capped_2AA
+    tags: ['ALA_ALA', 'sigma_0.01', 'standard JAMUN']

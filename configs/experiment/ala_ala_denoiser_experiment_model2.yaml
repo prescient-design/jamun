@@ -1,4 +1,5 @@
 # @package _global_
+# Model 2: Denoiser with self conditioner, two structures, noise level sigma/sqrt(2)
 
 defaults:
   - override /model: denoiser_conditional
@@ -19,9 +20,9 @@ data:
         filter_codes: ['ALA_ALA']
         as_iterable: false
         subsample: 1
-        total_lag_time: 5
+        total_lag_time: 2  # Two structures: current + 1 hidden state
         lag_subsample_rate: 1
-        num_frames: 10
+        num_frames: 10000
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -32,8 +33,8 @@ data:
         as_iterable: false
         subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: 1
-        num_frames: 10
+        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
+        num_frames: 100
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -46,10 +47,11 @@ data:
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: 1
         num_frames: 10
+
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
-    sigma: 0.04
+    sigma: 0.02828427124 # sigma/sqrt(2) = 0.04/sqrt(2) ≈ 0.0283
   arch:
     n_layers: 2
     N_structures: ${data.datamodule.datasets.train.total_lag_time}
@@ -57,15 +59,14 @@ model:
   optim:
     lr: 0.002
   conditioner:
-    _target_: jamun.model.conditioners.PositionConditioner
+    _target_: jamun.model.conditioners.SelfConditioner
     N_structures: ${model.arch.N_structures}
 
 trainer:
-  val_check_interval: 0.5
-  max_epochs: 500
-
+  max_epochs: 100
 
 logger:
   wandb:
-    group: ALA_ALA, capped diamines, conditional denoiser
-    notes: "Running on ALA_ALA capped diamine, conditional denoiser" 
+    group: ALA_ALA_noise_check
+    notes: "Model 2: Denoiser with SelfConditioner, 2 structures, sigma=0.04/sqrt(2)" 
+    tags: ["noise_check", "low noise", "identical measurements"]

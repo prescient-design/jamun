@@ -44,11 +44,10 @@ def main(cfg):
     # cfg = OmegaConf.merge(cfg, test_cfg)
     # cfg = OmegaConf.merge(cfg, test_cfg, override=True)
     # breakpoint()
-    
     print("Loading datamodule...")
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     datamodule.setup('test')
-    # breakpoint()
+    breakpoint()
     
     print("Loading model...")
     model = hydra.utils.instantiate(cfg.model)
@@ -58,7 +57,7 @@ def main(cfg):
     print("Getting a batch of data...")
     train_loader = datamodule.train_dataloader()
     _, batch = next(enumerate(train_loader))
-    # breakpoint()
+    breakpoint()
     
     # # Move to CPU
     # batch = batch.to("cpu")
@@ -70,19 +69,25 @@ def main(cfg):
     
     # Test forward pass
     print("Testing forward pass...")
-    with torch.no_grad():
-        sigma = model.sigma_distribution.sample()
-        x_target, xhat, y = model.noise_and_denoise(batch, sigma, align_noisy_input=True)
+    # with torch.no_grad():
+    #     sigma = model.sigma_distribution.sample()
+    #     x_target, xhat, y = model.noise_and_denoise(batch, sigma, align_noisy_input=True)
         
-    print(f"Input shape: {batch.pos.shape}")
-    print(f"Noisy shape: {y.pos.shape}")
-    print(f"Output shape: {xhat.pos.shape}")
+    # print(f"Input shape: {batch.pos.shape}")
+    # print(f"Noisy shape: {y.pos.shape}")
+    # print(f"Output shape: {xhat.pos.shape}")
     
-    # Test loss computation
-    print("Testing loss computation...")
-    loss, aux = model.compute_loss(x_target, xhat, sigma)
-    print(f"Loss: {loss.mean().item():.4f}")
-    print(f"Metrics: {aux}")
+    # Test single backward pass computation
+    trainer = hydra.utils.instantiate(cfg.trainer)
+    trainer.fit(model, datamodule=datamodule, ckpt_path=None)
+
+
+    # loss = model.training_step(batch, 0)
+    # breakpoint()
+    # print("Testing loss computation...")
+    # loss, aux = model.compute_loss(x_target, xhat, sigma)
+    # print(f"Loss: {loss.mean().item():.4f}")
+    # print(f"Metrics: {aux}")
 
 if __name__ == "__main__":
     main() 

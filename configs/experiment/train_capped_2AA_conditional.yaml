@@ -1,11 +1,15 @@
 # @package _global_
-
 defaults:
   - override /model: denoiser_conditional
   - override /callbacks:
     - timing.yaml
     - lr_monitor.yaml
     - model_checkpoint.yaml
+
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
 
 data:
   datamodule:
@@ -16,42 +20,42 @@ data:
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 1
+        num_frames: 320000
         total_lag_time: 5
-        lag_subsample_rate: 1
-        num_frames: 10
+        lag_subsample_rate: 10
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "${paths.data_path}/capped_diamines/timewarp_splits/val/"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 1
-        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: 1
-        num_frames: 10
+        subsample: 100
+        max_datasets: 20
+        num_frames: 320000
+        total_lag_time: 5
+        lag_subsample_rate: 10
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "${paths.data_path}/capped_diamines/timewarp_splits/test/"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 1
-        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: 1
-        num_frames: 10
+        subsample: 100
+        max_datasets: 20
+        num_frames: 320000
+        total_lag_time: 5
+        lag_subsample_rate: 10
+
+trainer:
+  val_check_interval: 0.1
+  max_epochs: 20
+
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
   arch:
-    n_layers: 2
+    n_layers: 3
     N_structures: ${data.datamodule.datasets.train.total_lag_time}
   max_radius: 1000.0
   optim:
@@ -59,13 +63,8 @@ model:
   conditioner:
     _target_: jamun.model.conditioners.PositionConditioner
     N_structures: ${model.arch.N_structures}
-
-trainer:
-  val_check_interval: 0.5
-  max_epochs: 500
-
+  multimeasurement: false
 
 logger:
   wandb:
-    group: ALA_ALA, capped diamines, conditional denoiser
-    notes: "Running on ALA_ALA capped diamine, conditional denoiser" 
+    group: train_capped_2AA

@@ -1,2 +1,2 @@
 from ._callbacks import InterpolateParametersCallback, MeasurementDependentParametersCallback
-from ._single_measurement import SingleMeasurementSampler
+from ._single_measurement import SingleMeasurementSampler, SingleMeasurementSamplerMemory

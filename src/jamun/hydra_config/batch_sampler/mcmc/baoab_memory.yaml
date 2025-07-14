@@ -1,0 +1,12 @@
+_target_: jamun.sampling.mcmc.BAOAB_memory
+delta: ${delta}
+friction: ${friction}
+steps: ${num_sampling_steps_per_batch}
+save_trajectory: true
+cpu_offload: true
+verbose: true
+inverse_temperature: ${inverse_temperature}
+score_fn_clip: ${score_fn_clip}
+M: ${M}
+burn_in_steps: 0
+v_init: "zero" 

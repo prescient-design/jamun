@@ -10,14 +10,15 @@ parameters:
     values:
       - jamun.model.conditioners.PositionConditioner
       - jamun.model.conditioners.SelfConditioner
-  model.N_measurements_hidden:
-    values: [1, 5, 10, 20, 25]
+  data.datamodule.datasets.train.total_lag_time:
+    values: [4, 6, 8, 10]
   model.sigma_distribution.sigma:
-    values: [0.04, 0.1085767, 0.29472252, 0.8]
-
+    values: [0.01, 0.03684031, 0.13572088, 0.5]
 command: 
   - ${program}
   - "--config-dir=configs"
-  - "experiment=train_test_single_shape_conditional_one_traj"
+  - "experiment=train_test_single_shape_conditional"
   - "++trainer.log_every_n_steps=10"
+  - "++trainer.max_epochs=100"
+  - "++paths.root_path=/data2/sules/jamun-conditional-runs"
   - ${args_no_hyphens}

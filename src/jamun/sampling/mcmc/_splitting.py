@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 import torch
 from torch import Tensor
 
-from jamun.sampling.mcmc.functional import aboba, baoab
+from jamun.sampling.mcmc.functional import aboba, baoab, aboba_memory, baoab_memory
 
 
 @dataclass
@@ -56,3 +56,17 @@ class BAOAB:
     def __call__(self, y: torch.Tensor, score_fn: Callable, **kwargs):
         kwargs = dataclasses.asdict(self) | kwargs
         return baoab(y, score_fn, **kwargs)
+
+
+@dataclass
+class ABOBA_memory(ABOBA):
+    def __call__(self, y: torch.Tensor, y_hist: list, score_fn: Callable, **kwargs):
+        kwargs = dataclasses.asdict(self) | kwargs
+        return aboba_memory(y=y, y_hist=y_hist, score_fn=score_fn, **kwargs)
+
+
+@dataclass
+class BAOAB_memory(BAOAB):
+    def __call__(self, y: torch.Tensor, y_hist: list, score_fn: Callable, **kwargs):
+        kwargs = dataclasses.asdict(self) | kwargs
+        return baoab_memory(y=y, y_hist=y_hist, score_fn=score_fn, **kwargs)

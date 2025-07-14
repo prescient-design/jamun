@@ -25,7 +25,7 @@ from .residue_metadata import (
     encode_atom_type,
     encode_residue,
 )
-from .sampling_wrapper import ModelSamplingWrapper
+from .sampling_wrapper import ModelSamplingWrapper, ModelSamplingWrapperMemory
 from .scaled_rmsd import scaled_rmsd
 from .simple_ddp import SimpleDDPStrategy
 from .singleton import singleton

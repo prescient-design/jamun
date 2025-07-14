@@ -1,0 +1,51 @@
+# @package _global_
+
+defaults: 
+  - override /model: denoiser_conditional_pretrained.yaml
+# defaults:
+#  - override /callbacks:
+#     - sampler/save_trajectory.yaml
+#  - _self_
+
+# callbacks:
+#   viz:
+#     sigma_list: ["${model.sigma_distribution.sigma}"]
+
+init_datasets:
+  _target_: jamun.data.parse_datasets_from_directory
+  root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+  traj_pattern: "^(.*).xtc"
+  pdb_pattern: "^(.*).pdb"
+  filter_codes: ['ALA_ALA']
+  as_iterable: false
+  subsample: 100
+  total_lag_time: 10
+  lag_subsample_rate: 100
+
+num_sampling_steps_per_batch: 1000
+num_batches: 10
+num_init_samples_per_dataset: 10
+repeat_init_samples: 1
+continue_chain: false
+
+# Add your wandb run path here
+wandb_train_run_path: sule-shashank/jamun/jqp09yv1
+# checkpoint_dir: /data2/sules/jamun-conditional-runs/outputs/train/dev/runs/2025-07-01_16-15-23/checkpoints
+# checkpoint_dir: /data2/sules/jamun-conditional-runs/old_outputs/outputs/train/dev/runs/2a381c2d310e3d0789831338/checkpoints
+checkpoint_type: last
+
+sigma: 0.01
+M: 1.0
+delta: ${sigma}
+friction: 1.0
+inverse_temperature: 1.0
+score_fn_clip: 100.0
+
+sampler:
+  _target_: jamun.sampling.SamplerMemory
+  devices: 1
+
+logger:
+  wandb:
+    group: sample_ALA_ALA_conditional
+    notes: stellar-sweep-25

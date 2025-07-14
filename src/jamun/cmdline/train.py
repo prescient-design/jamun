@@ -45,6 +45,11 @@ def run(cfg):
     # Set the start method to spawn to avoid issues with the default fork method.
     torch.multiprocessing.set_start_method("spawn", force=True)
 
+    # Set random seed for reproducible training
+    if seed := cfg.get("seed"):
+        lightning.seed_everything(seed)
+        dist_log(f"Set random seed to {seed} for reproducible training")
+
     # Compute data normalization.
     if cfg.get("compute_average_squared_distance_from_data"):
         average_squared_distance = compute_average_squared_distance_from_config(cfg)
@@ -53,12 +58,20 @@ def run(cfg):
         )
         cfg.model.average_squared_distance = average_squared_distance
 
+    # # do this for the sweep
+    # if cfg.model.N_measurements_hidden is not None:
+    #     dist_log(f"Number of hidden measurements: {cfg.model.N_measurements_hidden}")
+    #     dist_log(f"Overwriting N_measurements...")
+    #     cfg.model.N_measurements = 100 // cfg.model.N_measurements_hidden
+    #     dist_log(f"New num of measurements: {cfg.model.N_measurements=}")
+
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     model = hydra.utils.instantiate(cfg.model)
     if matmul_prec := cfg.get("float32_matmul_precision"):
         dist_log(f"Setting float_32_matmul_precision to {matmul_prec}")
         torch.set_float32_matmul_precision(matmul_prec)
 
+    # breakpoint()
     # # If running under Slurm, ensure the number of devices matches the allocation.
     # if "SLURM_GPUS_PER_TASK" in os.environ and torch.cuda.is_available():
     #     dist_log(f"torch.cuda.device_count(): {torch.cuda.device_count()}")
@@ -85,7 +98,7 @@ def run(cfg):
     callbacks = instantiate_dict_cfg(cfg.get("callbacks"), verbose=(rank_zero_only.rank == 0))
 
     trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=loggers)
-
+    # breakpoint()
     # TODO support wandb notes/description
     if rank_zero_only.rank == 0 and wandb_logger:
         wandb_logger.experiment.config.update({"cfg": log_cfg, "version": jamun.__version__, "cwd": os.getcwd()})
@@ -101,8 +114,9 @@ def run(cfg):
     else:
         checkpoint_path = None
     print(f'Saving checkpoints @ {checkpoint_path}')
-    trainer.fit(model, datamodule=datamodule, ckpt_path=checkpoint_path)
 
+    trainer.fit(model, datamodule=datamodule, ckpt_path=checkpoint_path)
+    # breakpoint()
     if wandb_logger and isinstance(trainer.profiler, lightning.pytorch.profilers.PyTorchProfiler):
         profile_art = wandb.Artifact("trace", type="profile")
         for trace in pathlib.Path(trainer.profiler.dirpath).glob("*.pt.trace.json"):
