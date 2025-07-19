@@ -145,6 +145,46 @@ def solvate(
     return modeller.positions, modeller.topology
 
 
+def select_best_platform():
+    """Select the best available OpenMM platform (preferably GPU) with fallback logic."""
+    try:
+        import openmm
+        platforms = []
+        for i in range(openmm.Platform.getNumPlatforms()):
+            platform = openmm.Platform.getPlatform(i)
+            platforms.append((platform.getName(), platform.getSpeed(), platform))
+        
+        # Sort by speed (higher is better) and prefer CUDA > OpenCL > CPU
+        platform_priority = {'CUDA': 3, 'OpenCL': 2, 'CPU': 1, 'Reference': 0}
+        platforms.sort(key=lambda x: (x[1], platform_priority.get(x[0], 0)), reverse=True)
+        
+        # Try each platform in order until one works
+        for platform_name, speed, platform in platforms:
+            try:
+                # Quick test to see if platform can create a context
+                # We'll use a minimal system for testing
+                test_system = openmm.System()
+                test_system.addParticle(1.0)  # Add one particle
+                test_integrator = openmm.LangevinMiddleIntegrator(300, 1.0, 0.002)
+                test_context = openmm.Context(test_system, test_integrator, platform)
+                del test_context  # Clean up
+                del test_integrator
+                del test_system
+                
+                py_logger.info(f"Using OpenMM platform: {platform_name} (speed: {speed})")
+                return platform
+            except Exception as e:
+                py_logger.warning(f"Platform {platform_name} failed test: {e}")
+                continue
+        
+        py_logger.warning("No working OpenMM platforms found, using default")
+        return None
+            
+    except Exception as e:
+        py_logger.warning(f"Could not select optimal platform: {e}, using default")
+        return None
+
+
 def get_system_with_Langevin_integrator(
     topology: Topology, forcefield: ForceField, temp_K: float, dt_ps: float, state: Optional[str] = None
 ) -> Simulation:
@@ -157,7 +197,13 @@ def get_system_with_Langevin_integrator(
         constraints=HBonds,
     )
     integrator = LangevinMiddleIntegrator(temp_K * kelvin, 1 / picoseconds, dt_ps * picoseconds)
-    simulation = Simulation(topology, system, integrator)
+    
+    platform = select_best_platform()
+    if platform is not None:
+        simulation = Simulation(topology, system, integrator, platform)
+    else:
+        simulation = Simulation(topology, system, integrator)
+    
     if state is not None:
         simulation.loadState(state)
     return simulation
@@ -175,7 +221,13 @@ def get_system_with_NoseHoover_integrator(
         constraints=HBonds,
     )
     integrator = NoseHooverIntegrator(temp_K * kelvin, 1 / picoseconds, dt_ps * picoseconds)
-    simulation = Simulation(topology, system, integrator)
+    
+    platform = select_best_platform()
+    if platform is not None:
+        simulation = Simulation(topology, system, integrator, platform)
+    else:
+        simulation = Simulation(topology, system, integrator)
+    
     return simulation
 
 
