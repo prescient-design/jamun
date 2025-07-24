@@ -22,7 +22,7 @@ repeat_init_samples: 1
 continue_chain: true
 
 # New Macrocycle model
-#wandb_train_run_path: prescient-design/jamun/bca9l8if # This is the run path of the training produced from the run from Ameya 
+#wandb_train_run_path: prescient-design/jamun/bca9l8if # This is the run path of the training produced from the run from Ameya
 # This is the Darcy's 4mer run path
 wandb_train_run_path: prescient-design/jamun/68ve91dj
 

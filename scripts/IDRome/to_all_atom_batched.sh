@@ -40,14 +40,14 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
         echo "Final file already exists for ${NAME}. Skipping."
         continue
     fi
-    
+
     # Run frame extraction script
     python scripts/IDRome/extract_frames.py --input-dir "${BASE_INPUT_DIR}" --name "${NAME}" --output-dir "${BASE_FRAMES_DIR}"
 
     # Process all frames in the directory
     for FRAME in $(seq 0 $((N_FRAMES-1))); do
         echo "Processing frame ${FRAME} in directory ${NAME}"
-        
+
         # Check if the file exists
         FRAME_PATH="${BASE_FRAMES_DIR}/${NAME}/${FRAME}.pdb"
         if [ ! -f "${FRAME_PATH}" ]; then
@@ -55,7 +55,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
             continue
         fi
 
-        # Check if the final file already exists        
+        # Check if the final file already exists
         PULCHRA_FRAME_PATH="${BASE_FRAMES_DIR}/${NAME}/${FRAME}.rebuilt.pdb"
         FINAL_PATH="${BASE_OUTPUT_DIR}/${NAME}/${FRAME}.pdb"
 
@@ -71,7 +71,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
             echo "Error: PULCHRA failed on frame ${FRAME} in directory ${NAME}"
             continue
         fi
-        
+
         # Move the rebuilt PDB to final location
         echo "Moving result to final location..."
         mv "${PULCHRA_FRAME_PATH}" "${FINAL_PATH}"
@@ -79,7 +79,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
             echo "Error: Failed to move rebuilt PDB to final location"
             continue
         fi
-        
+
         echo "Successfully processed frame ${FRAME} in directory ${NAME}"
     done
 

@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 import einops
 import torch
 import torch.nn as nn
@@ -52,7 +50,7 @@ class ModelSamplingWrapper:
         self.input_graphs = input_graphs
         return input_graphs.to(positions.device)
 
-    def unbatch_samples(self, samples: Dict[str, torch.Tensor]) -> List[torch_geometric.data.Data]:
+    def unbatch_samples(self, samples: dict[str, torch.Tensor]) -> list[torch_geometric.data.Data]:
         """Unbatch samples."""
         if "batch" not in self.init_graphs:
             raise ValueError("The initial graph does not have a batch attribute.")

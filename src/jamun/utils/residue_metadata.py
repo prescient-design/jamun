@@ -1,12 +1,9 @@
-from typing import Dict, List
-
-
 class ResidueMetadata:
     """Metadata for residues and atoms."""
 
-    ATOM_TYPES: List[str] = ["C", "O", "N", "F", "S"]
-    ATOM_CODES: List[str] = ["C", "O", "N", "S", "CA", "CB"]
-    RESIDUE_CODES: List[str] = [
+    ATOM_TYPES: list[str] = ["C", "O", "N", "F", "S", "H"]
+    ATOM_CODES: list[str] = ["C", "O", "N", "S", "CA", "CB", "H"]
+    RESIDUE_CODES: list[str] = [
         "ALA",
         "ARG",
         "ASN",
@@ -32,7 +29,7 @@ class ResidueMetadata:
     ]
 
     # One to three letter code mapping
-    AA_3CODES: Dict[str, str] = {
+    AA_3CODES: dict[str, str] = {
         "A": "ALA",
         "R": "ARG",
         "N": "ASN",
@@ -56,7 +53,7 @@ class ResidueMetadata:
     }
 
     # Three to one letter code mapping
-    AA_1CODES: Dict[str, str] = {v: k for k, v in AA_3CODES.items()}
+    AA_1CODES: dict[str, str] = {v: k for k, v in AA_3CODES.items()}
 
 
 def encode_atom_type(atom_type: str) -> int:

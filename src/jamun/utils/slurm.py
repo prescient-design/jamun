@@ -1,10 +1,9 @@
 import collections
 import subprocess
 import time
-from typing import Dict, List
 
 
-def wait_for_jobs(job_ids: List[str], poll_interval: int = 60) -> int:
+def wait_for_jobs(job_ids: list[str], poll_interval: int = 60) -> int:
     """Wait for all jobs to finish and print progress."""
 
     previous_states = collections.defaultdict(str)
@@ -15,7 +14,7 @@ def wait_for_jobs(job_ids: List[str], poll_interval: int = 60) -> int:
         cmd = ["sacct", "-j", ",".join(job_ids), "--format=JobID,State", "--noheader", "--parsable2"]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
-        current_states: Dict[str, str] = {}
+        current_states: dict[str, str] = {}
 
         # Parse current states.
         for line in result.stdout.strip().split("\n"):

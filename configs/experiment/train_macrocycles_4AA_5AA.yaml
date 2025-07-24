@@ -60,7 +60,7 @@ trainer:
   limit_val_batches: 1000
   max_epochs: 100
 
-resume_from_checkpoint: 
+resume_from_checkpoint:
   wandb_train_run_path: "prescient-design/jamun/i27pn5g7"
   checkpoint_type: best_so_far
 

@@ -1,4 +1,5 @@
-from typing import Callable, NamedTuple, Optional, Tuple
+from collections.abc import Callable
+from typing import NamedTuple
 
 import e3nn
 import e3nn.util.test
@@ -500,8 +501,8 @@ class Ophiuchus(nn.Module):
         )
 
     def compute_edge_attributes(
-        self, edge_index: torch.Tensor, coords: torch.Tensor, effective_radial_cutoff: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, edge_index: torch.Tensor, coords: torch.Tensor, effective_radial_cutoff: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         edge_vec = coords[edge_index[1]] - coords[edge_index[0]]
         edge_sh = e3nn.o3.spherical_harmonics(self.irreps_sh, edge_vec, normalize=True, normalization="component")
         edge_attr = e3nn.math.soft_one_hot_linspace(
@@ -518,7 +519,7 @@ class Ophiuchus(nn.Module):
         self,
         data: torch_geometric.data.Batch,
         c_noise: torch.Tensor,
-        effective_radial_cutoff: Optional[torch.Tensor],
+        effective_radial_cutoff: torch.Tensor | None,
     ) -> torch.Tensor:
         # Test equivariance on the first forward pass.
         if self.test_equivariance:

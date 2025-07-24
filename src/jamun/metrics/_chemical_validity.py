@@ -1,4 +1,4 @@
-from typing import Dict, List, Sequence, Tuple
+from collections.abc import Sequence
 
 import mdtraj as md
 import numpy as np
@@ -41,7 +41,7 @@ def _validate_positions_and_atom_types(positions: np.ndarray, atom_types: np.nda
         raise ValueError("Atom types should be single characters.")
 
 
-def check_volume_exclusion(traj: md.Trajectory, tolerance: float) -> List[List[Tuple[int, int]]]:
+def check_volume_exclusion(traj: md.Trajectory, tolerance: float) -> list[list[tuple[int, int]]]:
     """Check for volume exclusion between atoms in a trajectory."""
     positions = traj.xyz
     atoms, _ = traj.topology.to_dataframe()
@@ -53,8 +53,8 @@ def check_volume_exclusion(traj: md.Trajectory, tolerance: float) -> List[List[T
 
 
 def _check_volume_exclusion(
-    positions: np.ndarray, atom_types: np.ndarray, adjacency_pairs: Sequence[Tuple[int, int]], tolerance: float
-) -> List[List[Tuple[int, int]]]:
+    positions: np.ndarray, atom_types: np.ndarray, adjacency_pairs: Sequence[tuple[int, int]], tolerance: float
+) -> list[list[tuple[int, int]]]:
     """Check for volume exclusion between atoms in a trajectory."""
     positions = np.asarray(positions)
     atom_types = np.asarray(atom_types)
@@ -82,7 +82,7 @@ def _check_volume_exclusion(
     return issues
 
 
-def check_bond_lengths(traj: md.Trajectory, tolerance: float) -> List[List[Tuple[int, int]]]:
+def check_bond_lengths(traj: md.Trajectory, tolerance: float) -> list[list[tuple[int, int]]]:
     """Check for bond lengths in a trajectory."""
     positions = traj.xyz
     atoms, _ = traj.topology.to_dataframe()
@@ -94,8 +94,8 @@ def check_bond_lengths(traj: md.Trajectory, tolerance: float) -> List[List[Tuple
 
 
 def _check_bond_lengths(
-    positions: np.ndarray, atom_types: np.ndarray, adjacency_pairs: Sequence[Tuple[int, int]], tolerance: float
-) -> List[List[Tuple[int, int]]]:
+    positions: np.ndarray, atom_types: np.ndarray, adjacency_pairs: Sequence[tuple[int, int]], tolerance: float
+) -> list[list[tuple[int, int]]]:
     """Check for bond lengths in a trajectory."""
     positions = np.asarray(positions)
     atom_types = np.asarray(atom_types)
@@ -183,7 +183,7 @@ class ChemicalValidityMetrics(TrajectoryMetric):
             )
         return metrics
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         metrics = {}
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):

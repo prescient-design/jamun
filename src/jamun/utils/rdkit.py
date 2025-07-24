@@ -1,6 +1,5 @@
 import logging
 import tempfile
-from typing import List
 
 import mdtraj as md
 from rdkit import Chem, RDLogger, rdBase
@@ -10,7 +9,7 @@ RDLogger.DisableLog("rdApp.*")
 from jamun import utils
 
 
-def to_rdkit_mols(traj: md.Trajectory) -> List[Chem.Mol]:
+def to_rdkit_mols(traj: md.Trajectory) -> list[Chem.Mol]:
     """Converts an MDTraj trajectory to a list of RDKit molecules."""
 
     # Suppress RDKit warnings.

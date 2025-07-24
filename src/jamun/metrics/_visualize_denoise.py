@@ -1,6 +1,5 @@
 import os
 import tempfile
-from typing import Dict, List, Optional, Tuple
 
 import einops
 import matplotlib.pyplot as plt
@@ -17,7 +16,7 @@ from jamun.metrics._ramachandran import plot_ramachandran
 from jamun.metrics._utils import validate_sample
 
 
-def plot_ramachandran_grid(trajs: Dict[str, md.Trajectory], dataset_label: str):
+def plot_ramachandran_grid(trajs: dict[str, md.Trajectory], dataset_label: str):
     """Plot a grid of Ramachandran plots for each trajectory."""
     # Create the figure and subplots.
     num_dihedrals = md.compute_phi(trajs["x"], periodic=False)[1].shape[1]
@@ -43,7 +42,7 @@ def plot_ramachandran_grid(trajs: Dict[str, md.Trajectory], dataset_label: str):
 class VisualizeDenoiseMetrics(torchmetrics.Metric):
     """Plots and computes metrics for samples from a single dataset."""
 
-    def __init__(self, dataset: MDtrajDataset, sigma_list: List[float]):
+    def __init__(self, dataset: MDtrajDataset, sigma_list: list[float]):
         # TODO: Understand why we need sync_on_compute=False.
         super().__init__(sync_on_compute=False)
 
@@ -96,7 +95,7 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
             all_trajs[sigma] = sigma_trajs
         return all_trajs
 
-    def compute(self) -> Tuple[Optional[Dict[str, md.Trajectory]], Optional[Dict[float, float]]]:
+    def compute(self) -> tuple[dict[str, md.Trajectory] | None, dict[float, float] | None]:
         if not self.has_samples:
             return None, None
 
@@ -122,8 +121,8 @@ class VisualizeDenoiseMetrics(torchmetrics.Metric):
 
     def log(
         self,
-        trajectories: Optional[Dict[str, md.Trajectory]] = None,
-        scaled_rmsd_per_sigma: Optional[Dict[float, float]] = None,
+        trajectories: dict[str, md.Trajectory] | None = None,
+        scaled_rmsd_per_sigma: dict[float, float] | None = None,
     ) -> None:
         if trajectories is None:
             trajectories, _ = self.compute()

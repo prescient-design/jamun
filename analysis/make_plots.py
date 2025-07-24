@@ -192,11 +192,11 @@ def plot_ramachandran_contour(results: Dict[str, Any], dihedral_index: int, ax: 
 def get_num_dihedrals(experiment: str, pmf_type: str) -> int:
     """
     Returns the number of dihedrals for a given experiment and PMF type.
-       
+
         pmf_type = "internal" for psi_2 - phi_2, psi_3 - phi_3, etc.
         pmf_type = "all" for psi_1 - phi_2, psi_2 - phi_3, etc.
     """
-    
+
     if pmf_type not in ["internal", "all"]:
         raise ValueError(f"Invalid pmf_type: {pmf_type}")
 
@@ -499,14 +499,11 @@ def plot_ramachandran_against_all_trajectories(results_df: pd.DataFrame, peptide
 
     row = results_df[results_df["peptide"] == peptide].iloc[0]
     traj_names = row["results"]["PMFs"].keys()
-    traj_names = ["ref_traj"] + [
+    traj_names = ["ref_traj", "ref_traj_10x"] + [
         traj
         for traj in traj_names
         if traj not in ["ref_traj", "ref_traj_10x", "ref_traj_100x", "ref_traj_1000x", "TBG_200x"]
     ]
-
-    if len(traj_names) == 2:
-        traj_names = ["ref_traj", "traj", "ref_traj_10x"]
 
     fig, axs = plt.subplots(len(traj_names), num_dihedrals, figsize=(max(3 * num_dihedrals, 12), 8), squeeze=False)
     for j in range(num_dihedrals):
@@ -877,7 +874,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
             pyemma_helper.plot_free_energy(
                 *results[traj], cmap="plasma", ax=axs[i, j]
             )
-            
+
             axs[i, j].ticklabel_format(useOffset=False, style="plain")
             axs[i, j].set_xlim(axs[i, 0].get_xlim())
             axs[i, j].set_ylim(axs[i, 0].get_ylim())
@@ -885,7 +882,7 @@ def plot_TICA_histograms(results_df: pd.DataFrame):
         if i == 0:
             for j, traj in enumerate(traj_names):
                 axs[i, j].set_title(format_traj_name_fn(traj), fontsize=28)
-        
+
         axs[i, -1].text(
             1.4,
             0.5,
@@ -1189,7 +1186,7 @@ def add_extra_trajectories(
     if experiment == "Chignolin" and traj_name == "JAMUN_2x":
         results_df.attrs["traj_name"] = "JAMUN"
 
-    if experiment == "Our_5AA" and traj_name == "JAMUN":    
+    if experiment == "Our_5AA" and traj_name == "JAMUN":
         extra_results_dfs = {
             "Boltz-1": load_results(results_dir, "Our_5AA", "BoltzSamples", ref_traj_name),
             "BioEmu": load_results(results_dir, "Our_5AA", "BioEmuSamples", ref_traj_name),

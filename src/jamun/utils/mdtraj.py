@@ -1,12 +1,10 @@
-from typing import List, Union
-
 import einops
 import mdtraj as md
 import numpy as np
 import torch
 
 
-def coordinates_to_trajectories(coords: Union[torch.Tensor, np.ndarray], topology: md.Topology) -> List[md.Trajectory]:
+def coordinates_to_trajectories(coords: torch.Tensor | np.ndarray, topology: md.Topology) -> list[md.Trajectory]:
     """Converts a tensor of coordinates to MDtraj trajectories."""
     if isinstance(coords, torch.Tensor):
         coords = coords.cpu().detach().numpy()

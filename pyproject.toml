@@ -37,6 +37,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "universal-pathlib>=0.2.6",
     "wandb>=0.19.1",
+    "orb_models>=0.5.4",
 ]
 
 [project.scripts]
@@ -80,6 +81,7 @@ select = [
     "F",  # pyflakes
     "I",  # isort
     "B",  # flake8-bugbear
+    "UP", # pyupgrade
 ]
 ignore = [
     "E501",  # line too long, handled by black

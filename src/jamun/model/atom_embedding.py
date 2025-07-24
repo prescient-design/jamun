@@ -9,7 +9,7 @@ from jamun import utils
 class CoarseGrainedBeadEmbedding(nn.Module):
     """Embed coarse-grained beads."""
 
-    def __init__(self, bead_embedding_dim: int, num_beads: int = 10):
+    def __init__(self, bead_embedding_dim: int, num_beads: int):
         super().__init__()
         self.embedding = nn.Embedding(num_beads, bead_embedding_dim)
         self.irreps_out = e3nn.o3.Irreps(f"{bead_embedding_dim}x0e")
@@ -21,7 +21,7 @@ class CoarseGrainedBeadEmbedding(nn.Module):
 class SimpleAtomEmbedding(nn.Module):
     """Embed atoms without residue information."""
 
-    def __init__(self, embedding_dim: int, max_value: int = 20):
+    def __init__(self, embedding_dim: int, max_value: int):
         super().__init__()
         self.embedding = nn.Embedding(max_value, embedding_dim)
         self.irreps_out = e3nn.o3.Irreps(f"{embedding_dim}x0e")

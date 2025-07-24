@@ -3,9 +3,9 @@
 #SBATCH --partition gpu2
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 2
-#SBATCH --gpus-per-node 2
+#SBATCH --gpus-per-node 1
 #SBATCH --cpus-per-task 8
-#SBATCH --time 7-0
+#SBATCH --time 3-0
 #SBATCH --mem-per-cpu=32G
 
 eval "$(conda shell.bash hook)"

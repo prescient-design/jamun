@@ -1,0 +1,12 @@
+_target_: jamun.model.arch.MoleculeGNSWrapper
+_partial_: true
+latent_dim: 256
+num_message_passing_steps: 5
+base_mlp_hidden_dim: 1024
+base_mlp_depth: 2
+head_mlp_hidden_dim: 256
+head_mlp_depth: 1
+activation: silu
+sh_lmax: 3
+max_radius: ${model.max_radius}
+bessel_num_bases: 8

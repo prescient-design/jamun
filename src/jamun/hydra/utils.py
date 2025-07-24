@@ -1,5 +1,3 @@
-from typing import Optional
-
 import hydra
 from omegaconf import DictConfig
 
@@ -8,7 +6,7 @@ def format_resolver(x, pattern):
     return f"{x:{pattern}}"
 
 
-def instantiate_dict_cfg(cfg: Optional[DictConfig], verbose=False):
+def instantiate_dict_cfg(cfg: DictConfig | None, verbose=False):
     out = []
 
     if not cfg:

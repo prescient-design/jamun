@@ -1,7 +1,7 @@
 import collections
 import os
 import re
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
 
 import hydra
 import pandas as pd
@@ -20,7 +20,7 @@ def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
     return reduce_fn(outs)
 
 
-def download_file(url: str, path: str, verbose: bool = False, block_size: Optional[int] = None):
+def download_file(url: str, path: str, verbose: bool = False, block_size: int | None = None):
     """Download a file from a URL to a local path."""
     response = requests.get(url, stream=True)
     total_size = int(response.headers.get("content-length", 0))
@@ -37,15 +37,15 @@ def download_file(url: str, path: str, verbose: bool = False, block_size: Option
 def parse_datasets_from_directory(
     root: str,
     traj_pattern: str,
-    pdb_pattern: Optional[str] = None,
-    pdb_file: Optional[Sequence[str]] = None,
-    max_datasets: Optional[int] = None,
-    max_datasets_offset: Optional[int] = None,
-    filter_codes: Optional[Sequence[str]] = None,
+    pdb_pattern: str | None = None,
+    pdb_file: Sequence[str] | None = None,
+    max_datasets: int | None = None,
+    max_datasets_offset: int | None = None,
+    filter_codes: Sequence[str] | None = None,
     as_iterable: bool = False,
     label_override: Optional[str] = None,
     **dataset_kwargs,
-) -> List[MDtrajDataset]:
+) -> list[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
     if pdb_file is not None and pdb_pattern is not None:
         raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
@@ -128,17 +128,17 @@ def parse_datasets_from_directory(
 def parse_datasets_from_directory_new(
     root: str,
     traj_pattern: str,
-    topology_pattern: Optional[str] = None,
-    topology_file: Optional[Sequence[str]] = None,
-    max_datasets: Optional[int] = None,
-    max_datasets_offset: Optional[int] = None,
-    filter_codes: Optional[Sequence[str]] = None,
-    filter_codes_csv: Optional[str] = None,
-    filter_codes_csv_header: Optional[str] = None,
+    topology_pattern: str | None = None,
+    topology_file: Sequence[str] | None = None,
+    max_datasets: int | None = None,
+    max_datasets_offset: int | None = None,
+    filter_codes: Sequence[str] | None = None,
+    filter_codes_csv: str | None = None,
+    filter_codes_csv_header: str | None = None,
     as_iterable: bool = False,
     as_sdf: bool = False,
     **dataset_kwargs,
-) -> List[MDtrajDataset]:
+) -> list[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
     if topology_file is not None and topology_pattern is not None:
         raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
@@ -241,13 +241,13 @@ def parse_sdf_datasets_from_directory(
     root: str,
     traj_pattern: str,
     sdf_pattern: str,
-    max_datasets: Optional[int] = None,
-    max_datasets_offset: Optional[int] = None,
-    filter_codes: Optional[Sequence[str]] = None,
-    filter_codes_csv: Optional[str] = None,
-    filter_codes_csv_header: Optional[str] = None,
+    max_datasets: int | None = None,
+    max_datasets_offset: int | None = None,
+    filter_codes: Sequence[str] | None = None,
+    filter_codes_csv: str | None = None,
+    filter_codes_csv_header: str | None = None,
     **dataset_kwargs,
-) -> List[MDtrajDataset]:
+) -> list[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
     # Compile the regex patterns
     traj_pattern_compiled = re.compile(traj_pattern)
@@ -298,12 +298,12 @@ def parse_sdf_datasets_from_directory(
 
 
 def filter_and_subset_codes(
-    codes: List[str],
-    filter_codes: Optional[Sequence[str]],
-    filter_codes_csv: Optional[str],
-    filter_codes_csv_header: Optional[str],
-    max_datasets: Optional[int],
-    max_datasets_offset: Optional[int],
+    codes: list[str],
+    filter_codes: Sequence[str] | None,
+    filter_codes_csv: str | None,
+    filter_codes_csv_header: str | None,
+    max_datasets: int | None,
+    max_datasets_offset: int | None,
 ):
     """Get a list of codes from the dataset."""
 
@@ -327,7 +327,7 @@ def filter_and_subset_codes(
     return codes
 
 
-def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> List[MDtrajDataset]:
+def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> list[MDtrajDataset]:
     """Concatenate multiple lists of datasets into one list."""
     all_datasets = []
     for datasets_list in datasets:
@@ -335,7 +335,7 @@ def concatenate_datasets(datasets: Sequence[Sequence[MDtrajDataset]]) -> List[MD
     return all_datasets
 
 
-def create_dataset_from_pdbs(pdbfiles: str, label_prefix: Optional[str] = None) -> Sequence[MDtrajDataset]:
+def create_dataset_from_pdbs(pdbfiles: str, label_prefix: str | None = None) -> Sequence[MDtrajDataset]:
     """Create a dataset from a PDB file."""
     datasets = []
     for pdbfile in pdbfiles:

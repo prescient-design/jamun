@@ -30,10 +30,10 @@ def run_analysis(
         f"--experiment={experiment}",
         f"--output-dir={output_dir}",
     ]
-    
+
     if run_path is not None:
         cmd.append(f"--run-path={run_path}")
-        
+
     if shorten_trajectory_factor is not None:
         cmd.append(f"--shorten-trajectory-factor={shorten_trajectory_factor}")
 
@@ -46,21 +46,21 @@ def run_analysis(
 
 def get_dataframe_of_runs(csv: str, experiment: Optional[str] = None) -> pd.DataFrame:
     """Read the CSV file and filter for the specified experiment."""
-    
+
     # Read wandb run paths from CSV.
     df = pd.read_csv(csv)
-    
+
     # Choose type of trajectory to analyze.
     if experiment is not None:
         df = df[df["experiment"] == experiment]
-    
+
     # Get run paths.
     df["run_path"] = df["wandb_sample_run_path"].map(jamun.utils.get_run_path_for_wandb_run)
     df["peptide"] = df["run_path"].map(load_trajectory.get_peptides_in_JAMUN_run)
-    
+
     # Create one row for each peptide.
     df = df.explode("peptide")
-    
+
     return df
 
 
@@ -68,7 +68,7 @@ def analyze_Boltz1_trajectories(args):
     """Analyze Boltz-1 samples based on the provided arguments."""
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
-    
+
     # Read all peptides.
     data_path = load_trajectory.get_data_path(args.data_path)
     samples_path = os.path.join(data_path, "boltz-preprocessed")
@@ -77,10 +77,10 @@ def analyze_Boltz1_trajectories(args):
     ]
     peptides = list(sorted(peptides))
     print(f"Peptides: {peptides}")
-    
+
     # Choose row to analyze.
     peptide = peptides[args.row_index]
-    
+
     run_analysis(
         peptide=peptide,
         trajectory="BoltzSamples",
@@ -96,13 +96,13 @@ def analyze_JAMUN_trajectories(args):
     """Analyze JAMUN trajectories based on the provided arguments."""
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
-    
+
     # Read the CSV file for experiments.
     df = get_dataframe_of_runs(args.csv, experiment=args.experiment)
-    
+
     # Choose row to analyze.
     df = df.iloc[[args.row_index]]
-    
+
     run_analysis(
         peptide=df["peptide"].iloc[0],
         trajectory=df["trajectory"].iloc[0],
@@ -118,32 +118,32 @@ def analyze_MDGen_trajectories(args):
     """Analyze MDGen trajectories based on the provided arguments."""
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
-    
+
     # Read all peptides.
     data_path = load_trajectory.get_data_path(args.data_path)
-    
+
     if args.peptide_type == "4AA":
         samples_path = os.path.join(data_path, "mdgen-samples", "4AA_test")
     elif args.peptide_type == "5AA":
         samples_path = os.path.join(data_path, "mdgen-samples", "5AA_test")
     else:
         raise ValueError(f"Invalid peptide type: {args.peptide_type}")
-    
+
     # List all peptides.
     peptides = [
         os.path.basename(filename).split("_")[0] for filename in os.listdir(samples_path) if filename.endswith(".pdb")
     ]
     peptides = list(sorted(peptides))
     print(f"Peptides: {peptides}")
-    
+
     # Choose row to analyze.
     peptide = peptides[args.row_index]
-    
+
     if args.peptide_type == "4AA":
         trajectory = "MDGenSamples_4AA"
     if args.peptide_type == "5AA":
         trajectory = "MDGenSamples_5AA"
-    
+
     run_analysis(
         peptide=peptide,
         trajectory=trajectory,
@@ -159,16 +159,16 @@ def analyze_BioEmu_trajectories(args):
     """Analyze BioEmu samples based on the provided arguments."""
     # Make output directory if it doesn't exist.
     os.makedirs(args.output_dir, exist_ok=True)
-    
+
     # Read all peptides.
     peptides = sorted(load_trajectory.load_all_trajectories_with_info(
         trajectory_name="BioEmuSamples", data_path=args.data_path
     ).keys())
     print(f"Peptides: {peptides}")
-    
+
     # Choose row to analyze.
     peptide = peptides[args.row_index]
-    
+
     run_analysis(
         peptide=peptide,
         trajectory="BioEmuSamples",
@@ -207,10 +207,10 @@ def analyze_TBG_trajectories(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Run analysis of trajectories for multiple peptides")
-    
+
     # Create subparsers for different analysis types
     subparsers = parser.add_subparsers(dest="analysis_type", help="Type of analysis to run", required=True)
-    
+
     # Boltz trajectory analysis
     boltz_parser = subparsers.add_parser("boltz", help="Analyze Boltz-1 trajectories")
     boltz_parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
@@ -222,7 +222,7 @@ def main():
     boltz_parser.add_argument(
         "--data-path", type=str, help="Path to JAMUN data directory. Defaults to JAMUN_DATA_PATH environment variable."
     )
-    
+
     # JAMUN trajectory analysis
     jamun_parser = subparsers.add_parser("jamun", help="Analyze JAMUN trajectories")
     jamun_parser.add_argument("--output-dir", type=str, required=True, help="Output directory")
@@ -234,7 +234,7 @@ def main():
     jamun_parser.add_argument(
         "--csv", type=str, required=True, help="CSV file containing information about wandb sampling runs"
     )
-    
+
     # MDGen trajectory analysis
     mdgen_parser = subparsers.add_parser("mdgen", help="Analyze MDGen trajectories")
     mdgen_parser.add_argument("--output-dir", type=str, required=True, help="Output directory")

@@ -38,12 +38,12 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
         echo "Final file already exists for ${NAME}. Skipping."
         continue
     fi
-    
+
     # Process all frames in the directory
     for FRAME in $(seq 0 $((N_FRAMES-1))); do
         echo "Processing frame ${FRAME} in directory ${NAME}"
 
-        # Check if the final file already exists        
+        # Check if the final file already exists
         INPUT_PATH="${BASE_INPUT_DIR}/${NAME}/${FRAME}.pdb"
         FINAL_PATH="${BASE_OUTPUT_DIR}/${NAME}/${FRAME}_minimized_protein_0.pdb"
 
@@ -56,7 +56,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
         --output-dir "${BASE_OUTPUT_DIR}/${NAME}" \
         --energy-minimization-only \
         --energy-minimization-steps=1000
-        
+
         echo "Successfully processed frame ${FRAME} in directory ${NAME}"
     done
 

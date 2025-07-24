@@ -64,12 +64,14 @@ def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Dat
     top_withH = topology.subset(select_withH)
 
     # Encode the atom types, residue codes, and residue sequence indices.
-    atom_type_index = torch.tensor([utils.encode_atom_type(x.element.symbol) for x in top.atoms], dtype=torch.int32)
-    residue_code_index = torch.tensor([utils.encode_residue(x.residue.name) for x in top.atoms], dtype=torch.int32)
-    residue_sequence_index = torch.tensor([x.residue.index for x in top.atoms], dtype=torch.int32)
-    atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in top.atoms], dtype=torch.int32)
+    atom_type_index = torch.tensor(
+        [utils.encode_atom_type(x.element.symbol) for x in topology.atoms], dtype=torch.int32
+    )
+    residue_code_index = torch.tensor([utils.encode_residue(x.residue.name) for x in topology.atoms], dtype=torch.int32)
+    residue_sequence_index = torch.tensor([x.residue.index for x in topology.atoms], dtype=torch.int32)
+    atom_code_index = torch.tensor([utils.encode_atom_code(x.name) for x in topology.atoms], dtype=torch.int32)
 
-    bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in top.bonds], dtype=torch.long).T
+    bonds = torch.tensor([[bond[0].index, bond[1].index] for bond in topology.bonds], dtype=torch.long).T
 
     # Create the graph.
     # Positions will be updated later.
@@ -80,13 +82,30 @@ def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Dat
         atom_code_index=atom_code_index,
         residue_index=residue_sequence_index,
         num_residues=residue_sequence_index.max().item() + 1,
-        edge_index=bonds,
+        bonded_edge_index=bonds,
         pos=None,
         hidden_state=None
     )
-    graph.residues = [x.residue.name for x in top.atoms]
-    graph.atom_names = [x.name for x in top.atoms]
-    return graph, top, top_withH
+    graph.residues = [x.residue.name for x in topology.atoms]
+    graph.atom_names = [x.name for x in topology.atoms]
+    graph.num_nodes = topology.n_atoms
+    return graph
+
+
+def preprocess_topology(
+    topology: md.Topology,
+    keep_hydrogens: bool,
+) -> tuple[md.Topology, np.ndarray]:
+    """Preprocess the MDtraj topology, returning a PyTorch Geometric graph, the topology with protein only, and the topology with hydrogenated protein."""
+    if keep_hydrogens:
+        # Select all atoms in the protein.
+        select_with_H = topology.select("protein")
+        return topology.subset(select_with_H), select_with_H
+
+    # Select all heavy atoms in the protein.
+    # This also removes all waters.
+    select = topology.select("protein and not type H")
+    return topology.subset(select), select
 
 
 @utils.singleton
@@ -99,12 +118,13 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         traj_files: Sequence[str],
         pdb_file: str,
         label: str,
-        transform: Optional[Callable] = None,
-        subsample: Optional[int] = None,
+        transform: Callable | None = None,
+        subsample: int | None = None,
         loss_weight: float = 1.0,
         chunk_size: int = 100,
         start_at_random_frame: bool = False,
         verbose: bool = False,
+        keep_hydrogens: bool = False,
     ):
         self.root = root
         self._label = label
@@ -122,7 +142,20 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
         pdb_file = os.path.join(self.root, pdb_file)
         topology = md.load_topology(pdb_file)
 
-        self.graph, self.top, self.top_withH = preprocess_topology(topology)
+        self.top_with_H, self.topology_slice_with_H = preprocess_topology(topology, keep_hydrogens=True)
+        self.top_without_H, self.topology_slice_without_H = preprocess_topology(topology, keep_hydrogens=False)
+        self.graph_with_H = make_graph_from_topology(self.top_with_H)
+        self.graph_without_H = make_graph_from_topology(self.top_without_H)
+
+        if keep_hydrogens:
+            self.graph = self.graph_with_H
+            self.top = self.top_with_H
+            self.topology_slice = self.topology_slice_with_H
+        else:
+            self.graph = self.graph_without_H
+            self.top = self.top_without_H
+            self.topology_slice = self.topology_slice_without_H
+
         self.graph.dataset_label = self.label()
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
         self.graph.hidden_state = None
@@ -136,9 +169,11 @@ class MDtrajIterableDataset(torch.utils.data.IterableDataset):
     def label(self):
         return self._label
 
-    def save_topology_pdb(self):
-        os.makedirs("dataset_pdbs", exist_ok=True)
-        filename = f"dataset_pdbs/{self.label()}.pdb"
+    def save_topology_pdb(self, filename: str | None = None):
+        """Save the final topology as a PDB file."""
+        if filename is None:
+            os.makedirs("dataset_pdbs", exist_ok=True)
+            filename = f"dataset_pdbs/{self.label()}.pdb"
         traj = next(md.iterload(self.traj_files[0], top=self.top, chunk=self.chunk_size))
         utils.save_pdb(traj[0], filename)
 
@@ -183,6 +218,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         lag_subsample_rate: Optional[int] = None,
         loss_weight: float = 1.0,
         verbose: bool = False,
+        keep_hydrogens: bool = False,
     ):
         self.root = root
         self._label = label
@@ -260,9 +296,11 @@ class MDtrajDataset(torch.utils.data.Dataset):
     def label(self):
         return self._label
 
-    def save_topology_pdb(self):
-        os.makedirs("dataset_pdbs", exist_ok=True)
-        filename = f"dataset_pdbs/{self.label()}.pdb"
+    def save_topology_pdb(self, filename: str | None = None):
+        """Save the final topology as a PDB file."""
+        if filename is None:
+            os.makedirs("dataset_pdbs", exist_ok=True)
+            filename = f"dataset_pdbs/{self.label()}.pdb"
         utils.save_pdb(self.traj[0], filename)
 
     def __getitem__(self, idx):

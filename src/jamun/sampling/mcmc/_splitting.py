@@ -1,6 +1,6 @@
 import dataclasses
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional, Union
 
 import torch
 from torch import Tensor
@@ -19,9 +19,9 @@ class ABOBA:
     burn_in_steps: int = 0
     verbose: bool = False
     cpu_offload: bool = False
-    v_init: Union[str, Tensor] = "zero"
+    v_init: str | Tensor = "zero"
     inverse_temperature: float = 1.0
-    score_fn_clip: Optional[float] = None
+    score_fn_clip: float | None = None
 
     def __post_init__(self):
         if isinstance(self.v_init, str):
@@ -44,9 +44,9 @@ class BAOAB:
     burn_in_steps: int = 0
     verbose: bool = False
     cpu_offload: bool = False
-    v_init: Union[str, Tensor] = "zero"
+    v_init: str | Tensor = "zero"
     inverse_temperature: float = 1.0
-    score_fn_clip: Optional[float] = None
+    score_fn_clip: float | None = None
 
     def __post_init__(self):
         if isinstance(self.v_init, str):

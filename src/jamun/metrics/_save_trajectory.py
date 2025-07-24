@@ -1,5 +1,4 @@
 import os
-from typing import Dict, Union
 
 from lightning.pytorch.utilities import rank_zero_only
 
@@ -27,7 +26,7 @@ class SaveTrajectory(TrajectoryMetric):
         for ext in self.pred_samples_extensions:
             os.makedirs(os.path.join(self.pred_samples_dir, ext), exist_ok=True)
 
-    def filename_pred(self, trajectory_index: Union[int, str], extension: str) -> str:
+    def filename_pred(self, trajectory_index: int | str, extension: str) -> str:
         """Returns the filename for the predicted samples."""
         if extension not in self.pred_samples_extensions:
             raise ValueError(f"Invalid extension: {extension}")
@@ -38,7 +37,7 @@ class SaveTrajectory(TrajectoryMetric):
         }
         return filenames[extension]
 
-    def filename_true(self, trajectory_index: Union[int, str], extension: str) -> str:
+    def filename_true(self, trajectory_index: int | str, extension: str) -> str:
         """Returns the filename for the true samples."""
         if extension not in self.true_samples_extensions:
             raise ValueError(f"Invalid extension: {extension}")
@@ -73,7 +72,7 @@ class SaveTrajectory(TrajectoryMetric):
         #     artifact.add_file(filename, f"pred_samples_joined.{ext}")
         #     wandb.log_artifact(artifact)
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         # Save the predicted samples as numpy files.
         # samples_np = self.sample_tensors(new=True).cpu().detach().numpy()
         # for trajectory_index, sample in enumerate(samples_np):

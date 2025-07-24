@@ -41,7 +41,7 @@ class UniformMeasurement(WeightedMeasurement):
 
 
 class UniformSigma(torch.distributions.Uniform):
-    def __init__(self, sigma_max, sigma_min=1e-4):
+    def __init__(self, sigma_max: float, sigma_min: float = 1e-4):
         self.sigma_max = sigma_max
         self.sigma_min = sigma_min
         super().__init__(low=sigma_min, high=sigma_max)

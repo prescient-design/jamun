@@ -1,5 +1,3 @@
-from typing import Dict
-
 import matplotlib.pyplot as plt
 import numpy as np
 import wandb
@@ -15,7 +13,7 @@ class ScoreDistributionMetrics(TrajectoryMetric):
     def __init__(self, dataset: MDtrajDataset):
         super().__init__(dataset=dataset, sample_key="score_traj")
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         pred_scores = self.sample_tensors(new=True)
         pred_scores = pred_scores.cpu().numpy()
 

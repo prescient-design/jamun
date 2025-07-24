@@ -1,0 +1,50 @@
+# @package _global_
+
+defaults:
+  - override /model: energy.yaml
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  max_radius: 1.0
+  optim:
+    lr: 0.0001
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
+
+data:
+  datamodule:
+    batch_size: 32
+    datasets:
+      train:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "${paths.data_path}/timewarp/2AA-1-large/train/"
+        traj_pattern: "^(.*)-traj-arrays.npz"
+        pdb_pattern: "^(.*)-traj-state0.pdb"
+
+      val:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "${paths.data_path}/timewarp/2AA-1-large/val/"
+        traj_pattern: "^(.*)-traj-arrays.npz"
+        pdb_pattern: "^(.*)-traj-state0.pdb"
+        subsample: 100
+        max_datasets: 20
+
+      test:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "${paths.data_path}/timewarp/2AA-1-large/test/"
+        traj_pattern: "^(.*)-traj-arrays.npz"
+        pdb_pattern: "^(.*)-traj-state0.pdb"
+        subsample: 100
+        max_datasets: 20
+
+trainer:
+  val_check_interval: 0.1
+  max_epochs: 10
+
+logger:
+  wandb:
+    group: train_uncapped_2AA

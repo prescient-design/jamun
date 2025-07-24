@@ -52,4 +52,3 @@ trainer:
 logger:
   wandb:
     group: train_idrome
-

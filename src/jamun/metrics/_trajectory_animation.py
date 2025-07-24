@@ -1,6 +1,5 @@
 import os
 import tempfile
-from typing import Dict
 
 import mdtraj as md
 import wandb
@@ -55,7 +54,7 @@ class TrajectoryVisualizer(TrajectoryMetric):
             true_trajectory_subset, label=f"{self.dataset.label()}/trajectory_animation/true_traj"
         )
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         true_trajectory = self.dataset.trajectory
         pred_trajectories = self.sample_trajectories(new=True)
         pred_trajectory_joined = self.joined_sample_trajectory()

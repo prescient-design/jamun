@@ -1,6 +1,5 @@
 import logging
 import tempfile
-from typing import Dict, List, Optional, Tuple
 
 import matplotlib.cm
 import matplotlib.pyplot as plt
@@ -22,8 +21,8 @@ def num_dihedrals(trajectory: md.Trajectory) -> int:
 
 
 def get_ramachandran_angles(
-    trajectory: md.Trajectory, dihedral_index: Optional[int] = None
-) -> Tuple[np.ndarray, np.ndarray]:
+    trajectory: md.Trajectory, dihedral_index: int | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """Get the phi and psi angles from a trajectory."""
     _, phi_angles = md.compute_phi(trajectory, periodic=False)
     _, psi_angles = md.compute_psi(trajectory, periodic=False)
@@ -34,11 +33,11 @@ def get_ramachandran_angles(
 
 def plot_ramachandran(
     trajectory: md.Trajectory,
-    dihedral_index: Optional[int] = None,
-    fig: Optional[plt.Figure] = None,
-    ax: Optional[plt.Axes] = None,
+    dihedral_index: int | None = None,
+    fig: plt.Figure | None = None,
+    ax: plt.Axes | None = None,
     colorbar: bool = True,
-) -> Tuple[plt.Figure, matplotlib.cm.ScalarMappable]:
+) -> tuple[plt.Figure, matplotlib.cm.ScalarMappable]:
     """Creates a Ramachandran plot from a trajectory."""
     phi_angles, psi_angles = get_ramachandran_angles(trajectory, dihedral_index)
 
@@ -71,7 +70,7 @@ def plot_ramachandran_animation(
     title: str,
     subsample_factor: int = 1,
     accumulation: bool = True,
-    dihedral_index: Optional[int] = None,
+    dihedral_index: int | None = None,
 ) -> animation.FuncAnimation:
     """Creates a Ramachandran plot from a trajectory."""
     phi_angles, psi_angles = get_ramachandran_angles(trajectory, dihedral_index)
@@ -174,7 +173,7 @@ def compute_sliced_Wasserstein_distance_of_ramachandran(
     )
 
 
-def _num_subsamples_sequence_for_trajectory(trajectory: md.Trajectory) -> List[int]:
+def _num_subsamples_sequence_for_trajectory(trajectory: md.Trajectory) -> list[int]:
     """Computes the sequence of subsamples for metrics for a trajectory."""
     num_samples_list = [100 * (2**i) for i in range(10) if 100 * (2**i) < len(trajectory)]
     num_samples_list.append(len(trajectory))
@@ -183,7 +182,7 @@ def _num_subsamples_sequence_for_trajectory(trajectory: md.Trajectory) -> List[i
 
 def compute_JS_divergence_vs_num_samples(
     trajectory: md.Trajectory, ref_trajectory: md.Trajectory
-) -> List[Tuple[int, float]]:
+) -> list[tuple[int, float]]:
     """Compute the JS divergence versus the reference trajectory, as the number of samples is increased."""
     jsds = []
     for num_samples in _num_subsamples_sequence_for_trajectory(trajectory):
@@ -194,7 +193,7 @@ def compute_JS_divergence_vs_num_samples(
 
 def compute_sliced_Wasserstein_distance_vs_num_samples(
     trajectory: md.Trajectory, ref_trajectory: md.Trajectory
-) -> List[Tuple[int, float]]:
+) -> list[tuple[int, float]]:
     """Compute the sliced Wasserstein distance versus the reference trajectory, as the number of samples is increased."""
     wsds = []
     for num_samples in _num_subsamples_sequence_for_trajectory(trajectory):
@@ -283,7 +282,7 @@ class RamachandranPlotMetrics(TrajectoryMetric):
             title="Sliced Wasserstein Distance vs. Number of Samples for True Trajectory",
         )
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         # Hide the matplotlib logging.
         plt.set_loglevel("warning")
         py_logger = logging.getLogger("jamun")

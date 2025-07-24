@@ -1,5 +1,4 @@
 import math
-from typing import List, Optional
 
 import torch
 from torch import Tensor
@@ -57,18 +56,18 @@ class Adagrad(Optimizer):
         initial_accumulator_value=0,
         eps=0,
         eta=0,
-        foreach: Optional[bool] = None,
+        foreach: bool | None = None,
     ):
         if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+            raise ValueError(f"Invalid learning rate: {lr}")
         if not 0.0 <= lr_decay:
-            raise ValueError("Invalid lr_decay value: {}".format(lr_decay))
+            raise ValueError(f"Invalid lr_decay value: {lr_decay}")
         if not 0.0 <= weight_decay:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         if not 0.0 <= initial_accumulator_value:
-            raise ValueError("Invalid initial_accumulator_value value: {}".format(initial_accumulator_value))
+            raise ValueError(f"Invalid initial_accumulator_value value: {initial_accumulator_value}")
         if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
+            raise ValueError(f"Invalid epsilon value: {eps}")
 
         defaults = dict(
             lr=lr,
@@ -79,7 +78,7 @@ class Adagrad(Optimizer):
             initial_accumulator_value=initial_accumulator_value,
             foreach=foreach,
         )
-        super(Adagrad, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
         for group in self.param_groups:
             for p in group["params"]:
@@ -157,10 +156,10 @@ class Adagrad(Optimizer):
 
 
 def adagrad(
-    params: List[Tensor],
-    grads: List[Tensor],
-    state_sums: List[Tensor],
-    state_steps: List[Tensor],
+    params: list[Tensor],
+    grads: list[Tensor],
+    state_sums: list[Tensor],
+    state_steps: list[Tensor],
     # kwonly args with defaults are not supported by functions compiled with torchscript issue #70627
     # setting these as kwargs for now as functional API is compiled by torch/distributed/optim
     has_sparse_grad: bool = None,
@@ -214,10 +213,10 @@ def _make_sparse(grad, grad_indices, values):
 
 
 def _single_tensor_adagrad(
-    params: List[Tensor],
-    grads: List[Tensor],
-    state_sums: List[Tensor],
-    state_steps: List[Tensor],
+    params: list[Tensor],
+    grads: list[Tensor],
+    state_sums: list[Tensor],
+    state_steps: list[Tensor],
     *,
     lr: float,
     weight_decay: float,
@@ -265,10 +264,10 @@ def _single_tensor_adagrad(
 
 
 def _multi_tensor_adagrad(
-    params: List[Tensor],
-    grads: List[Tensor],
-    state_sums: List[Tensor],
-    state_steps: List[Tensor],
+    params: list[Tensor],
+    grads: list[Tensor],
+    state_sums: list[Tensor],
+    state_steps: list[Tensor],
     *,
     lr: float,
     weight_decay: float,

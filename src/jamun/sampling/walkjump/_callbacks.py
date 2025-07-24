@@ -1,6 +1,5 @@
 import dataclasses
 import math
-from typing import Optional
 
 from lightning.pytorch.utilities import rank_zero_only
 
@@ -8,7 +7,7 @@ from jamun.utils import dist_log
 
 
 class MeasurementDependentParametersCallback:
-    def __init__(self, parameters_by_measurement: Optional[dict] = None, verbose: bool = False):
+    def __init__(self, parameters_by_measurement: dict | None = None, verbose: bool = False):
         self.parameters_by_measurement = parameters_by_measurement if parameters_by_measurement else {}
         self.verbose = verbose and (rank_zero_only.rank == 0)
         self.previous_params = None

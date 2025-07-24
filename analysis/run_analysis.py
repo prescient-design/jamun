@@ -61,7 +61,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     traj_results = results["featurization"]["traj"]
     traj_feats = traj_results["feats"]["torsions"]
     traj_featurized_dict = traj_results["traj_featurized"]
-    traj_featurized = traj_featurized_dict["torsions"] 
+    traj_featurized = traj_featurized_dict["torsions"]
 
     ref_traj_results = results["featurization"]["ref_traj"]
     ref_traj_featurized_dict = ref_traj_results["traj_featurized"]
@@ -75,7 +75,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
     py_logger.info(f"this is the traj featurized dict: {traj_featurized_dict}")
     py_logger.info(f"this is the ref traj featurized dict: {ref_traj_featurized_dict}")
 
-    py_logger.info(f"this is the traj featurized: {traj_featurized}") 
+    py_logger.info(f"this is the traj featurized: {traj_featurized}")
     py_logger.info(f"this is the ref traj featurized: {ref_traj_featurized}")
 
     # Compute feature histograms.
@@ -151,7 +151,7 @@ def analyze_trajectories_sdf(traj_md: md.Trajectory, sdf_file: str) -> Dict[str,
             ref_traj_tica,
         )
         py_logger.info(f"JSD MSM stats as a function of time computed.")
-   
+
     except IndexError:
         py_logger.warning(f"MSM stats could not be computed.")
 

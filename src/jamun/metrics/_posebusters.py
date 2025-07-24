@@ -1,5 +1,4 @@
 import logging
-from typing import Dict, Optional
 
 import mdtraj as md
 import pandas as pd
@@ -10,7 +9,7 @@ from jamun import utils
 from jamun.metrics._utils import TrajectoryMetric
 
 
-def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> Optional[pd.DataFrame]:
+def run_posebusters_on_trajectory(trajectory: md.Trajectory) -> pd.DataFrame | None:
     """Run PoseBusters on each frame of a trajectory."""
     mols = utils.to_rdkit_mols(trajectory)
     if len(mols) == 0:
@@ -59,7 +58,7 @@ class PoseBustersMetrics(TrajectoryMetric):
 
         return metrics
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         metrics = {}
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):

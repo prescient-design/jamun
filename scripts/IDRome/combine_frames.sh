@@ -44,7 +44,7 @@ for DIR_INDEX in $(seq ${START_IDX} ${END_IDX}); do
         --input-dir "${BASE_INPUT_DIR}" \
         --original-traj-dir "${BASE_ORIGINAL_DIR}" \
         --output-dir "${BASE_OUTPUT_DIR}"
-            
+
     echo "Completed processing directory ${NAME}"
 done
 

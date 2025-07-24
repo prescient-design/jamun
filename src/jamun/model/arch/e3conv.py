@@ -1,12 +1,11 @@
-from typing import Callable
+from collections.abc import Callable
 
 import e3nn
+import e3tools
 import torch
 import torch_geometric
 from e3nn import o3
 from e3nn.o3 import Irreps
-from e3tools import scatter
-from torch import Tensor
 
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
 from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
@@ -67,7 +66,8 @@ class E3Conv(torch.nn.Module):
                 embedding_dim=atom_type_embedding_dim
                 + atom_code_embedding_dim
                 + residue_code_embedding_dim
-                + residue_index_embedding_dim
+                + residue_index_embedding_dim,
+                max_value=num_atom_types,
             )
 
         self.initial_noise_scaling = NoiseConditionalScaling(self.atom_embedder.irreps_out)
@@ -99,11 +99,13 @@ class E3Conv(torch.nn.Module):
 
     def forward(
         self,
-        pos: Tensor,
+        pos: torch.Tensor,
         topology: torch_geometric.data.Batch,
-        c_noise: Tensor,
+        batch: torch.Tensor,
+        num_graphs: int,
+        c_noise: torch.Tensor,
         effective_radial_cutoff: float,
-    ) -> torch_geometric.data.Batch:
+    ) -> torch.Tensor:
         # Extract edge attributes.
         edge_index = topology["edge_index"]
         bond_mask = topology["bond_mask"]
@@ -132,6 +134,6 @@ class E3Conv(torch.nn.Module):
         node_attr = node_attr * self.output_gain
 
         if self.reduce is not None:
-            node_attr = scatter(node_attr, topology.batch, dim=0, reduce=self.reduce)
+            node_attr = e3tools.scatter(node_attr, batch, dim=0, reduce=self.reduce, dim_size=num_graphs)
 
         return node_attr

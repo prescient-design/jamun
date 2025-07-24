@@ -68,4 +68,3 @@ resume_from_checkpoint:
 logger:
   wandb:
     group: train_idrome_cg
-

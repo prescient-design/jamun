@@ -1,7 +1,7 @@
 import functools
 import os
 import tempfile
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
 import mdtraj as md
 import numpy as np
@@ -15,7 +15,7 @@ from jamun import utils
 
 def load_preprocessed_data(
     sdf_file: str, traj_file: str
-) -> Tuple[torch_geometric.data.Data, Chem.Mol, Chem.Mol, List[Chem.Mol]]:
+) -> tuple[torch_geometric.data.Data, Chem.Mol, Chem.Mol, list[Chem.Mol]]:
     """
     Loads preprocessed data from an SDF file and a trajectory file, returning a PyTorch Geometric Data object and the corresponding RDKit molecules.
 
@@ -72,12 +72,12 @@ class MDtrajSDFDataset(torch.utils.data.Dataset):
         self,
         root: str,
         sdf_file: str,
-        traj_files: List[str],
+        traj_files: list[str],
         label: str,
-        num_frames: Optional[int] = None,
-        start_frame: Optional[int] = None,
-        transform: Optional[Callable] = None,
-        subsample: Optional[int] = None,
+        num_frames: int | None = None,
+        start_frame: int | None = None,
+        transform: Callable | None = None,
+        subsample: int | None = None,
         loss_weight: float = 1.0,
     ):
         self.root = root

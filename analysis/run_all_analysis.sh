@@ -36,4 +36,3 @@ sleep 5
 
 sbatch analysis_sweep.sh bioemu --experiment Our_5AA --output-dir ${JAMUN_ANALYSIS_PATH}
 sleep 5
-

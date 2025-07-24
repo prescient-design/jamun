@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 import wandb
 
@@ -11,7 +11,7 @@ def get_wandb_run_cwd(wandb_run_path: str) -> str:
     return run.config["cwd"]
 
 
-def get_wandb_run_config(wandb_run_path: str) -> Dict[str, Any]:
+def get_wandb_run_config(wandb_run_path: str) -> dict[str, Any]:
     """Get the wandb run config."""
     run = wandb.Api().run(wandb_run_path)
     py_logger = logging.getLogger("jamun")

@@ -1,14 +1,19 @@
 import logging
 import math
+<<<<<<< HEAD
 from typing import Callable, Optional, Tuple, Union
 from copy import deepcopy
+=======
+from collections.abc import Callable
+
+>>>>>>> main
 import torch
 from tqdm.auto import tqdm
 
 log = logging.getLogger(__name__)
 
 
-def initialize_velocity(v_init: Union[str, torch.Tensor], y: torch.Tensor, u: float) -> torch.Tensor:
+def initialize_velocity(v_init: str | torch.Tensor, y: torch.Tensor, u: float) -> torch.Tensor:
     """Initialize velocity according to the given method."""
     if isinstance(v_init, str):
         if v_init == "gaussian":
@@ -23,10 +28,14 @@ def initialize_velocity(v_init: Union[str, torch.Tensor], y: torch.Tensor, u: fl
     raise RuntimeError(f"{type(v_init)=} must be either `str` or `Tensor`.")
 
 
-def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_clip: Optional[float]) -> Callable:
+def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_clip: float | None) -> Callable:
     """Create a score function that is clipped and scaled by the inverse temperature."""
 
+<<<<<<< HEAD
     def score_fn_processed(y: torch.Tensor, *args, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
+=======
+    def score_fn_processed(y: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+>>>>>>> main
         """Score function clipped and scaled by the inverse temperature."""
         orig_score = score_fn(y, *args, **kwargs).to(dtype=y.dtype)
         # Clip the score by norm.
@@ -45,7 +54,7 @@ def aboba(
     y: torch.Tensor,
     score_fn: Callable,
     steps: int,
-    v_init: Union[str, torch.Tensor] = "zero",
+    v_init: str | torch.Tensor = "zero",
     save_trajectory=False,
     save_every_n_steps=1,
     burn_in_steps=0,
@@ -55,7 +64,7 @@ def aboba(
     friction: float = 1.0,
     M: float = 1.0,
     inverse_temperature: float = 1.0,
-    score_fn_clip: Optional[float] = None,
+    score_fn_clip: float | None = None,
     **_,
 ):
     """
@@ -113,7 +122,7 @@ def baoab(
     y: torch.Tensor,
     score_fn: Callable,
     steps: int,
-    v_init: Union[str, torch.Tensor] = "zero",
+    v_init: str | torch.Tensor = "zero",
     save_trajectory=False,
     save_every_n_steps=1,
     burn_in_steps=0,
@@ -123,7 +132,7 @@ def baoab(
     friction: float = 1.0,
     M: float = 1.0,
     inverse_temperature: float = 1.0,
-    score_fn_clip: Optional[float] = None,
+    score_fn_clip: float | None = None,
     **_,
 ):
     """

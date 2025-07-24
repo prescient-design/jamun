@@ -1,5 +1,5 @@
 import collections
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import torch
@@ -7,7 +7,7 @@ import torch
 from jamun import utils
 
 
-def compute_distance_matrix(x: np.ndarray, cutoff: Optional[float] = None) -> np.ndarray:
+def compute_distance_matrix(x: np.ndarray, cutoff: float | None = None) -> np.ndarray:
     """Computes the distance matrix between points in x, ignoring self-distances."""
     if x.shape[-1] != 3:
         raise ValueError("Last dimension of x must be 3.")
@@ -32,7 +32,7 @@ def compute_distance_matrix(x: np.ndarray, cutoff: Optional[float] = None) -> np
     return dist_x
 
 
-def compute_average_squared_distance(x: np.ndarray, cutoff: Optional[float] = None):
+def compute_average_squared_distance(x: np.ndarray, cutoff: float | None = None):
     """Computes the average squared distance between points in x, ignoring self-distances."""
     dist_x = compute_distance_matrix(x, cutoff)
     return np.mean(dist_x**2)

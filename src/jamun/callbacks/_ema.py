@@ -4,7 +4,8 @@ import contextlib
 import copy
 import os
 import threading
-from typing import Any, Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 import lightning.pytorch as pl
 import torch
@@ -107,7 +108,7 @@ class EMA(Callback):
                 optimizer.save_original_optimizer_state = False
 
     def on_load_checkpoint(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", checkpoint: Dict[str, Any]
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", checkpoint: dict[str, Any]
     ) -> None:
         checkpoint_callback = trainer.checkpoint_callback
 
@@ -359,7 +360,7 @@ class EMAModelCheckpoint(ModelCheckpoint):
         # call the parent class constructor with the provided kwargs
         super().__init__(**kwargs)
 
-    def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
+    def _get_ema_callback(self, trainer: "pl.Trainer") -> EMA | None:
         ema_callback = None
         for callback in trainer.callbacks:
             if isinstance(callback, EMA):

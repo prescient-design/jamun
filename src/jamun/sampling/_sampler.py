@@ -1,4 +1,5 @@
-from typing import Any, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Any
 
 import lightning
 import torch
@@ -17,14 +18,14 @@ class Sampler:
 
     def __init__(
         self,
-        accelerator: Union[str, Accelerator] = "auto",
-        strategy: Union[str, Strategy] = "auto",
-        devices: Union[list[int], str, int] = "auto",
+        accelerator: str | Accelerator = "auto",
+        strategy: str | Strategy = "auto",
+        devices: list[int] | str | int = "auto",
         num_nodes: int = 1,
-        precision: Union[str, int] = "32-true",
-        plugins: Optional[Union[str, Any]] = None,
-        callbacks: Optional[Union[list[Any], Any]] = None,
-        loggers: Optional[Union[Logger, list[Logger]]] = None,
+        precision: str | int = "32-true",
+        plugins: str | Any | None = None,
+        callbacks: list[Any] | Any | None = None,
+        loggers: Logger | list[Logger] | None = None,
     ):
         self.fabric = lightning.Fabric(
             accelerator=accelerator,

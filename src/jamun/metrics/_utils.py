@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 import einops
 import mdtraj as md
@@ -96,7 +95,7 @@ class TrajectoryMetric(torchmetrics.Metric):
             "batch_size num_atoms num_frames coords -> num_atoms (batch_size num_frames) coords",
         )
 
-    def sample_trajectories(self, *, new: bool) -> List[md.Trajectory]:
+    def sample_trajectories(self, *, new: bool) -> list[md.Trajectory]:
         """Convert the samples to MD trajectories."""
         samples = self.sample_tensors(new=new)
         trajectories = utils.coordinates_to_trajectories(samples, self.dataset.topology)

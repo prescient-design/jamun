@@ -10,7 +10,6 @@ import pandas as pd
 import tqdm
 
 from jamun import data, utils
-import utils_sdf as analysis_utils_sdf
 
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 py_logger = logging.getLogger("analysis")
@@ -136,7 +135,7 @@ def get_MDGenReference_datasets(
     data_path: str, filter_codes: Optional[Sequence[str]] = None, split: str = "all"
 ) -> Dict[str, data.MDtrajDataset]:
     """Returns a dictionary mapping peptide names to the MDGen reference trajectory."""
-    
+
     def get_datasets_for_split(split: str):
         """Helper function to get datasets for a given split."""
         return data.parse_datasets_from_directory(

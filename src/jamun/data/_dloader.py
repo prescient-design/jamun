@@ -1,4 +1,5 @@
-from typing import Any, Dict, Iterator, List, Sequence, Union
+from collections.abc import Iterator, Sequence
+from typing import Any
 
 import lightning.pytorch as pl
 import numpy as np
@@ -14,7 +15,7 @@ class StreamingRandomChainDataset(IterableDataset):
     Never materializes the full datasets into memory.
     """
 
-    def __init__(self, datasets: List[IterableDataset], seed: int = None):
+    def __init__(self, datasets: list[IterableDataset], seed: int = None):
         """
         Args:
             datasets: List of IterableDatasets to chain
@@ -54,7 +55,7 @@ class RandomChainDataset(IterableDataset):
     Never materializes the full datasets into memory.
     """
 
-    def __init__(self, datasets: List[Dataset], seed: int = None):
+    def __init__(self, datasets: list[Dataset], seed: int = None):
         """
         Args:
             datasets: List of Datasets to chain
@@ -86,7 +87,7 @@ class MDtrajDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        datasets: Dict[str, Sequence[Union[IterableDataset, Dataset]]],
+        datasets: dict[str, Sequence[IterableDataset | Dataset]],
         batch_size: int,
         num_workers: int,
         persistent_workers: bool = True,

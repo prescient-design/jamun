@@ -1,7 +1,6 @@
 import math
 import os
 import tempfile
-from typing import Dict, Optional
 
 import mdtraj as md
 import wandb
@@ -13,7 +12,7 @@ from jamun.metrics._utils import TrajectoryMetric
 class SampleVisualizer(TrajectoryMetric):
     """A metric to visualize static MD samples."""
 
-    def __init__(self, num_samples_to_plot: int, subsample: Optional[int] = None, *args, **kwargs):
+    def __init__(self, num_samples_to_plot: int, subsample: int | None = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Round up to the nearest perfect square.
         num_rows = int(math.ceil(math.sqrt(num_samples_to_plot)))
@@ -53,7 +52,7 @@ class SampleVisualizer(TrajectoryMetric):
             utils.wandb_dist_log({f"{self.dataset.label()}/visualize_samples/3D_view/{label}": wandb.Html(f)})
         os.remove(temp_html)
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> dict[str, float]:
         pred_trajectories = self.sample_trajectories(new=True)
         for trajectory_index, pred_trajectory in enumerate(pred_trajectories, start=self.num_chains_seen):
             utils.dist_log(

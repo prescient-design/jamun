@@ -27,7 +27,7 @@ class DataWithResidueInformation(torch_geometric.data.Data):
             "hidden_state"
         ]:
             return 0
-        if key in ["edge_index"]:
+        if key in ["edge_index", "bonded_edge_index"]:
             return self.num_nodes
         if key in ["residue_index"]:
             return self.num_residues

@@ -164,7 +164,7 @@ def featurize_trajectory_with_backbone_atoms(traj: md.Trajectory, temp_pdb_file:
     for atom_type, atom_list in backbone_atoms.items():
         if not atom_list:
             raise ValueError(f"Backbone atom '{atom_type}' not found in the temporary PDB file.")
-    
+
     # Step 2 - Featurize the trajectory using PyEMMA backbone atoms
     feats = pyemma.coordinates.featurizer(traj.topology)
     # Backbone torsion angles
@@ -201,9 +201,9 @@ def featurize_trajectories_macrocycle(traj_md: md.Trajectory, sdf_file: str) -> 
     """Featurize MDTraj trajectories with backbone, and sidechain torsion angles and distances using pyEMMA."""
     return {
         "traj": load_and_featurize_trajectories(traj_md, sdf_file),
-        "ref_traj": load_and_featurize_trajectories_sdf(sdf_file),    
+        "ref_traj": load_and_featurize_trajectories_sdf(sdf_file),
     }
-                
+
 def extract_atom_names_from_pdb(pdb_file: str) -> list:
     """Extract atom names from a PDB file."""
     # Load the PDB file using MDTraj
@@ -223,7 +223,7 @@ def load_and_featurize_trajectories(traj_md: md.Trajectory, sdf_file: str) -> Di
     # Convert SDF to PDB and extract atom names
     convert_sdf_conformers_to_pdb(sdf_file, "temp_sdf.pdb")
     atom_names = extract_atom_names_from_pdb("temp_sdf.pdb")
-    
+
     # Ensure the number of atoms match
     if len(atom_names) != traj_md.n_atoms:
         raise ValueError("Number of atoms in PDB does not match number of atoms in DCD trajectory.")
@@ -234,7 +234,7 @@ def load_and_featurize_trajectories(traj_md: md.Trajectory, sdf_file: str) -> Di
     """Featurize an MDTraj trajectory with backbone, and sidechain torsion angles and distances using pyEMMA."""
     feats, traj_featurized, phi_indices, psi_indices  = featurize_trajectory_with_bb_sc_pdb(traj_md, cossin=False)
     feats_cossin, traj_featurized_cossin, phi_indices, psi_indices = featurize_trajectory_with_bb_sc_pdb(traj_md, cossin=True)
-    feats_dists, traj_featurized_dists = analysis_utils.featurize_trajectory_with_distances(traj_md)    
+    feats_dists, traj_featurized_dists = analysis_utils.featurize_trajectory_with_distances(traj_md)
     return {
         "feats": {
             "torsions": feats,
@@ -259,7 +259,7 @@ def load_and_featurize_trajectories_sdf(sdf_file: str) -> Dict[str, Dict[str, np
     """ Covert SDF to PDB and featurize the trajectory with backbone, and sidechain torsion angles and distances using pyEMMA."""
     convert_sdf_conformers_to_pdb(sdf_file, "temp.pdb")
     traj = md.load_pdb("temp.pdb")
-    
+
     if not isinstance(traj, md.Trajectory):
         raise TypeError(f"Expected traj to be md.Trajectory, but got {type(traj)}")
 
@@ -312,7 +312,7 @@ def compute_PMF_mc(
     for dihedral_index in range(num_dihedrals):
         H, _, _ = np.histogram2d(
             phi[:, dihedral_index], psi[:, dihedral_index], bins=np.linspace(-np.pi, np.pi, num_bins)
-        )   
+        )
         pmf[dihedral_index] = -np.log(H.T) + np.max(np.log(H.T))
 
     return {
@@ -337,8 +337,8 @@ def compute_PMFs_mc(
     }
 
 def compute_JSD_torsion_stats_mc(
-    traj_featurized: np.ndarray, 
-    ref_traj_featurized: np.ndarray, 
+    traj_featurized: np.ndarray,
+    ref_traj_featurized: np.ndarray,
     phi_indices: List[int],
     psi_indices: List[int],
     feats: pyemma.coordinates.data.MDFeaturizer,
@@ -395,8 +395,8 @@ def compute_JSD_torsion_stats_mc(
     return results
 
 def compute_JSD_torsion_stats_against_time_for_trajectory_mc(
-    traj_featurized: np.ndarray, 
-    ref_traj_featurized: np.ndarray, 
+    traj_featurized: np.ndarray,
+    ref_traj_featurized: np.ndarray,
     phi_indices,
     psi_indices,
     feats: pyemma.coordinates.data.MDFeaturizer,
@@ -417,8 +417,8 @@ def compute_JSD_torsion_stats_against_time_for_trajectory_mc(
     }
 
 def compute_JSD_torsion_stats_against_time_mc(
-    traj_featurized: np.ndarray, 
-    ref_traj_featurized: np.ndarray, 
+    traj_featurized: np.ndarray,
+    ref_traj_featurized: np.ndarray,
     phi_indices,
     psi_indices,
     feats: pyemma.coordinates.data.MDFeaturizer,

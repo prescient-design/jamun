@@ -1,7 +1,8 @@
 import importlib.resources
 import pickle
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, Iterator, List, Optional, Set, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -91,7 +92,7 @@ AMINO_ACIDS_WITH_SYMMETRY = {"leucine", "phenylalanine", "tyrosine", "valine"}
 PEPTIDE_PATTERN = Chem.MolFromSmarts("[OX1]=[C;R][N;R]")
 
 
-def get_macrocycle_idxs(mol: Chem.Mol, min_size: int = 9, n_to_c: bool = True) -> Optional[List[int]]:
+def get_macrocycle_idxs(mol: Chem.Mol, min_size: int = 9, n_to_c: bool = True) -> list[int] | None:
     sssr = Chem.GetSymmSSSR(mol)
     if len(sssr) > 0:
         largest_ring = max(sssr, key=len)
@@ -103,7 +104,7 @@ def get_macrocycle_idxs(mol: Chem.Mol, min_size: int = 9, n_to_c: bool = True) -
     return None
 
 
-def get_wrapped_overlapping_sublists(list_: List[Any], size: int) -> Iterator[List[Any]]:
+def get_wrapped_overlapping_sublists(list_: list[Any], size: int) -> Iterator[list[Any]]:
     for idx in range(len(list_)):
         idxs = [idx]
         for offset in range(1, size):
@@ -112,16 +113,15 @@ def get_wrapped_overlapping_sublists(list_: List[Any], size: int) -> Iterator[Li
         yield [list_[i] for i in idxs]
 
 
-def get_overlapping_sublists(list_: List[Any], size: int, wrap: bool = True) -> Iterator[List[Any]]:
+def get_overlapping_sublists(list_: list[Any], size: int, wrap: bool = True) -> Iterator[list[Any]]:
     if wrap:
-        for item in get_wrapped_overlapping_sublists(list_, size):
-            yield item
+        yield from get_wrapped_overlapping_sublists(list_, size)
     else:
         for i in range(len(list_) - size + 1):
             yield list_[i : i + size]
 
 
-def macrocycle_idxs_in_n_to_c_direction(mol: Chem.Mol, macrocycle_idxs: List[int]) -> List[int]:
+def macrocycle_idxs_in_n_to_c_direction(mol: Chem.Mol, macrocycle_idxs: list[int]) -> list[int]:
     # Obtain carbon and nitrogen idxs in peptide bonds in the molecule
     matches = mol.GetSubstructMatches(PEPTIDE_PATTERN)
     if not matches:
@@ -166,7 +166,7 @@ def extract_macrocycle(mol: Chem.Mol) -> Chem.Mol:
     return new_mol
 
 
-def combine_mols(mols: List[Chem.Mol]) -> Chem.Mol:
+def combine_mols(mols: list[Chem.Mol]) -> Chem.Mol:
     """Combine multiple molecules with one conformer each into one molecule with multiple
     conformers.
 
@@ -185,8 +185,8 @@ def combine_mols(mols: List[Chem.Mol]) -> Chem.Mol:
 
 def set_atom_positions(
     mol: Chem.Mol,
-    xyzs: Union[np.ndarray, pd.DataFrame, List[np.ndarray], List[pd.DataFrame]],
-    atom_idxs: Optional[List[int]] = None,
+    xyzs: np.ndarray | pd.DataFrame | list[np.ndarray] | list[pd.DataFrame],
+    atom_idxs: list[int] | None = None,
 ) -> Chem.Mol:
     """Set atom positions of a molecule.
 
@@ -199,7 +199,7 @@ def set_atom_positions(
         A copy of the molecule with one conformer for each set of coordinates.
     """
     # If multiple xyxs are provided, make one conformer for each one
-    if isinstance(xyzs, (np.ndarray, pd.DataFrame)):
+    if isinstance(xyzs, np.ndarray | pd.DataFrame):
         xyzs = [xyzs]
 
     if atom_idxs is None:
@@ -230,9 +230,9 @@ def dfs(
     root_atom_idx: int,
     mol: Chem.Mol,
     max_depth: int = float("inf"),
-    blocked_idxs: Optional[List[int]] = None,
+    blocked_idxs: list[int] | None = None,
     include_hydrogens: bool = True,
-) -> List[int]:
+) -> list[int]:
     """Traverse molecular graph with depth-first search from given root atom index.
 
     Args:
@@ -260,11 +260,11 @@ def _dfs(
     atom: Chem.Atom,  # Start from atom so we don't have to get it from index each time
     depth: int = 0,
     max_depth: int = float("inf"),
-    blocked_idxs: Optional[Set[int]] = None,
+    blocked_idxs: set[int] | None = None,
     include_hydrogens: bool = True,
-    visited: Optional[Set[int]] = None,
-    traversal: Optional[List[int]] = None,
-) -> List[int]:
+    visited: set[int] | None = None,
+    traversal: list[int] | None = None,
+) -> list[int]:
     if visited is None:
         visited = set()
     if traversal is None:
@@ -293,7 +293,7 @@ def _dfs(
     return traversal
 
 
-def one_k_encoding(value: Any, choices: List[Any], include_unknown: bool = True) -> List[int]:
+def one_k_encoding(value: Any, choices: list[Any], include_unknown: bool = True) -> list[int]:
     """Create a one-hot encoding with an extra category for uncommon values."""
     encoding = [0] * (len(choices) + include_unknown)
     try:
@@ -309,9 +309,9 @@ def one_k_encoding(value: Any, choices: List[Any], include_unknown: bool = True)
 
 def featurize_macrocycle_atoms(
     mol: Chem.Mol,
-    macrocycle_idxs: Optional[List[int]] = None,
+    macrocycle_idxs: list[int] | None = None,
     use_peptide_stereo: bool = True,
-    residues_in_mol: Optional[List[str]] = None,
+    residues_in_mol: list[str] | None = None,
     include_side_chain_fingerprint: bool = True,
     radius: int = 3,
     size: int = 2048,
@@ -382,14 +382,14 @@ def featurize_macrocycle_atoms(
 
 
 def featurize_macrocycle_atoms_from_file(
-    path: Union[str, Path],
+    path: str | Path,
     use_peptide_stereo: bool = True,
-    residues_in_mol: Optional[List[str]] = None,
+    residues_in_mol: list[str] | None = None,
     include_side_chain_fingerprint: bool = True,
     radius: int = 3,
     size: int = 2048,
     return_mol: bool = False,
-) -> Union[pd.DataFrame, Tuple[Chem.Mol, pd.DataFrame]]:
+) -> pd.DataFrame | tuple[Chem.Mol, pd.DataFrame]:
     """Featurize macrocycle atoms from a pickle file."""
     with open(path, "rb") as f:
         ensemble_data = pickle.load(f)
@@ -409,16 +409,16 @@ def featurize_macrocycle_atoms_from_file(
     return features
 
 
-def get_amino_acid_stereo(symbol: str) -> Optional[str]:
+def get_amino_acid_stereo(symbol: str) -> str | None:
     stereo = AMINO_ACID_DATA.loc[symbol]["alpha_carbon_stereo"]
     return stereo if isinstance(stereo, str) else None
 
 
 def get_residues(
     mol: Chem.Mol,
-    residues_in_mol: Optional[List[str]] = None,
-    macrocycle_idxs: Optional[List[int]] = None,
-) -> Dict[FrozenSet[int], str]:
+    residues_in_mol: list[str] | None = None,
+    macrocycle_idxs: list[int] | None = None,
+) -> dict[frozenset[int], str]:
     """Find the residues in a molecule by matching to a known dataset of amino acids."""
     if macrocycle_idxs is None:
         macrocycle_idxs = get_macrocycle_idxs(mol)
@@ -460,7 +460,7 @@ def get_residues(
     return residue_dict
 
 
-def get_side_chain_torsion_idxs(mol: Chem.Mol) -> Dict[int, List[int]]:
+def get_side_chain_torsion_idxs(mol: Chem.Mol) -> dict[int, list[int]]:
     """Get the indices of atoms in the side chains that we want to calculate internal coordinates for."""
     side_chain_torsion_idxs = {}
 

@@ -1,12 +1,12 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import torch
 import wandb
 from lightning.pytorch.utilities import rank_zero_only
 
 
-def wandb_dist_log(data: Dict[str, Any]) -> None:
+def wandb_dist_log(data: dict[str, Any]) -> None:
     """Log data to wandb only on rank 0."""
     if rank_zero_only.rank == 0:
         wandb.log(data)

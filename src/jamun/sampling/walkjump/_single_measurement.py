@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch import Tensor
 from tqdm.auto import tqdm
@@ -12,7 +10,7 @@ class SingleMeasurementSampler:
         self,
         mcmc,
         sigma: float,
-        y_init_distribution: Optional[torch.distributions.Distribution] = None,
+        y_init_distribution: torch.distributions.Distribution | None = None,
     ):
         self.mcmc = mcmc
         self.sigma = float(sigma)
@@ -21,8 +19,8 @@ class SingleMeasurementSampler:
     def walk(
         self,
         model,
-        batch_size: Optional[int] = None,
-        y_init: Optional[torch.Tensor] = None,
+        batch_size: int | None = None,
+        y_init: torch.Tensor | None = None,
         v_init: str | Tensor = "gaussian",
     ):
         if y_init is None:
@@ -42,8 +40,8 @@ class SingleMeasurementSampler:
     def walk_jump(
         self,
         model,
-        batch_size: Optional[int] = None,
-        y_init: Optional[torch.Tensor] = None,
+        batch_size: int | None = None,
+        y_init: torch.Tensor | None = None,
         v_init: str | Tensor = "gaussian",
     ):
         out = self.walk(
@@ -80,8 +78,8 @@ class SingleMeasurementSampler:
     def sample(
         self,
         model,
-        batch_size: Optional[int] = None,
-        y_init: Optional[torch.Tensor] = None,
+        batch_size: int | None = None,
+        y_init: torch.Tensor | None = None,
         v_init: str | Tensor = "gaussian",
     ):
         out = self.walk_jump(model, batch_size=batch_size, y_init=y_init, v_init=v_init)
