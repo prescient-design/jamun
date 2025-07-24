@@ -3,9 +3,9 @@
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
-    sigma: 0.01
+    sigma: 0.04
   arch:
-    n_layers: 2
+    n_layers: 4
   max_radius: 1000.0
   optim:
     lr: 0.002
@@ -26,7 +26,7 @@ data:
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
-        subsample: 100
+        subsample: 10
         
 
       val:
@@ -36,7 +36,7 @@ data:
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
-        subsample: 100
+        subsample: 10
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -45,7 +45,7 @@ data:
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
         as_iterable: false
-        subsample: 100
+        subsample: 10
 
 
 trainer:

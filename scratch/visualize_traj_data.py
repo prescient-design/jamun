@@ -1,48 +1,59 @@
-# xplore generated trajectories 
 import mdtraj as md
-import os 
-# --- Option 2: Loading your own DCD and Topology file ---
-print("\n--- Loading Your Own DCD and Topology File (Example) ---")
-# Replace these with the actual paths to your files
-dcd_file_path = f"{JAMUN_ROOT_PATH}/outputs/sample/dev/runs/2025-06-04_22-46-33/sampler/AA/predicted_samples/dcd/joined.dcd"  # Your DCD trajectory file
-topology_file_path = f"{JAMUN_ROOT_PATH}/outputs/sample/dev/runs/2025-06-04_22-46-33/sampler/AA/topology.pdb" # Your topology file (e.g., .pdb, .prmtop, .psf)
-
-# Create dummy files for this example to run without error if you don't have them
-# In a real scenario, you would have your actual DCD and PDB files.
-print(f'DCD file path exists: {os.path.exists(dcd_file_path)}')
-print(f'Topology file path exists: {os.path.exists(topology_file_path)}')
-try:
-    print(f"Attempting to load trajectory: {dcd_file_path}")
-    print(f"Using topology: {topology_file_path}")
-
-    # The 'top' argument is crucial for DCD files
-    traj_custom = md.load_dcd(dcd_file_path, top=topology_file_path)
-
-    print(f"Successfully loaded custom trajectory!")
-    print(f"Number of frames: {traj_custom.n_frames}")
-    print(f"Number of atoms: {traj_custom.n_atoms}")
-    # You can now perform analysis on traj_custom
-    # For example, calculate RMSD, distances, angles, etc.
-
-except FileNotFoundError:
-    print(f"Error: One or both files not found: {dcd_file_path}, {topology_file_path}")
-except Exception as e:
-    print(f"An error occurred while loading your files: {e}")
-print("-" * 30)
-
-# %%
-from jamun.metrics._ramachandran import plot_ramachandran
-
-phi = md.compute_phi(traj_custom)
-psi = md.compute_psi(traj_custom)
-
+import os
 import matplotlib.pyplot as plt
-import numpy as np 
-fig = plt.figure()
-ax = fig.add_subplot()
-s = ax.scatter(phi[1], psi[1], cmap='hot', alpha=1.0)
-ax.set_xlim((-np.pi, np.pi))
-ax.set_ylim((-np.pi, np.pi))
-c = fig.colorbar(s)
+import numpy as np
+import itertools
+import matplotlib.colors as colors
 
-print("hello world")
+# Set file paths for ALA_ALA in capped diamines
+xtc_file = "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.xtc"
+pdb_file = "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
+
+output_dir = "/data2/sules/ramachandran_plots_ala_ala_fake_enhanced_data"
+os.makedirs(output_dir, exist_ok=True)
+
+print(f"XTC file exists: {os.path.exists(xtc_file)}")
+print(f"PDB file exists: {os.path.exists(pdb_file)}")
+
+# Load the trajectory (subsample=1 means load all frames)
+traj = md.load(xtc_file, top=pdb_file)
+print(f"Loaded trajectory with {traj.n_frames} frames and {traj.n_atoms} atoms.")
+
+# Compute backbone dihedrals (phi and psi)
+phi_indices, phi_angles = md.compute_phi(traj)
+psi_indices, psi_angles = md.compute_psi(traj)
+
+num_phi = phi_angles.shape[1]
+num_psi = psi_angles.shape[1]
+
+# Collect all dihedral arrays in a dict for easy access
+# Each entry is (n_frames,)
+dihedrals = {}
+for i in range(num_phi):
+    dihedrals[f'phi_{i+1}'] = phi_angles[:, i]
+for i in range(num_psi):
+    dihedrals[f'psi_{i+1}'] = psi_angles[:, i]
+
+dihedral_names = list(dihedrals.keys())
+
+# Make 2D histograms for all pairs
+for name1, name2 in itertools.combinations(dihedral_names, 2):
+    x = dihedrals[name1]
+    y = dihedrals[name2]
+    plt.figure(figsize=(8, 8))
+    plt.hist2d(x, y, bins=100, range=((-np.pi, np.pi), (-np.pi, np.pi)), cmap='viridis', norm=colors.LogNorm())
+    plt.colorbar(label='Density')
+    plt.title(f'2D Histogram: {name1} vs {name2}')
+    plt.xlabel(f'{name1} (radians)')
+    plt.ylabel(f'{name2} (radians)')
+    plt.xlim(-np.pi, np.pi)
+    plt.ylim(-np.pi, np.pi)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.axhline(0, color='k', linestyle='--', linewidth=0.5)
+    plt.axvline(0, color='k', linestyle='--', linewidth=0.5)
+    output_filename = f"hist2d_{name1}_vs_{name2}_true_distribution.png"
+    output_path = os.path.join(output_dir, output_filename)
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+print(f"All 2D histograms saved in {output_dir}")

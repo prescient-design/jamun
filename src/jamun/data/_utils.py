@@ -107,15 +107,18 @@ def parse_datasets_from_directory(
 
     datasets = []
     for code in tqdm(codes, desc="Creating datasets"):
+        # Use label_override for the dataset label, but keep original code for file lookups
         if label_override is not None:
             print(f"Label override: {label_override}")
-            code = str(label_override)
+            dataset_label = str(label_override)
+        else:
+            dataset_label = code
 
         dataset = dataset_class(
             root,
             traj_files=traj_files[code],
             pdb_file=pdb_files[code],
-            label=code, # TODO: add a label override here. 
+            label=dataset_label,
             **dataset_kwargs,
         )
         datasets.append(dataset)
@@ -434,15 +437,18 @@ def parse_repeated_position_datasets_from_directory(
 
     datasets = []
     for code in tqdm(codes, desc="Creating RepeatedPositionDatasets"):
+        # Use label_override for the dataset label, but keep original code for file lookups
         if label_override is not None:
             print(f"Label override: {label_override}")
-            code = str(label_override)
+            dataset_label = str(label_override)
+        else:
+            dataset_label = code
 
         dataset = RepeatedPositionDataset(
             root,
             traj_files=traj_files[code],
             pdb_file=pdb_files[code],
-            label=code,
+            label=dataset_label,
             **dataset_kwargs,
         )
         datasets.append(dataset)

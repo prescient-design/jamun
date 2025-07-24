@@ -1,0 +1,60 @@
+# @package _global_
+defaults:
+  - override /model: denoiser_multimeasurement
+  - override /callbacks:
+    - timing.yaml
+    - lr_monitor.yaml
+    - model_checkpoint.yaml
+
+data:
+  datamodule:
+    batch_size: 32
+    datasets:
+      train:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data2/sules/ALA_ALA_enhanced_full_grid/train"
+        traj_pattern: "^(.*).xtc"
+        pdb_pattern: "^(.*).pdb"
+        subsample: 1
+        total_lag_time: 5
+        lag_subsample_rate: 1
+        # max_datasets: 1
+
+      val:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data2/sules/ALA_ALA_enhanced_full_grid/val"
+        traj_pattern: "^(.*).xtc"
+        pdb_pattern: "^(.*).pdb"
+        subsample: 1
+        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
+        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
+        #max_datasets: ${data.datamodule.datasets.train.max_datasets}
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  arch:
+    n_layers: 3
+    N_structures: ${data.datamodule.datasets.train.total_lag_time}
+  max_radius: 1000.0
+  optim:
+    lr: 0.002
+  conditioner:
+    _target_: jamun.model.conditioners.PositionConditioner
+    N_structures: ${model.arch.N_structures}
+  # Override multimeasurement parameters for this experiment
+  N_measurements: 5
+  N_measurements_hidden: 5
+  max_graphs_per_batch: ${data.datamodule.batch_size}
+
+trainer:
+  val_check_interval: 0.5
+  max_epochs: 100
+  devices: 1
+
+logger:
+  wandb:
+    group: ALA_ALA_enhanced_full_grid_multimeasurement
+    notes: "Training multimeasurement model on ALA_ALA enhanced dataset with trajectory-based split"
+    tags: ["multimeasurement", "ala_ala", "enhanced_dataset", "trajectory_split"] 

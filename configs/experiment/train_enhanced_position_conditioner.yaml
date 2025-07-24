@@ -1,4 +1,5 @@
 # @package _global_
+# Training PositionConditioner on enhanced sampling data
 
 defaults:
   - override /model: denoiser_conditional
@@ -13,39 +14,22 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "/data2/sules/ALA_ALA_enhanced_full_grid/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
         subsample: 1
         total_lag_time: 5
         lag_subsample_rate: 1
-        num_frames: 10
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+        root: "/data2/sules/ALA_ALA_enhanced_full_grid/val"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
         subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: 1
-        num_frames: 10
+        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
 
-      test:
-        _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
-        traj_pattern: "^(.*).xtc"
-        pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 1
-        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: 1
-        num_frames: 10
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
@@ -59,16 +43,14 @@ model:
   conditioner:
     _target_: jamun.model.conditioners.PositionConditioner
     N_structures: ${model.arch.N_structures}
-    pretrained_model_path: null
-    c_in: null
-
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 1
-
+  max_epochs: 50
+  devices: 1
 
 logger:
   wandb:
-    group: ALA_ALA, capped diamines, conditional denoiser
-    notes: "Running on ALA_ALA capped diamine, conditional denoiser" 
+    group: enhanced_sampling_conditioner_comparison
+    notes: "PositionConditioner on enhanced sampling data"
+    tags: ["position_conditioner", "enhanced_sampling"] 

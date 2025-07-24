@@ -1,2 +1,2 @@
-from .conditioners import Conditioner, PositionConditioner, SelfConditioner, MeanConditioner
+from .conditioners import Conditioner, PositionConditioner, SelfConditioner, MeanConditioner, DenoisedConditioner, ConditionerSpiked
 

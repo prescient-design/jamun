@@ -11,7 +11,7 @@ from jamun.utils import mean_center
 class ModelSamplingWrapper:
     """Wrapper to sample positions from a model."""
 
-    def __init__(self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = False):
+    def __init__(self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = True):
         self._model = model
         self.init_graphs = init_graphs
         self.sigma = sigma
@@ -92,7 +92,7 @@ class ModelSamplingWrapper:
 class ModelSamplingWrapperMemory:
     """Wrapper for models that depend on a memory of states."""
 
-    def __init__(self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = False):
+    def __init__(self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = True):
         self._model = model
         self.init_graphs = init_graphs
         self.sigma = sigma

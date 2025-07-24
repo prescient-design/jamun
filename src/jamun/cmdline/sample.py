@@ -88,7 +88,7 @@ def run(cfg):
     model = hydra.utils.instantiate(cfg.model)
     print(f'Checkpoint path at: {checkpoint_path}')
     init_datasets = hydra.utils.instantiate(cfg.init_datasets)
-    breakpoint()
+    # breakpoint()
     init_graphs = get_initial_graphs(
         init_datasets,
         num_init_samples_per_dataset=cfg.num_init_samples_per_dataset,
@@ -100,7 +100,7 @@ def run(cfg):
     if seed := cfg.get("seed"):
         # During sampling, we want ranks to generate different chains.
         pl.seed_everything(seed + sampler.fabric.global_rank)
-    breakpoint()
+    # breakpoint()
     # Run test-time adapation, if specified.
     if finetuning_cfg := cfg.get("finetune_on_init"):
         num_finetuning_steps = finetuning_cfg.get("num_steps")
@@ -143,7 +143,7 @@ def run(cfg):
 
 # Needed for submitit error output.
 # See https://github.com/facebookresearch/hydra/issues/2664
-@hydra.main(version_base=None, config_path="../hydra_config", config_name="sample")
+@hydra.main(version_base=None, config_path="../hydra_config", config_name="sample_memory")
 def main(cfg):
     try:
         run(cfg)

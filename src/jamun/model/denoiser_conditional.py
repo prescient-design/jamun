@@ -280,7 +280,7 @@ class Denoiser(pl.LightningModule):
 
         with torch.cuda.nvtx.range("conditioning"): 
             conditioned_structures = self.conditioner(y_scaled)
-
+            # print(f"Conditioner is working, number of conditioned structures: {len(conditioned_structures)}")
         with torch.cuda.nvtx.range("g"):    
             g_pred = self.g(torch.cat([*conditioned_structures], dim=-1), topology=y_scaled, \
                             c_noise=c_noise, effective_radial_cutoff=radial_cutoff)

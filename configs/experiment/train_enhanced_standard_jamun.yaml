@@ -1,0 +1,52 @@
+# @package _global_
+# Training standard JAMUN Denoiser on enhanced sampling data
+
+defaults:
+  - override /model: denoiser
+  - override /callbacks:
+    - timing.yaml
+    - lr_monitor.yaml
+    - model_checkpoint.yaml
+
+data:
+  datamodule:
+    batch_size: 32
+    datasets:
+      train:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data2/sules/ALA_ALA_enhanced_full_grid/train"
+        traj_pattern: "^(.*).xtc"
+        pdb_pattern: "^(.*).pdb"
+        subsample: 1
+        total_lag_time: 5
+        lag_subsample_rate: 1
+
+      val:
+        _target_: jamun.data.parse_datasets_from_directory
+        root: "/data2/sules/ALA_ALA_enhanced_full_grid/val"
+        traj_pattern: "^(.*).xtc"
+        pdb_pattern: "^(.*).pdb"
+        subsample: 1
+        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
+        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  arch:
+    n_layers: 2
+  max_radius: 1000.0
+  optim:
+    lr: 0.002
+
+trainer:
+  val_check_interval: 0.5
+  max_epochs: 50
+  devices: 1
+
+logger:
+  wandb:
+    group: enhanced_sampling_conditioning_comparison
+    notes: "Standard JAMUN Denoiser on enhanced sampling data"
+    tags: ["standard_jamun", "enhanced_sampling", "no_conditioning"] 

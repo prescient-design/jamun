@@ -1,0 +1,86 @@
+# @package _global_
+
+defaults: 
+  # - override /model: denoiser_conditional_pretrained.yaml
+  - override /callbacks: null
+
+init_datasets:
+  _target_: jamun.data.parse_datasets_from_directory
+  root: "/data2/sules/fake_enhanced_data/ALA_ALA_organized/train"
+  traj_pattern: "^(.*).xtc"
+  pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
+  as_iterable: false
+  subsample: 1
+  total_lag_time: 5
+  lag_subsample_rate: 1
+  max_datasets: 10
+  label_override: "ALA_ALA"
+
+num_sampling_steps_per_batch: 100000
+num_batches: 1
+num_init_samples_per_dataset: 1
+repeat_init_samples: 1
+continue_chain: false
+
+# Add your checkpoint path here - update with actual trained model path
+wandb_train_run_path: sule-shashank/jamun/0mu06yg4
+# checkpoint_dir: /data2/sules/jamun-conditional-runs/outputs/train/dev/runs/2025-07-02_00-37-08/checkpoints
+checkpoint_type: last
+
+sigma: 0.04
+M: 1.0
+delta: ${sigma}
+friction: 1.0
+inverse_temperature: 1.0
+score_fn_clip: 100.0
+
+sampler:
+  _target_: jamun.sampling.SamplerMemory
+  devices: 1
+
+# Evaluation dataset - standard ALA_ALA from capped diamines for computing metrics
+eval_dataset:
+  _target_: jamun.data.parse_datasets_from_directory
+  root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
+  traj_pattern: "^(.*).xtc"
+  pdb_pattern: "^(.*).pdb"
+  filter_codes: ['ALA_ALA']
+  as_iterable: false
+  subsample: 100
+  max_datasets: 1
+  label_override: "ALA_ALA"
+
+# Override ALL callbacks to use eval_dataset for metrics computation
+callbacks:
+  measure_sampling_time:
+    _target_: jamun.callbacks.sampler.MeasureSamplingTimeCallback
+  chemical_validity:
+    _target_: jamun.callbacks.sampler.ChemicalValidityMetricsCallback
+    datasets: ${eval_dataset}
+    bond_length_tolerance: 0.2
+    volume_exclusion_tolerance: 0.1
+    num_molecules_per_trajectory: 100
+  ramachandran_plot:
+    _target_: jamun.callbacks.sampler.RamachandranPlotMetricsCallback
+    datasets: ${eval_dataset}
+  trajectory_visualizer:
+    _target_: jamun.callbacks.sampler.TrajectoryVisualizerCallback
+    datasets: ${eval_dataset}
+    num_frames_to_animate: 100
+  sample_visualizer:
+    _target_: jamun.callbacks.sampler.SampleVisualizerCallback
+    datasets: ${eval_dataset}
+    num_samples_to_plot: 16
+    subsample: 100
+  score_distribution:
+    _target_: jamun.callbacks.sampler.ScoreDistributionCallback
+    datasets: ${eval_dataset}
+  save_trajectory:
+    _target_: jamun.callbacks.sampler.SaveTrajectoryCallback
+    datasets: ${eval_dataset}
+
+logger:
+  wandb:
+    group: sample_ALA_ALA_enhanced_sampling
+    notes: "Sampling from enhanced sampling trained conditional denoiser"
+    tags: ["sample", "enhanced_sampling", "conditional_denoiser", "ALA_ALA", "sunny-paper-304"] 

@@ -17,7 +17,7 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
         as_iterable: false
-        subsample: 10
+        subsample: 1
         total_lag_time: 5
         lag_subsample_rate: 1
         max_datasets: 5000
@@ -28,7 +28,7 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
         as_iterable: false
-        subsample: 10
+        subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: 1
         max_datasets: 5000
@@ -39,7 +39,7 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_file: "/data/bucket/kleinhej/capped_diamines/timewarp_splits/train/ALA_ALA.pdb"
         as_iterable: false
-        subsample: 10
+        subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: 1
         max_datasets: 5000
@@ -57,6 +57,8 @@ model:
   conditioner:
     _target_: jamun.model.conditioners.SelfConditioner
     N_structures: ${model.arch.N_structures}
+    pretrained_model_path: null
+    c_in: null
 
 trainer:
   val_check_interval: 0.5

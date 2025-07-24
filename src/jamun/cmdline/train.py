@@ -18,6 +18,7 @@ import jamun  # noqa: E402
 from jamun.hydra import instantiate_dict_cfg  # noqa: E402
 from jamun.hydra.utils import format_resolver  # noqa: E402
 from jamun.utils import compute_average_squared_distance_from_datasets, dist_log, find_checkpoint  # noqa: E402
+from jamun.utils._normalizations import normalization_factors  # noqa: E402
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
@@ -58,13 +59,31 @@ def run(cfg):
         )
         cfg.model.average_squared_distance = average_squared_distance
 
+    # Compute normalization factors for conditioner c_in parameter
+    if cfg.model.get("conditioner") and cfg.model.conditioner.get("_target_") == "jamun.model.conditioners.DenoisedConditioner":
+        if hasattr(cfg.model.sigma_distribution, "sigma"):
+            sigma = cfg.model.sigma_distribution.sigma
+            average_squared_distance = cfg.model.average_squared_distance
+            c_in, c_skip, c_out, c_noise = normalization_factors(sigma, average_squared_distance)
+            c_in_float = float(c_in)
+            
+            dist_log(f"Computing normalization factors for DenoisedConditioner with sigma={sigma}")
+            dist_log(f"  average_squared_distance: {average_squared_distance}")
+            dist_log(f"  c_in: {c_in_float}")
+            dist_log(f"  c_skip: {c_skip}")
+            dist_log(f"  c_out: {c_out}")
+            dist_log(f"  c_noise: {c_noise}")
+            
+            cfg.model.conditioner.c_in = c_in_float
+            dist_log(f"Set cfg.model.conditioner.c_in to {c_in_float}")
+
     # # do this for the sweep
     # if cfg.model.N_measurements_hidden is not None:
     #     dist_log(f"Number of hidden measurements: {cfg.model.N_measurements_hidden}")
     #     dist_log(f"Overwriting N_measurements...")
     #     cfg.model.N_measurements = 100 // cfg.model.N_measurements_hidden
     #     dist_log(f"New num of measurements: {cfg.model.N_measurements=}")
-
+    # breakpoint()
     datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     model = hydra.utils.instantiate(cfg.model)
     if matmul_prec := cfg.get("float32_matmul_precision"):
