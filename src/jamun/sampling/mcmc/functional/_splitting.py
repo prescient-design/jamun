@@ -1,12 +1,7 @@
 import logging
 import math
-<<<<<<< HEAD
 from typing import Callable, Optional, Tuple, Union
 from copy import deepcopy
-=======
-from collections.abc import Callable
-
->>>>>>> main
 import torch
 from tqdm.auto import tqdm
 
