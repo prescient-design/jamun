@@ -8,7 +8,7 @@ defaults:
 
 data:
   datamodule:
-    batch_size: 32
+    batch_size: 2
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -44,13 +44,13 @@ model:
     _target_: jamun.model.conditioners.PositionConditioner
     N_structures: ${model.arch.N_structures}
   # Override multimeasurement parameters for this experiment
-  N_measurements: 5
-  N_measurements_hidden: 5
-  max_graphs_per_batch: ${data.datamodule.batch_size}
+  N_measurements: 4
+  N_measurements_hidden: 4
+  max_graphs_per_batch: null
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 100
+  max_epochs: 50
   devices: 1
 
 logger:

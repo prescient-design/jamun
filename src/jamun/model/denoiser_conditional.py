@@ -5,7 +5,8 @@ import lightning.pytorch as pl
 import numpy as np
 import torch
 import torch_geometric
-from e3tools import radius_graph, scatter
+import e3tools
+from e3tools import scatter
 from tqdm import tqdm
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
@@ -213,26 +214,27 @@ class Denoiser(pl.LightningModule):
 
     def add_edges(self, y: torch_geometric.data.Batch, radial_cutoff: float) -> torch_geometric.data.Batch:
         """Add edges to the graph based on the effective radial cutoff."""
+        if y.get("edge_index") is not None:
+            return y
+
+        y = y.clone()
         if "batch" in y:
             batch = y["batch"]
         else:
             batch = torch.zeros(y.num_nodes, dtype=torch.long, device=self.device)
 
-        # Our dataloader already adds the bonded edges.
-        bonded_edge_index = y.edge_index
-
         with torch.cuda.nvtx.range("radial_graph"):
-            radial_edge_index = radius_graph(y.pos, radial_cutoff, batch)
+            radial_edge_index = e3tools.radius_graph(y.pos, radial_cutoff, batch)
 
         with torch.cuda.nvtx.range("concatenate_edges"):
-            edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)
-            if bonded_edge_index.numel() == 0:
-                bond_mask = torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device)
+            edge_index = torch.cat((radial_edge_index, y.bonded_edge_index), dim=-1)
+            if y.bonded_edge_index.numel() == 0:
+                bond_mask = torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=y.pos.device)
             else:
                 bond_mask = torch.cat(
                     (
-                        torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=self.device),
-                        torch.ones(bonded_edge_index.shape[1], dtype=torch.long, device=self.device),
+                        torch.zeros(radial_edge_index.shape[1], dtype=torch.long, device=y.pos.device),
+                        torch.ones(y.bonded_edge_index.shape[1], dtype=torch.long, device=y.pos.device),
                     ),
                     dim=0,
                 )

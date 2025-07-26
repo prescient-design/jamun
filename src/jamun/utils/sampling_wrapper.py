@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch_geometric
 
 from jamun.utils import mean_center
-
+from typing import Dict, List, Optional
 
 class ModelSamplingWrapper:
     """Wrapper to sample positions from a model."""
@@ -141,7 +141,7 @@ class ModelSamplingWrapperMemory:
         input_graph.hidden_state = y_hist
         return input_graph.to(positions.device)
 
-    def unbatch_samples(self, samples: Dict[str, torch.Tensor]) -> List[torch_geometric.data.Data]:
+    def unbatch_samples(self, samples: dict[str, torch.Tensor]) -> list[torch_geometric.data.Data]:
         """Unbatch samples."""
         if "batch" not in self.init_graphs:
             raise ValueError("The initial graph does not have a batch attribute.")

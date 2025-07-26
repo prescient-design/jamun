@@ -52,17 +52,10 @@ def get_subsampled_indices(
     return lagged_indices
 
 
-def preprocess_topology(topology: md.Topology) -> Tuple[torch_geometric.data.Data, md.Topology, md.Topology]:
-    """Preprocess the MDtraj topology, returning a PyTorch Geometric graph, the topology with protein only, and the topology with hydrogenated protein."""
-    # Select all heavy atoms in the protein.
-    # This also removes all waters.
-    select = topology.select("protein and not type H")
-    top = topology.subset(select)
-
-    # Select all atoms in the protein.
-    select_withH = topology.select("protein")
-    top_withH = topology.subset(select_withH)
-
+def make_graph_from_topology(
+    topology: md.Topology,
+) -> torch_geometric.data.Data:
+    """Create a PyTorch Geometric graph from an MDTraj topology."""
     # Encode the atom types, residue codes, and residue sequence indices.
     atom_type_index = torch.tensor(
         [utils.encode_atom_type(x.element.symbol) for x in topology.atoms], dtype=torch.int32
@@ -274,8 +267,8 @@ class MDtrajDataset(torch.utils.data.Dataset):
             self.lagged_indices = None
 
         topology = self.traj.topology
-        self.graph, self.top, self.top_withH = preprocess_topology(topology)
-        atom_selection = topology.select("protein and not type H")
+        self.top, atom_selection = preprocess_topology(topology, keep_hydrogens=False)
+        self.graph = make_graph_from_topology(self.top)
         self.traj = self.traj.atom_slice(atom_selection)
         if self.hidden_state is not None:
             self.hidden_state = [traj.atom_slice(atom_selection) for traj in self.hidden_state] # select protein atoms for hidden state(s)

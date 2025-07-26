@@ -26,11 +26,7 @@ def initialize_velocity(v_init: str | torch.Tensor, y: torch.Tensor, u: float) -
 def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_clip: float | None) -> Callable:
     """Create a score function that is clipped and scaled by the inverse temperature."""
 
-<<<<<<< HEAD
     def score_fn_processed(y: torch.Tensor, *args, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
-=======
-    def score_fn_processed(y: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
->>>>>>> main
         """Score function clipped and scaled by the inverse temperature."""
         orig_score = score_fn(y, *args, **kwargs).to(dtype=y.dtype)
         # Clip the score by norm.

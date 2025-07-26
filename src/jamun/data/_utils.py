@@ -11,6 +11,7 @@ from tqdm.auto import tqdm
 
 from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
 from jamun.data._sdf import MDtrajSDFDataset
+from typing import Optional, List, Sequence, Dict, Any
 
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
