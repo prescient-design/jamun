@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-#SBATCH --partition gpu3
+#SBATCH --partition gpu2
 #SBATCH --qos=preempt
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 1
 #SBATCH --gpus-per-node 1
 #SBATCH --cpus-per-task 8
-#SBATCH --time 0-2
+#SBATCH --time 1-0
 #SBATCH --mem-per-cpu=32G
 #SBATCH --array=0
 
