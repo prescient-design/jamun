@@ -88,9 +88,14 @@ def get_JAMUN_trajectory_files(run_paths: Sequence[str]) -> Dict[str, Dict[str, 
                 )
 
             # Load trajectory file as .dcd.
-            trajectory_files[peptide] = {
-                "dcd": f"{run_path}/sampler/{peptide}/predicted_samples/dcd/joined.dcd",
-            }
+            trajectory_files[peptide] = {}
+            for dcd_file in [
+                f"{run_path}/sampler/{peptide}/predicted_samples/dcd/xhat_traj_joined.dcd",
+                f"{run_path}/sampler/{peptide}/predicted_samples/dcd/joined.dcd",
+            ]:
+                if os.path.exists(dcd_file):
+                    trajectory_files[peptide]["dcd"] = dcd_file
+                    break
 
             if not os.path.exists(trajectory_files[peptide]["dcd"]):
                 raise ValueError(f"DCD file {trajectory_files[peptide]['dcd']} not found.")

@@ -34,9 +34,9 @@ class SaveTrajectory(TrajectoryMetric):
         if extension not in self.pred_samples_extensions:
             raise ValueError(f"Invalid extension: {extension}")
         filenames = {
-            "npy": os.path.join(self.pred_samples_dir, "npy", f"{trajectory_index}.npy"),
-            "pdb": os.path.join(self.pred_samples_dir, "pdb", f"{trajectory_index}.pdb"),
-            "dcd": os.path.join(self.pred_samples_dir, "dcd", f"{trajectory_index}.dcd"),
+            "npy": os.path.join(self.pred_samples_dir, "npy", f"{self.sample_key}_{trajectory_index}.npy"),
+            "pdb": os.path.join(self.pred_samples_dir, "pdb", f"{self.sample_key}_{trajectory_index}.pdb"),
+            "dcd": os.path.join(self.pred_samples_dir, "dcd", f"{self.sample_key}_{trajectory_index}.dcd"),
         }
         return filenames[extension]
 

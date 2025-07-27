@@ -1,0 +1,5 @@
+save_noisy_trajectory:
+  _target_: jamun.callbacks.sampler.SaveTrajectoryCallback
+  datasets: ${init_datasets}
+  sample_key: y_traj
+  save_true_trajectory: false
