@@ -4,6 +4,7 @@ import e3nn
 import torch
 import torch_geometric
 from e3nn import o3
+import e3tools
 
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
 from jamun.model.noise_conditioning import NoiseConditionalScaling
@@ -112,7 +113,7 @@ class E3Conv(torch.nn.Module):
             batch = data["batch"]
         else:
             batch = torch.zeros(data.num_nodes, dtype=torch.long, device=pos.device)
-        radial_edge_index = torch_geometric.nn.radius_graph(pos, effective_radial_cutoff, batch)
+        radial_edge_index = e3tools.radius_graph(pos, effective_radial_cutoff, batch)
 
         bonded_edge_index = data.edge_index
         edge_index = torch.cat((radial_edge_index, bonded_edge_index), dim=-1)

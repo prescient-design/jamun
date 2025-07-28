@@ -5,7 +5,7 @@ import lightning.pytorch as pl
 import torch
 import torch.nn.functional as F
 import torch_geometric
-import torch_scatter
+import e3tools
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 
@@ -236,8 +236,8 @@ class Denoiser(pl.LightningModule):
             scaled_rmsd = torch.sqrt(raw_loss) / (sigma * torch.sqrt(D))
 
             # Take the mean over each graph.
-            raw_loss = torch_scatter.scatter_mean(raw_loss, x.batch)
-            scaled_rmsd = torch_scatter.scatter_mean(scaled_rmsd, x.batch)
+            raw_loss = e3tools.scatter(raw_loss, x.batch, dim=0, reduce="mean")
+            scaled_rmsd = e3tools.scatter(scaled_rmsd, x.batch, dim=0, reduce="mean")
 
             # Account for the loss weight across graphs and noise levels.
             scaled_loss = raw_loss * x.loss_weight
