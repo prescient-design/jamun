@@ -1,0 +1,3 @@
+# @package _global_
+_target_: jamun.model.conditioners.conditioners.MeanConditioner
+N_structures: 1 

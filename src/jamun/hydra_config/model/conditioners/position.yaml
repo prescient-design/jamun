@@ -1,0 +1,4 @@
+# @package _global_
+_target_: jamun.model.conditioners.conditioners.PositionConditioner
+N_structures: 1
+align_hidden_states: true 

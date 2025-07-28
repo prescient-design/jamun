@@ -1,8 +1,8 @@
 defaults:
-  - arch: e3conv_conditional.yaml
+  - arch: e3conv_conditional_with_input_attr.yaml
   - optim: adam.yaml
   - lr_scheduler_config: null
-  - conditioners: position.yaml  # Default conditioner, can be overridden
+  - conditioners: spatiotemporal.yaml
   - _self_
 
 max_radius: null
@@ -19,7 +19,8 @@ torch_compile_kwargs:
   dynamic: true
   mode: default
 
-# Conditioner configuration now comes from defaults above
-# Use conditioners=spatiotemporal to use the spatio-temporal conditioner
+# Architecture settings
+arch:
+  N_structures: 1  # Compatible with SpatioTemporalConditioner
 
-_target_: jamun.model.denoiser_conditional.Denoiser 
+_target_: jamun.model.denoiser_conditional.DenoiserWithInputAttr 

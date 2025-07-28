@@ -1,0 +1,44 @@
+# E3ConvConditionalWithInputAttr architecture configuration
+# This extends E3ConvConditional to accept additional input attributes
+
+_target_: jamun.model.arch.e3conv_conditional.E3ConvConditionalWithInputAttr
+
+# Standard E3ConvConditional parameters
+irreps_out: "3x1e"
+irreps_hidden: "120x0e + 32x1e"
+irreps_sh: "1x0e + 1x1e"
+n_layers: 2
+edge_attr_dim: 64
+use_residue_information: ${data.use_residue_information}
+atom_type_embedding_dim: 8
+atom_code_embedding_dim: 8
+residue_code_embedding_dim: 32
+residue_index_embedding_dim: 8
+use_residue_sequence_index: false
+num_atom_types: ${data.num_atom_types}
+max_sequence_length: ${data.max_sequence_length}
+num_atom_codes: ${data.num_atom_codes}
+num_residue_types: ${data.num_residue_types}
+test_equivariance: false
+reduce: null
+N_structures: ${model.arch.N_structures}
+
+# New parameter for input attributes
+input_attr_irreps: "3x1e"  # 3D vector input attributes (matching transformer output)
+
+# Factory functions for layers
+hidden_layer_factory:
+  _target_: functools.partial
+  _args_:
+    - _target_: e3tools.nn.ConvBlock
+      conv:
+        _target_: functools.partial
+        _args_:
+          - _target_: e3tools.nn.Conv
+
+output_head_factory:
+  _target_: functools.partial
+  _args_:
+    - _target_: e3tools.nn.EquivariantMLP
+      irreps_hidden_list:
+        - "120x0e + 32x1e" 

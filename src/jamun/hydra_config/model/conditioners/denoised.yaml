@@ -1,0 +1,5 @@
+# @package _global_
+_target_: jamun.model.conditioners.conditioners.DenoisedConditioner
+N_structures: 1
+pretrained_model_path: "wandb_run_path/here"  # Replace with actual wandb run path
+c_in: 1.0 

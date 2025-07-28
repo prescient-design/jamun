@@ -1,0 +1,3 @@
+# @package _global_
+_target_: jamun.model.conditioners.conditioners.SelfConditioner
+N_structures: 1 

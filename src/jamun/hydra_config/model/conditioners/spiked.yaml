@@ -1,0 +1,3 @@
+# @package _global_
+_target_: jamun.model.conditioners.conditioners.ConditionerSpiked
+N_structures: 1 
