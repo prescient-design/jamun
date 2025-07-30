@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Test script for loading and testing a conditional denoiser with spatiotemporal conditioner.
-Uses the ALA_ALA enhanced sampling dataset for testing.
+Uses the new approach where SpatioTemporalConditioner outputs [y.pos, spatial_features]
+and E3ConvConditionalSpatioTemporal handles concatenated inputs.
 """
 
 import e3nn
@@ -17,14 +18,16 @@ import os
 sys.path.insert(0, 'src')
 
 from jamun.data import parse_datasets_from_directory
-from jamun.model.denoiser_conditional import DenoiserWithInputAttr
+from jamun.model.denoiser_conditional import Denoiser  # Changed from DenoiserWithInputAttr
+from jamun.model.denoiser import add_edges  # Import add_edges function
 from jamun.model.conditioners.conditioners import SpatioTemporalConditioner
 from jamun.model.arch.spatiotemporal import E3SpatioTemporal, E3Transformer
 from jamun.model.arch.e3conv import E3Conv
-from jamun.model.arch.e3conv_conditional import E3ConvConditionalWithInputAttr
+from jamun.model.arch.e3conv_conditional import E3ConvConditionalSpatioTemporal  # Changed from E3ConvConditionalWithInputAttr
 from jamun.model.pooling import SpatialTemporalToTemporalNodeAttr, TemporalToSpatialNodeAttrMean
 from jamun.distributions._distributions import ConstantSigma
 from jamun.utils import unsqueeze_trailing
+from jamun.utils.average_squared_distance import compute_temporal_average_squared_distance_from_datasets  # Import temporal function
 
 # Setup device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -47,7 +50,7 @@ def create_spatial_module() -> E3Conv:
     )
     
     return E3Conv(
-        irreps_out="1x1e",
+        irreps_out="3x1e",  # Changed to match temporal module input
         irreps_hidden="120x0e + 32x1e", 
         irreps_sh="1x0e + 1x1e",
         hidden_layer_factory=hidden_layer_factory,
@@ -71,10 +74,10 @@ def create_spatial_module() -> E3Conv:
 def create_temporal_module() -> E3Transformer:
     """Create E3Transformer temporal module."""
     return E3Transformer(
-        irreps_out="3x1e",
+        irreps_out="3x1e",  # Final spatial features output
         irreps_hidden="8x0e + 4x1e",
         irreps_sh="1x0e + 1x1e", 
-        irreps_node_attr="1x1e",  # Match spatial module output
+        irreps_node_attr="3x1e",  # Match spatial module output
         num_layers=2,
         edge_attr_dim=24,
         num_attention_heads=1,
@@ -90,12 +93,44 @@ def create_spatiotemporal_model() -> E3SpatioTemporal:
     spatial_to_temporal_pooler = SpatialTemporalToTemporalNodeAttr()
     temporal_to_spatial_pooler = TemporalToSpatialNodeAttrMean()
     
+    # Compute radial cutoff using temporal average squared distance
+    print("Computing radial cutoff from temporal dataset...")
+    try:
+        # Load dataset to compute temporal average squared distance
+        dataset = parse_datasets_from_directory(
+            root="/data2/sules/ALA_ALA_enhanced_full_grid/train",
+            traj_pattern="^(.*).xtc",
+            pdb_pattern="^(.*).pdb", 
+            subsample=1,
+            total_lag_time=5,
+            lag_subsample_rate=1,
+            max_datasets=2,  # Keep small for testing
+            num_frames=5     # Small number of frames
+        )
+        
+        # Compute temporal average squared distance
+        temporal_avg_sq_dist = compute_temporal_average_squared_distance_from_datasets(
+            [dataset],  # Pass as list since function expects multiple datasets
+            num_samples=50,  # Use fewer samples for testing
+            verbose=True
+        )
+        
+        # Use a multiple of the temporal average squared distance as the radial cutoff
+        # Typically we might use sqrt(temporal_avg_sq_dist) * some_factor
+        import math
+        radial_cutoff = math.sqrt(temporal_avg_sq_dist) * 2.0  # Scale factor of 2.0
+        print(f"Computed radial cutoff: {radial_cutoff:.6f} nm")
+        
+    except Exception as e:
+        print(f"Warning: Failed to compute temporal cutoff ({e}), using default value 0.05")
+        radial_cutoff = 0.05
+    
     return E3SpatioTemporal(
         spatial_module=spatial_module,
         temporal_module=temporal_module,
         spatial_to_temporal_pooler=spatial_to_temporal_pooler,
         temporal_to_spatial_pooler=temporal_to_spatial_pooler,
-        radial_cutoff=0.05,
+        radial_cutoff=radial_cutoff,
         temporal_cutoff=1.0
     )
 
@@ -104,19 +139,19 @@ def create_spatiotemporal_conditioner() -> SpatioTemporalConditioner:
     spatiotemporal_model = create_spatiotemporal_model()
     
     return SpatioTemporalConditioner(
-        N_structures=1,
+        N_structures=1,  # Changed to 2 for [y.pos, spatial_features]
         spatiotemporal_model=spatiotemporal_model,
         c_noise=0.0,
         freeze_spatiotemporal_model=False  # Keep trainable
     )
 
 def create_conditional_denoiser_config() -> Dict[str, Any]:
-    """Create configuration for DenoiserWithInputAttr with spatiotemporal conditioner."""
+    """Create configuration for Denoiser with spatiotemporal conditioner."""
     import functools
     import e3tools.nn
     
     def create_arch():
-        """Create the E3ConvConditionalWithInputAttr architecture module."""
+        """Create the E3ConvConditionalSpatioTemporal architecture module."""
         # Hidden layer factory
         hidden_layer_factory = functools.partial(
             e3tools.nn.ConvBlock,
@@ -129,8 +164,8 @@ def create_conditional_denoiser_config() -> Dict[str, Any]:
             irreps_hidden_list=["16x0e + 8x1e"]
         )
         
-        return E3ConvConditionalWithInputAttr(
-            irreps_out="3x1e",
+        return E3ConvConditionalSpatioTemporal(
+            irreps_out="1x1e",  # Output should be 3 components (1x1e) to match position
             irreps_hidden="16x0e + 8x1e", 
             irreps_sh="1x0e + 1x1e",
             hidden_layer_factory=hidden_layer_factory,
@@ -149,8 +184,8 @@ def create_conditional_denoiser_config() -> Dict[str, Any]:
             num_residue_types=25,
             test_equivariance=False,
             reduce=None,
-            N_structures=1,
-            input_attr_irreps="3x1e",  # Accept 3D vector input attributes from spatiotemporal model
+            N_structures=1,  # Changed to 2 for [y.pos, spatial_features]
+            input_attr_irreps="3x1e",  # spatial_features only (9 components = 3x1e)
         )
     
     def create_optim(params):
@@ -158,7 +193,7 @@ def create_conditional_denoiser_config() -> Dict[str, Any]:
         return torch.optim.Adam(params, lr=0.001)
     
     return {
-        # Required DenoiserWithInputAttr parameters
+        # Required Denoiser parameters (changed from DenoiserWithInputAttr)
         'arch': create_arch,
         'optim': create_optim,
         'sigma_distribution': ConstantSigma(sigma=0.1),
@@ -188,13 +223,7 @@ def add_edges_to_batch(batch: torch_geometric.data.Batch, cutoff: float = 0.05) 
         return batch
     
     # Add radius-based edges
-    edge_index = e3tools.radius_graph(
-        x=batch.pos,
-        r=cutoff,
-        batch=batch.batch,
-        loop=False,
-        max_num_neighbors=32
-    )
+    edge_index = e3tools.radius_graph(batch.pos, cutoff, batch.batch)
     batch.edge_index = edge_index
     
     # Add bonded edges if they exist
@@ -257,13 +286,14 @@ def test_spatiotemporal_conditioner(conditioner: SpatioTemporalConditioner, batc
         conditioned_structures = conditioner(batch)
         
         print(f"✅ Conditioner forward pass successful!")
-        print(f"Number of conditioned structures: {len(conditioned_structures)} (expected: 1)")
-        print(f"Conditioned structure shape: {conditioned_structures[0].shape}")
+        print(f"Number of conditioned structures: {len(conditioned_structures)} (expected: 2)")
+        print(f"First structure (y.pos) shape: {conditioned_structures[0].shape}")
+        print(f"Second structure (spatial_features) shape: {conditioned_structures[1].shape}")
         print(f"Original position shape: {batch.pos.shape}")
         print(f"Position difference norm: {torch.norm(conditioned_structures[0] - batch.pos):.6f}")
         
-        # Verify we got exactly one structure
-        assert len(conditioned_structures) == 1, f"Expected 1 structure, got {len(conditioned_structures)}"
+        # Verify we got exactly two structures
+        assert len(conditioned_structures) == 2, f"Expected 2 structures, got {len(conditioned_structures)}"
         
         return True, conditioned_structures
         
@@ -274,9 +304,9 @@ def test_spatiotemporal_conditioner(conditioner: SpatioTemporalConditioner, batc
         return False, None
 
 def test_conditional_denoiser_creation():
-    """Test creating DenoiserWithInputAttr with spatiotemporal conditioner."""
+    """Test creating Denoiser with spatiotemporal conditioner."""
     print("\n" + "="*50)
-    print("TESTING DENOISER WITH INPUT ATTR CREATION")
+    print("TESTING DENOISER WITH SPATIOTEMPORAL CONDITIONER CREATION")
     print("="*50)
     
     try:
@@ -284,10 +314,10 @@ def test_conditional_denoiser_creation():
         config = create_conditional_denoiser_config()
         
         # Create denoiser (this will instantiate all components)
-        denoiser = DenoiserWithInputAttr(**config)
+        denoiser = Denoiser(**config)
         denoiser = denoiser.to(device)
         
-        print(f"✅ DenoiserWithInputAttr created successfully!")
+        print(f"✅ Denoiser created successfully!")
         print(f"Denoiser device: {next(denoiser.parameters()).device}")
         print(f"Has conditioner: {hasattr(denoiser, 'conditioning_module')}")
         print(f"Architecture type: {type(denoiser.g).__name__}")
@@ -303,38 +333,47 @@ def test_conditional_denoiser_creation():
         return True, denoiser
         
     except Exception as e:
-        print(f"❌ DenoiserWithInputAttr creation failed: {e}")
+        print(f"❌ Denoiser creation failed: {e}")
         import traceback
         traceback.print_exc()
         return False, None
 
-def test_denoiser_forward_pass(denoiser: DenoiserWithInputAttr, batch: torch_geometric.data.Batch):
+def test_denoiser_forward_pass(denoiser: Denoiser, batch: torch_geometric.data.Batch):
     """Test the complete denoiser forward pass."""
     print("\n" + "="*50)
-    print("TESTING DENOISER WITH INPUT ATTR FORWARD PASS")
+    print("TESTING DENOISER WITH SPATIOTEMPORAL CONDITIONER FORWARD PASS")
     print("="*50)
     
     try:
         # Test with sigma = 0.1
         sigma = 0.1
-        print(f"Testing with sigma = {sigma}")
         
-        # Forward pass - this should now extract spatiotemporal features and use them as input_attr
+        # Debug: check conditioned structures shapes
+        conditioned_structures = denoiser.conditioning_module(batch)
+        print(f"DEBUG: Conditioned structures shapes:")
+        for i, struct in enumerate(conditioned_structures):
+            print(f"  Structure {i}: {struct.shape}")
+        
+        concatenated = torch.cat([*conditioned_structures], dim=-1)
+        print(f"DEBUG: Concatenated shape: {concatenated.shape}")
+        print(f"DEBUG: Expected irreps: 4x1e = 12 components")
+        
         with torch.no_grad():
             xhat_batch = denoiser.xhat(batch, sigma)
         
-        print(f"✅ DenoiserWithInputAttr forward pass successful!")
+        print(f"✅ Denoiser forward pass successful!")
         print(f"Input shape: {batch.pos.shape}")
         print(f"Output shape: {xhat_batch.pos.shape}")
-        print(f"Position difference norm: {torch.norm(xhat_batch.pos - batch.pos):.6f}")
+        print(f"Output norm: {torch.norm(xhat_batch.pos):.6f}")
+        print(f"Used sigma: {sigma}")
         
-        # Check that the spatiotemporal features were properly extracted and used
-        print(f"✅ Spatiotemporal features successfully integrated as input_attr!")
+        # Verify output shapes match input
+        assert xhat_batch.pos.shape == batch.pos.shape, f"Shape mismatch: {xhat_batch.pos.shape} vs {batch.pos.shape}"
         
         return True
         
     except Exception as e:
-        print(f"❌ DenoiserWithInputAttr forward pass failed: {e}")
+        print(f"❌ Denoiser forward pass failed: {e}")
         import traceback
         traceback.print_exc()
         return False

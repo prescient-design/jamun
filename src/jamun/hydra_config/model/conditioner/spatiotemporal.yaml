@@ -1,51 +1,59 @@
-# @package _global_
 _target_: jamun.model.conditioners.conditioners.SpatioTemporalConditioner
-N_structures: 1
+N_structures: 2  # Now returns [y.pos, spatial_features]
 c_noise: 0.0
-freeze_spatiotemporal_model: false  # Trainable by default
+freeze_spatiotemporal_model: false # Trainable by default
 
 # Spatiotemporal model configuration
 spatiotemporal_model:
   _target_: jamun.model.arch.spatiotemporal.E3SpatioTemporal
   radial_cutoff: 0.05
   temporal_cutoff: 1.0
-  
+
   # Spatial module (E3Conv)
   spatial_module:
     _target_: jamun.model.arch.e3conv.E3Conv
-    irreps_out: "3x1e"
+    irreps_out: "1x1e"
     irreps_hidden: "120x0e + 32x1e"
     irreps_sh: "1x0e + 1x1e"
     n_layers: 1
     edge_attr_dim: 64
-    use_residue_information: true
     atom_type_embedding_dim: 8
     atom_code_embedding_dim: 8
     residue_code_embedding_dim: 32
     residue_index_embedding_dim: 8
+    use_residue_information: ${data.use_residue_information}
     use_residue_sequence_index: false
     num_atom_types: 20
     max_sequence_length: 10
     num_atom_codes: 10
     num_residue_types: 25
-    test_equivariance: false
-    reduce: null
-  
+    hidden_layer_factory:
+      _target_: e3tools.nn.ConvBlock
+      _partial_: true
+      conv:
+        _target_: e3tools.nn.Conv
+        _partial_: true
+    output_head_factory:
+      _target_: e3tools.nn.EquivariantMLP
+      _partial_: true
+      irreps_hidden_list:
+        - "120x0e + 32x1e"
+
   # Temporal module (E3Transformer)
   temporal_module:
     _target_: jamun.model.arch.spatiotemporal.E3Transformer
-    irreps_out: "3x1e"
-    irreps_hidden: "8x0e + 4x1e"
+    irreps_out: "120x0e + 32x1e"  # Final spatial features output
+    irreps_hidden: "120x0e + 32x1e"
     irreps_sh: "1x0e + 1x1e"
-    irreps_node_attr: "3x1e"  # Match spatial module output
+    irreps_node_attr: "1x1e"  # Match spatial module output
     num_layers: 2
     edge_attr_dim: 24
     num_attention_heads: 1
     reduce: null
-  
+
   # Pooling modules
   spatial_to_temporal_pooler:
     _target_: jamun.model.pooling.SpatialTemporalToTemporalNodeAttr
-  
+
   temporal_to_spatial_pooler:
-    _target_: jamun.model.pooling.TemporalToSpatialNodeAttrMean 
+    _target_: jamun.model.pooling.TemporalToSpatialNodeAttr 

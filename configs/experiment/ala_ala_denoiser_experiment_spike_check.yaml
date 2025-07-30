@@ -64,10 +64,10 @@ model:
     N_structures: ${model.arch.N_structures}
 
 trainer:
-  max_epochs: 200
+  max_epochs: 100
 
 logger:
   wandb:
-    group: ALA_ALA_noise_check
+    group: ALA_ALA_noise_check_spike_check
     notes: "Model 3: Denoiser with PositionConditioner, 2 structures, sigma=0.04" 
-    tags: ["noise_check", "high noise", "non-identical, i.i.d. measurements"]
+    tags: ["noise_check", "high noise", "non-identical, i.i.d. measurements", "spike check"]

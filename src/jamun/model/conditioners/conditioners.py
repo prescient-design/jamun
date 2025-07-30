@@ -240,8 +240,8 @@ class SpatioTemporalConditioner(pl.LightningModule):
     Conditioner that uses a spatio-temporal model to process hidden states.
     
     This conditioner takes the current positions and hidden states, processes them
-    through a spatio-temporal model, and returns a single conditioned structure.
-    Always returns exactly one structure regardless of N_structures parameter.
+    through a spatio-temporal model, and returns [y.pos, spatial_features].
+    Always returns exactly 2 structures: the original positions and computed spatial features.
     
     By default, the spatiotemporal model is trainable. Set freeze_spatiotemporal_model=True
     to freeze the parameters (e.g., when using a pretrained model).
@@ -307,28 +307,40 @@ class SpatioTemporalConditioner(pl.LightningModule):
             y: Batch containing current positions and hidden states
             
         Returns:
-            List containing a single conditioned structure tensor (always length 1)
+            List containing [y.pos, spatial_features] for concatenation by the denoiser
         """
+        # Align hidden positions with current position before processing
+        if hasattr(y, 'hidden_state') and y.hidden_state is not None and len(y.hidden_state) > 0:
+            # Create a copy of the batch to avoid modifying the original
+            y_aligned = y.clone()
+            
+            # Align each hidden state to the current position
+            aligned_hidden_states = []
+            for hidden_pos in y.hidden_state:
+                # Align hidden_pos to y.pos using Kabsch algorithm (same as PositionConditioner)
+                aligned_hidden_pos = kabsch_algorithm(hidden_pos, y.pos, y.batch, y.num_graphs)
+                aligned_hidden_states.append(aligned_hidden_pos)
+            
+            # Update the hidden states in the aligned batch
+            y_aligned.hidden_state = aligned_hidden_states
+        else:
+            # If no hidden states, use original batch
+            y_aligned = y
+        
         # Prepare noise conditioning
-        device = y.pos.device
+        device = y_aligned.pos.device
         sigma = torch.tensor(self.c_noise, device=device)
         sigma = unsqueeze_trailing(sigma, 1)
         
-        # Process through spatio-temporal model
+        # Process through spatio-temporal model with aligned hidden states
         # Only disable gradients if the model is frozen
         if self.freeze_spatiotemporal_model:
             with torch.no_grad():
-                spatial_features = self.spatiotemporal_model(y, sigma)
+                spatial_features = self.spatiotemporal_model(y_aligned, sigma)
         else:
             # Allow gradients to flow when training
-            spatial_features = self.spatiotemporal_model(y, sigma)
+            spatial_features = self.spatiotemporal_model(y_aligned, sigma)
         
-        # The spatiotemporal model returns spatial features, not positions
-        # We need to use these features to condition the structure
-        # For now, we'll use the current position as the conditioned structure
-        # In a more sophisticated implementation, we might use the features
-        # to modify the positions or use them in other ways
-        conditioned_position = y.pos
-            
-        # Return list with single conditioned structure (always length 1)
-        return [conditioned_position]
+        # Return list containing [y.pos, spatial_features] for concatenation
+        # The denoiser will concatenate these along the feature dimension
+        return [y.pos, spatial_features]

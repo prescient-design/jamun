@@ -19,10 +19,53 @@ from jamun.hydra import instantiate_dict_cfg  # noqa: E402
 from jamun.hydra.utils import format_resolver  # noqa: E402
 from jamun.utils import compute_average_squared_distance_from_datasets, dist_log, find_checkpoint  # noqa: E402
 from jamun.utils._normalizations import normalization_factors  # noqa: E402
+from jamun.utils.average_squared_distance import compute_temporal_average_squared_distance_from_datasets  # noqa: E402
+import math
+from jamun.utils._normalizations import normalization_factors
 
 dotenv.load_dotenv(".env", verbose=True)
 OmegaConf.register_new_resolver("format", format_resolver)
 
+def compute_radial_cutoff(max_radius: float, average_squared_distance: float, sigma: float, D: int = 3) -> float:
+    """
+    Compute radial cutoff using the same formula as the denoiser.
+    
+    This replicates the computation from denoiser_conditional.py:
+    radial_cutoff = effective_radial_cutoff(sigma) / c_in
+    where:
+    - effective_radial_cutoff = sqrt(max_radius² + 6σ²)
+    - c_in = 1.0 / sqrt(average_squared_distance + 2Dσ²)
+    
+    Args:
+        max_radius: Maximum radius parameter
+        average_squared_distance: Average squared distance from dataset
+        sigma: Noise level
+        D: Dimensionality (default 3 for 3D coordinates)
+        
+    Returns:
+        Computed radial cutoff
+    """
+    # Effective radial cutoff based on noise level
+    effective_radial_cutoff = math.sqrt(max_radius**2 + 6 * sigma**2)
+    
+    # JAMUN normalization factor c_in
+    A = average_squared_distance
+    B = 2 * D * sigma**2
+    c_in = 1.0 / math.sqrt(A + B)
+    
+    # Final radial cutoff
+    radial_cutoff = effective_radial_cutoff / c_in
+    
+    print(f"Radial cutoff computation:")
+    print(f"  max_radius: {max_radius}")
+    print(f"  average_squared_distance: {average_squared_distance}")
+    print(f"  sigma: {sigma}")
+    print(f"  D: {D}")
+    print(f"  effective_radial_cutoff: {effective_radial_cutoff}")
+    print(f"  c_in: {c_in}")
+    print(f"  final radial_cutoff: {radial_cutoff}")
+    
+    return radial_cutoff
 
 def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     """Computes the average squared distance for normalization from the data."""
@@ -33,6 +76,18 @@ def compute_average_squared_distance_from_config(cfg: OmegaConf) -> float:
     average_squared_distance = compute_average_squared_distance_from_datasets(train_datasets, cutoff)
     return average_squared_distance
 
+def compute_temporal_average_squared_distance_from_config(cfg: OmegaConf) -> float:
+    """Computes the temporal average squared distance for normalization from the data."""
+    datamodule = hydra.utils.instantiate(cfg.data.datamodule)
+    datamodule.setup("compute_normalization")
+    train_datasets = datamodule.datasets["train"]
+    
+    average_squared_distance = compute_temporal_average_squared_distance_from_datasets(
+        train_datasets, 
+        num_samples=100,  # Use reasonable number of samples
+        verbose=True
+    )
+    return average_squared_distance
 
 def run(cfg):
     log_cfg = OmegaConf.to_container(cfg, throw_on_missing=True, resolve=True)
@@ -59,14 +114,15 @@ def run(cfg):
         )
         cfg.model.average_squared_distance = average_squared_distance
 
+    sigma = cfg.model.sigma_distribution.sigma
+    average_squared_distance = cfg.model.average_squared_distance
+    c_in, c_skip, c_out, c_noise = normalization_factors(sigma, average_squared_distance)
+    c_in_float = float(c_in)
+    c_noise_float = float(c_noise)
+
     # Compute normalization factors for conditioner c_in parameter
     if cfg.model.get("conditioner") and cfg.model.conditioner.get("_target_") == "jamun.model.conditioners.DenoisedConditioner":
         if hasattr(cfg.model.sigma_distribution, "sigma"):
-            sigma = cfg.model.sigma_distribution.sigma
-            average_squared_distance = cfg.model.average_squared_distance
-            c_in, c_skip, c_out, c_noise = normalization_factors(sigma, average_squared_distance)
-            c_in_float = float(c_in)
-            
             dist_log(f"Computing normalization factors for DenoisedConditioner with sigma={sigma}")
             dist_log(f"  average_squared_distance: {average_squared_distance}")
             dist_log(f"  c_in: {c_in_float}")
@@ -77,6 +133,18 @@ def run(cfg):
             cfg.model.conditioner.c_in = c_in_float
             dist_log(f"Set cfg.model.conditioner.c_in to {c_in_float}")
 
+    if cfg.model.conditioner._target_ == "jamun.model.conditioners.conditioners.SpatioTemporalConditioner":
+        cfg.model.conditioner.spatiotemporal_model.radial_cutoff = average_squared_distance
+        max_radius = cfg.model.max_radius
+        temporal_average_squared_distance = compute_temporal_average_squared_distance_from_config(cfg)
+        temporal_radial_cutoff = compute_radial_cutoff(
+                                        max_radius=max_radius,
+                                        average_squared_distance=temporal_average_squared_distance,  # Use temporal for spatiotemporal model
+                                        sigma=sigma,
+                                        D=3)
+        cfg.model.conditioner.spatiotemporal_model.temporal_cutoff = temporal_radial_cutoff
+        cfg.model.conditioner.c_noise = c_noise_float
+        dist_log(f"Set cfg.model.conditioner.spatiotemporal_model.c_noise to {c_noise_float}")
     # # do this for the sweep
     # if cfg.model.N_measurements_hidden is not None:
     #     dist_log(f"Number of hidden measurements: {cfg.model.N_measurements_hidden}")

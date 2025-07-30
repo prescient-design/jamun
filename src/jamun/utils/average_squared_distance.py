@@ -74,8 +74,8 @@ def compute_average_squared_distance_from_datasets(
     return float(mean_avg_sq_dist)
 
 
-def compute_temporal_average_squared_distance_from_dataset(
-    dataset,
+def compute_temporal_average_squared_distance_from_datasets(
+    datasets,
     num_samples: int = 100,
     verbose: bool = False
 ) -> float:
@@ -83,7 +83,7 @@ def compute_temporal_average_squared_distance_from_dataset(
     Compute average squared distance between neighboring vertices in temporal graphs.
     
     Args:
-        dataset: Dataset containing spatial graphs with hidden states
+        datasets: Collection of datasets containing spatial graphs with hidden states
         num_samples: Number of samples to use for estimation
         verbose: Whether to print verbose output
         
@@ -96,7 +96,7 @@ def compute_temporal_average_squared_distance_from_dataset(
     num_graphs = 0
     
     # Follow pattern from existing functions in this module
-    for item in dataset:
+    for item in datasets:
         if num_graphs >= num_samples:
             break
         for graph in item:

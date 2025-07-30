@@ -1,0 +1,31 @@
+defaults:
+  - arch: e3conv_conditional_spatiotemporal.yaml
+  - optim: adam.yaml
+  - conditioner: spatiotemporal.yaml
+  - _self_
+
+# Model configuration
+sigma_distribution:
+  _target_: jamun.model.sigma_distribution.ConstantSigma
+  sigma: 0.1
+
+max_radius: 1000.0
+average_squared_distance: 10.0
+add_fixed_noise: false
+add_fixed_ones: false
+align_noisy_input_during_training: true
+align_noisy_input_during_evaluation: true
+mean_center: true
+mirror_augmentation_rate: 0.0
+bond_loss_coefficient: 1.0
+normalization_type: "JAMUN"
+sigma_data: null
+lr_scheduler_config: null
+use_torch_compile: false
+torch_compile_kwargs: null
+
+# Override to ensure N_structures matches spatiotemporal conditioner output
+arch:
+  N_structures: 1  # For [y.pos, spatial_features] 
+
+_target_: jamun.model.denoiser_conditional.Denoiser

@@ -2,7 +2,7 @@ defaults:
   - arch: e3conv_conditional.yaml
   - optim: adam.yaml
   - lr_scheduler_config: null
-  - conditioners: position.yaml  # Default conditioner, can be overridden
+  - conditioner: position.yaml  # Default conditioner, can be overridden
   - _self_
 
 max_radius: null

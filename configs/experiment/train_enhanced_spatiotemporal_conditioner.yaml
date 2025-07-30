@@ -1,12 +1,10 @@
 # @package _global_
-# Training SpatioTemporalConditioner on enhanced sampling data
-
 defaults:
-  - override /model: denoiser_spatiotemporal_conditioner
-  - override /callbacks:
-    - timing.yaml
-    - lr_monitor.yaml
-    - model_checkpoint.yaml
+  - override /model: denoiser_conditional_spatiotemporal
+  # - override /callbacks:
+  #   - timing.yaml
+  #   - lr_monitor.yaml
+  #   - model_checkpoint.yaml
 
 data:
   datamodule:
@@ -20,7 +18,7 @@ data:
         subsample: 1
         total_lag_time: 5
         lag_subsample_rate: 1
-        max_datasets: 2  # Increased for more training data
+        # max_datasets: 2  # Increased for more training data
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -30,23 +28,23 @@ data:
         subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
-        max_datasets: 1
+        # max_datasets: 1
 
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
   arch:
-    n_layers: 2
-  max_radius: 1000.0
+    n_layers: 1
+  max_radius: 10.0
   optim:
-    lr: 0.001  # Slightly reduced learning rate for stability
+    lr: 0.002  # Slightly reduced learning rate for stability
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 2  # Increased due to model complexity
-  devices: 1
-  gradient_clip_val: 1.0  # Add gradient clipping for stability
+  max_epochs: 50  # Increased due to model complexity
+  # devices: 1
+  # gradient_clip_val: 1.0  # Add gradient clipping for stability
 
 logger:
   wandb:
