@@ -40,6 +40,9 @@ class DenoiserMultimeasurement(pl.LightningModule):
         N_measurements_hidden: int = 1,
         N_measurements: int = 1,
         max_graphs_per_batch: int = None,
+        rotational_augmentation: bool = False,
+        alignment_correction_order: int = 0,
+        pass_topology_as_atom_graphs: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)

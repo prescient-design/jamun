@@ -90,8 +90,8 @@ def create_spatiotemporal_model() -> E3SpatioTemporal:
     temporal_module = create_temporal_module()
     
     # Create pooling modules
-    spatial_to_temporal_pooler = SpatialTemporalToTemporalNodeAttr()
-    temporal_to_spatial_pooler = TemporalToSpatialNodeAttrMean()
+    spatial_to_temporal_pooler = SpatialTemporalToTemporalNodeAttr(irreps_out="3x1e")  # Match spatial module output
+    temporal_to_spatial_pooler = TemporalToSpatialNodeAttrMean(irreps_out="3x1e")  # Match temporal module output
     
     # Compute radial cutoff using temporal average squared distance
     print("Computing radial cutoff from temporal dataset...")

@@ -51,6 +51,8 @@ temporal_module:
 # Pooling modules
 spatial_to_temporal_pooler:
   _target_: jamun.model.pooling.SpatialTemporalToTemporalNodeAttr
+  irreps_out: "1x1e"  # Match spatial module output
 
 temporal_to_spatial_pooler:
-  _target_: jamun.model.pooling.TemporalToSpatialNodeAttrMean 
+  _target_: jamun.model.pooling.TemporalToSpatialNodeAttrMean
+  irreps_out: "3x1e"  # Match temporal module output 

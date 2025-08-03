@@ -36,6 +36,9 @@ class Denoiser(pl.LightningModule):
         use_torch_compile: bool = True,
         torch_compile_kwargs: Optional[Dict] = None,
         conditioner: Callable[..., list[torch.Tensor]] = None,
+        rotational_augmentation: bool = False,
+        alignment_correction_order: int = 0,
+        pass_topology_as_atom_graphs: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters(logger=False)

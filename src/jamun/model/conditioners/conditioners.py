@@ -344,3 +344,4 @@ class SpatioTemporalConditioner(pl.LightningModule):
         # Return list containing [y.pos, spatial_features] for concatenation
         # The denoiser will concatenate these along the feature dimension
         return [y.pos, spatial_features]
+    

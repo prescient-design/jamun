@@ -5,6 +5,7 @@ import torch_geometric
 
 from jamun.utils import mean_center
 from typing import Dict, List, Optional
+from e3tools import scatter
 
 class ModelSamplingWrapper:
     """Wrapper to sample positions from a model."""
@@ -104,7 +105,8 @@ class ModelSamplingWrapperMemory:
             if hasattr(self.init_graphs, 'hidden_state') and self.init_graphs.hidden_state:
                 for i in range(len(self.init_graphs.hidden_state)):
                     # Mean center each hidden state in-place
-                    self.init_graphs.hidden_state[i] = self.init_graphs.hidden_state[i] - self.init_graphs.hidden_state[i].mean(dim=0, keepdim=True)
+                    mean = scatter(self.init_graphs.hidden_state[i], self.init_graphs.batch, dim=0, reduce="mean")
+                    self.init_graphs.hidden_state[i] = self.init_graphs.hidden_state[i] - mean[self.init_graphs.batch]
 
     @property
     def device(self) -> torch.device:

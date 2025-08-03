@@ -1,6 +1,7 @@
 _target_: jamun.model.conditioners.conditioners.SpatioTemporalConditioner
 N_structures: 2  # Now returns [y.pos, spatial_features]
 c_noise: 0.0
+c_in: 1.0
 freeze_spatiotemporal_model: false # Trainable by default
 
 # Spatiotemporal model configuration
@@ -30,8 +31,8 @@ spatiotemporal_model:
     hidden_layer_factory:
       _target_: e3tools.nn.ConvBlock
       _partial_: true
-      conv:
-        _target_: e3tools.nn.Conv
+      conv:---
+        _target_: e3tools.nn.Conv # replace with Conv for non-separable case
         _partial_: true
     output_head_factory:
       _target_: e3tools.nn.EquivariantMLP
@@ -54,6 +55,8 @@ spatiotemporal_model:
   # Pooling modules
   spatial_to_temporal_pooler:
     _target_: jamun.model.pooling.SpatialTemporalToTemporalNodeAttr
+    irreps_out: "1x1e"  # Match spatial module output
 
   temporal_to_spatial_pooler:
-    _target_: jamun.model.pooling.TemporalToSpatialNodeAttr 
+    _target_: jamun.model.pooling.TemporalToSpatialNodeAttrMean
+    irreps_out: "120x0e + 32x1e"  # Match temporal module output

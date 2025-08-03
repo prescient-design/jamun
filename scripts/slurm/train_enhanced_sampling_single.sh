@@ -20,4 +20,4 @@ echo "Conda environment: $CONDA_DEFAULT_ENV"
 nvidia-smi
 
 # Run training with parameter overrides
-jamun_train --config-dir=configs experiment=train_enhanced_position_conditioner
+jamun_train --config-dir=configs experiment=train_enhanced_spatiotemporal_conditioner.yaml

@@ -6,7 +6,7 @@ Lightning modules for converting node attributes between spatial and temporal re
 import torch
 import torch_geometric
 import pytorch_lightning as pl
-
+from e3tools.nn import LayerNorm
 
 class SpatialToTemporalNodeAttr(pl.LightningModule):
     """
@@ -14,8 +14,10 @@ class SpatialToTemporalNodeAttr(pl.LightningModule):
     by repeating first temporal feature.
     """
     
-    def __init__(self):
+    def __init__(self, irreps_out):
         super().__init__()
+        self.irreps_out = irreps_out
+        self.layer_norm = LayerNorm(irreps_out)
     
     def forward(self, spatial_node_attr_temporal, temporal_batch):
         """
@@ -52,6 +54,9 @@ class SpatialToTemporalNodeAttr(pl.LightningModule):
         assert temporal_node_attr.shape[0] == expected_temporal_nodes, \
             f"Output shape mismatch: {temporal_node_attr.shape[0]} vs expected {expected_temporal_nodes}"
         
+        # Apply layer normalization before returning
+        temporal_node_attr = self.layer_norm(temporal_node_attr)
+        
         return temporal_node_attr
 
 
@@ -61,8 +66,10 @@ class TemporalToSpatialNodeAttr(pl.LightningModule):
     Takes the first temporal node attribute from each temporal graph.
     """
     
-    def __init__(self):
+    def __init__(self, irreps_out):
         super().__init__()
+        self.irreps_out = irreps_out
+        self.layer_norm = LayerNorm(irreps_out)
     
     def forward(self, temporal_node_attr, temporal_batch):
         """
@@ -97,6 +104,9 @@ class TemporalToSpatialNodeAttr(pl.LightningModule):
         assert spatial_node_attr.shape == (num_temporal_graphs, attr_dim), \
             f"Output shape mismatch: {spatial_node_attr.shape} vs expected ({num_temporal_graphs}, {attr_dim})"
         
+        # Apply layer normalization before returning
+        spatial_node_attr = self.layer_norm(spatial_node_attr)
+        
         return spatial_node_attr
 
 
@@ -106,8 +116,10 @@ class TemporalToSpatialNodeAttrMean(pl.LightningModule):
     Takes the mean of all temporal node attributes for each temporal graph.
     """
     
-    def __init__(self):
+    def __init__(self, irreps_out):
         super().__init__()
+        self.irreps_out = irreps_out
+        self.layer_norm = LayerNorm(irreps_out)
     
     def forward(self, temporal_node_attr, temporal_batch):
         """
@@ -144,6 +156,9 @@ class TemporalToSpatialNodeAttrMean(pl.LightningModule):
         assert spatial_node_attr.shape == (num_temporal_graphs, attr_dim), \
             f"Output shape mismatch: {spatial_node_attr.shape} vs expected ({num_temporal_graphs}, {attr_dim})"
         
+        # Apply layer normalization before returning
+        spatial_node_attr = self.layer_norm(spatial_node_attr)
+        
         return spatial_node_attr
 
 
@@ -153,8 +168,10 @@ class SpatialTemporalToTemporalNodeAttr(pl.LightningModule):
     Converts from [N, T, features] to [NT, features] with correct temporal graph ordering.
     """
     
-    def __init__(self):
+    def __init__(self, irreps_out):
         super().__init__()
+        self.irreps_out = irreps_out
+        self.layer_norm = LayerNorm(irreps_out)
     
     def forward(self, spatial_node_attr_temporal, temporal_batch):
         """
@@ -189,29 +206,32 @@ class SpatialTemporalToTemporalNodeAttr(pl.LightningModule):
         assert temporal_node_attr.shape[0] == expected_temporal_nodes, \
             f"Output shape mismatch: {temporal_node_attr.shape[0]} vs expected {expected_temporal_nodes}"
         
+        # Apply layer normalization before returning
+        temporal_node_attr = self.layer_norm(temporal_node_attr)
+        
         return temporal_node_attr
 
 
 # Legacy function interfaces for backward compatibility
-def spatial_to_temporal_node_attr(spatial_node_attr_temporal, temporal_batch):
+def spatial_to_temporal_node_attr(spatial_node_attr_temporal, temporal_batch, irreps_out):
     """Legacy function interface for backward compatibility."""
-    module = SpatialToTemporalNodeAttr()
+    module = SpatialToTemporalNodeAttr(irreps_out)
     return module(spatial_node_attr_temporal, temporal_batch)
 
 
-def temporal_to_spatial_node_attr(temporal_node_attr, temporal_batch):
+def temporal_to_spatial_node_attr(temporal_node_attr, temporal_batch, irreps_out):
     """Legacy function interface for backward compatibility."""
-    module = TemporalToSpatialNodeAttr()
+    module = TemporalToSpatialNodeAttr(irreps_out)
     return module(temporal_node_attr, temporal_batch)
 
 
-def temporal_to_spatial_node_attr_mean(temporal_node_attr, temporal_batch):
+def temporal_to_spatial_node_attr_mean(temporal_node_attr, temporal_batch, irreps_out):
     """Legacy function interface for backward compatibility."""
-    module = TemporalToSpatialNodeAttrMean()
+    module = TemporalToSpatialNodeAttrMean(irreps_out)
     return module(temporal_node_attr, temporal_batch)
 
 
-def spatial_temporal_to_temporal_node_attr(spatial_node_attr_temporal, temporal_batch):
+def spatial_temporal_to_temporal_node_attr(spatial_node_attr_temporal, temporal_batch, irreps_out):
     """Legacy function interface for backward compatibility."""
-    module = SpatialTemporalToTemporalNodeAttr()
+    module = SpatialTemporalToTemporalNodeAttr(irreps_out)
     return module(spatial_node_attr_temporal, temporal_batch) 

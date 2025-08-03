@@ -1,6 +1,7 @@
 # @package _global_
 defaults:
   - override /model: denoiser_conditional_spatiotemporal
+  - override /model/conditioner: spatiotemporal_pretrained
   - override /callbacks:
     - timing.yaml
     - lr_monitor.yaml

@@ -17,7 +17,7 @@ import torch_geometric
 import torch_geometric.data
 import e3tools
 import e3tools.nn
-
+import logging
 from jamun.model.arch.e3conv import E3Conv
 
 
@@ -67,7 +67,7 @@ def spatial_to_temporal_graphs(batch):
         temporal_length = 1
     
     # Store reference to spatial graph
-    spatial_graph = batch.clone()
+    # spatial_graph = batch.clone()
     
     temporal_graphs = []
     
@@ -118,7 +118,7 @@ def spatial_to_temporal_graphs(batch):
     temporal_batch = torch_geometric.data.Batch.from_data_list(temporal_graphs)
     
     # Store spatial graph reference
-    temporal_batch.spatial_graph = spatial_graph
+    # temporal_batch.spatial_graph = spatial_graph
     
     return temporal_batch
 
@@ -249,7 +249,8 @@ class E3Transformer(nn.Module):
             basis="gaussian",
             cutoff=True,
         )
-        
+        temporal_edge_attr = torch.ones_like(temporal_edge_attr) # TODO: remove this, this is hacking. 
+
         # Optional bondedness (if bond_mask exists in the temporal graph)
         if hasattr(temporal_graph, 'bond_mask') and temporal_graph.bond_mask is not None:
             bonded_edge_attr = self.embed_bondedness(temporal_graph.bond_mask)
@@ -324,7 +325,8 @@ class E3SpatioTemporal(nn.Module):
         self.temporal_to_spatial_pooler = temporal_to_spatial_pooler
         self.radial_cutoff = radial_cutoff
         self.temporal_cutoff = temporal_cutoff
-        
+    
+    
     def forward(
         self,
         batch: torch_geometric.data.Batch,
@@ -410,8 +412,9 @@ class E3SpatioTemporal(nn.Module):
         spatial_features = self.temporal_to_spatial_pooler(temporal_output, temporal_batch)
         
         # Step 7: Convert temporal graph back to spatial graph
-        output_spatial_graph = temporal_to_spatial_graphs(temporal_batch)
-        
+        # output_spatial_graph = temporal_to_spatial_graphs(temporal_batch)
+        output_spatial_graph = batch 
+
         # Prepare return values
         if return_temporal_features or return_temporal_graph:
             result = {

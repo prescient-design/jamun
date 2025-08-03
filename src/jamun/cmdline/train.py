@@ -144,7 +144,9 @@ def run(cfg):
                                         D=3)
         cfg.model.conditioner.spatiotemporal_model.temporal_cutoff = temporal_radial_cutoff
         cfg.model.conditioner.c_noise = c_noise_float
+        cfg.model.conditioner.c_in = c_in_float
         dist_log(f"Set cfg.model.conditioner.spatiotemporal_model.c_noise to {c_noise_float}")
+        dist_log(f"Set cfg.model.conditioner.c_in to {c_in_float}")
     # # do this for the sweep
     # if cfg.model.N_measurements_hidden is not None:
     #     dist_log(f"Number of hidden measurements: {cfg.model.N_measurements_hidden}")
