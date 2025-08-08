@@ -21,7 +21,7 @@ import logging
 from jamun.model.arch.e3conv import E3Conv
 
 
-def calculate_temporal_positions(temporal_length, device=None):
+def calculate_temporal_positions(temporal_length, mode="linear", device=None):
     """
     Calculate normalized temporal positions for nodes in a temporal graph.
     
@@ -35,14 +35,19 @@ def calculate_temporal_positions(temporal_length, device=None):
     if temporal_length <= 1:
         return torch.tensor([0.0], device=device)
     
-    # Create positions [0, 1, 2, ..., T-1] and normalize by T
-    positions = torch.arange(temporal_length, dtype=torch.float32, device=device)
-    normalized_positions = positions / temporal_length
+    if mode == "linear":
+        # Create positions [0, 1, 2, ..., T-1] and normalize by T
+        positions = torch.arange(temporal_length, dtype=torch.float32, device=device)
+        normalized_positions = positions / temporal_length
+    elif mode == "zeros":
+        # Create positions [0, 1, 2, ..., T-1] and normalize by T
+        positions = torch.arange(temporal_length, dtype=torch.float32, device=device)
+        positions = torch.zeros_like(positions)
     
     return normalized_positions
 
 
-def spatial_to_temporal_graphs(batch):
+def spatial_to_temporal_graphs(batch, temporal_position_mode="linear"):
     """
     Convert a batch of spatial graphs to temporal graphs.
     
@@ -83,7 +88,7 @@ def spatial_to_temporal_graphs(batch):
         temporal_pos = torch.stack(temporal_positions)  # Shape: [T, 3]
         
         # Calculate temporal positions for this sequence
-        temporal_position = calculate_temporal_positions(temporal_length, device=device)
+        temporal_position = calculate_temporal_positions(temporal_length, mode=temporal_position_mode, device=device)
         
         # Create edge connectivity
         if temporal_length > 1:
@@ -108,8 +113,8 @@ def spatial_to_temporal_graphs(batch):
         temporal_graph = torch_geometric.data.Data(
             pos=temporal_pos,
             edge_index=edge_index,
-            spatial_node_idx=torch.tensor([node_idx], device=device),  # Track which spatial node this came from
-            temporal_length=torch.tensor([temporal_length], device=device),
+            spatial_node_idx=torch.tensor([node_idx], dtype=torch.long, device=device),  # Track which spatial node this came from
+            temporal_length=torch.tensor([temporal_length], dtype=torch.long, device=device),
             temporal_position=temporal_position  # Normalized position in sequence [0, 1/T, 2/T, ...]
         )
         temporal_graphs.append(temporal_graph)
@@ -165,13 +170,18 @@ class E3Transformer(nn.Module):
         edge_attr_dim: int,
         num_attention_heads: int,
         reduce: str | None = None,
+        irreps_node_attr_temporal: Union[str, e3nn.o3.Irreps] = "1x1e",
+        radial_edge_attr_encoding_function: str = "gaussian",
+        node_attr_temporal_encoding_function: str = "gaussian",
+        edge_attr_temporal_encoding_function: str = "gaussian",
     ):
         super().__init__()
 
         self.irreps_out = o3.Irreps(irreps_out)
         self.irreps_hidden = o3.Irreps(irreps_hidden)
         self.irreps_sh = o3.Irreps(irreps_sh)
-        self.irreps_node_attr = o3.Irreps(irreps_node_attr) # input irreps 
+        self.irreps_node_attr = o3.Irreps(irreps_node_attr) # input irreps
+        self.irreps_node_attr_temporal = o3.Irreps(irreps_node_attr_temporal)
         self.num_layers = num_layers
         self.edge_attr_dim = edge_attr_dim
         self.num_attention_heads = num_attention_heads
@@ -182,13 +192,16 @@ class E3Transformer(nn.Module):
         # Split edge attribute dimensions: radial and temporal (bondedness is optional)
         self.radial_edge_attr_dim = self.edge_attr_dim // 2
         self.temporal_edge_attr_dim = self.edge_attr_dim - self.radial_edge_attr_dim
-        
+        self.temporal_node_attr_dim = self.irreps_node_attr_temporal.dim
         # Optional bondedness embedding (only used if bond_mask exists in graph)
         self.embed_bondedness = nn.Embedding(2, self.edge_attr_dim // 3)
-        
+        self.edge_attr_temporal_encoding_function = edge_attr_temporal_encoding_function
+        self.node_attr_temporal_encoding_function = node_attr_temporal_encoding_function
+        self.radial_edge_attr_encoding_function = radial_edge_attr_encoding_function
         # Gate for combining node attributes with temporal position
         # Input: node_attr (from data) + temporal_position (1x0e scalar)
-        irreps_with_temporal = self.irreps_node_attr + o3.Irreps("1x0e")
+        # irreps_with_temporal = self.irreps_node_attr + o3.Irreps("1x0e")
+        irreps_with_temporal = self.irreps_node_attr + self.irreps_node_attr_temporal
         self.temporal_gate = e3tools.nn.GateWrapper(irreps_in=irreps_with_temporal, \
                                                     irreps_out=self.irreps_hidden, \
                                                     irreps_gate=irreps_with_temporal,)
@@ -230,26 +243,49 @@ class E3Transformer(nn.Module):
         edge_sh = self.sh(edge_vec)
 
         # Compute edge attributes: radial and temporal
-        radial_edge_attr = e3nn.math.soft_one_hot_linspace(
-            edge_vec.norm(dim=1),
-            0.0,
-            effective_radial_cutoff,
-            self.radial_edge_attr_dim,
-            basis="gaussian",
-            cutoff=True,
-        )
+        if self.radial_edge_attr_encoding_function is not "ones":
+            radial_edge_attr = e3nn.math.soft_one_hot_linspace(
+                edge_vec.norm(dim=1),
+                0.0,
+                temporal_cutoff,
+                self.radial_edge_attr_dim,
+                basis=self.radial_edge_attr_encoding_function,
+                cutoff=True,
+            )
+        else:
+            radial_edge_attr = e3nn.math.soft_one_hot_linspace(
+                edge_vec.norm(dim=1),
+                0.0,
+                temporal_cutoff,
+                self.radial_edge_attr_dim,
+                basis="gaussian",
+                cutoff=True,
+            )
+            radial_edge_attr = torch.ones_like(radial_edge_attr)
         
         # Temporal edge attributes from temporal_position differences
         temporal_edge_vec = temporal_position[src] - temporal_position[dst]
-        temporal_edge_attr = e3nn.math.soft_one_hot_linspace(
-            temporal_edge_vec.abs(),  # Use absolute difference
-            0.0,
-            temporal_cutoff,
-            self.temporal_edge_attr_dim,
-            basis="gaussian",
-            cutoff=True,
-        )
-        temporal_edge_attr = torch.ones_like(temporal_edge_attr) # TODO: remove this, this is hacking. 
+        if self.edge_attr_temporal_encoding_function is not "ones":
+            temporal_edge_attr = e3nn.math.soft_one_hot_linspace(
+                temporal_edge_vec.abs(),  # Use absolute difference
+                0.0,
+                2.0,
+                self.temporal_edge_attr_dim,
+                basis=self.edge_attr_temporal_encoding_function,
+                cutoff=True,
+            )
+        else:
+            temporal_edge_attr = e3nn.math.soft_one_hot_linspace(
+                temporal_edge_vec.abs(),  # Use absolute difference
+                0.0,
+                2.0,
+                self.temporal_edge_attr_dim,
+                basis="gaussian",
+                cutoff=True,
+            )
+            temporal_edge_attr = torch.ones_like(temporal_edge_attr)
+
+        # temporal_edge_attr = torch.ones_like(temporal_edge_attr) # TODO: remove this, this is hacking. 
 
         # Optional bondedness (if bond_mask exists in the temporal graph)
         if hasattr(temporal_graph, 'bond_mask') and temporal_graph.bond_mask is not None:
@@ -261,7 +297,26 @@ class E3Transformer(nn.Module):
         # Process node attributes with temporal gating
 
         # Concatenate node_attr with temporal_position (scalar)
-        temporal_position_expanded = temporal_position.unsqueeze(-1)  # [N, 1] for concatenation
+        if self.node_attr_temporal_encoding_function is not "ones":
+            temporal_position = e3nn.math.soft_one_hot_linspace(
+                temporal_position,  # Use absolute difference
+                0.0, # time always starts at 0
+                1.0, # time always ends at 1
+                self.temporal_node_attr_dim,
+                basis=self.node_attr_temporal_encoding_function,
+                cutoff=True,
+            )
+        else:
+            temporal_position = e3nn.math.soft_one_hot_linspace(
+                temporal_position,  # Use absolute difference
+                0.0, # time always starts at 0
+                1.0, # time always ends at 1
+                self.temporal_node_attr_dim,
+                basis="gaussian",
+                cutoff=True,
+            )
+            temporal_position = torch.ones_like(temporal_position)
+        temporal_position_expanded = temporal_position  # [N, 1] for concatenation
         node_attr_with_temporal = torch.cat([node_attr, temporal_position_expanded], dim=-1)
         
         # Apply temporal gate

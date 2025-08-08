@@ -70,7 +70,7 @@ esac
 CMD="jamun_train --config-dir=configs experiment=${CONFIG}.yaml"
 
 # Add pooler override (keeping the irreps_out parameter from base config)
-CMD="$CMD model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=${POOLER}"
+CMD="$CMD ++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=${POOLER}"
 
 # Add trainable override if needed
 if [ -n "$TRAINABLE_OVERRIDE" ]; then
@@ -80,12 +80,12 @@ fi
 # Add dataset and training overrides
 # CMD="$CMD data.datamodule.datasets.train.max_datasets=1"
 # CMD="$CMD data.datamodule.datasets.val.max_datasets=1"
-CMD="$CMD trainer.max_epochs=100"
+CMD="$CMD ++trainer.max_epochs=100"
 CMD="$CMD ++wandb.logger.group=spatiotemporal_comparison"
 
 # Add job-specific wandb tags
 WANDB_TAG="job_${SLURM_ARRAY_TASK_ID}"
-CMD="$CMD +logger.wandb.tags=[\"${WANDB_TAG}\",\"spatiotemporal_comparison\"]"
+# CMD="$CMD ++wandb.logger.tags=[${WANDB_TAG},spatiotemporal_comparison]"
 
 echo "Running command: $CMD"
 exec $CMD

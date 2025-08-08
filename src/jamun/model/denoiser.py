@@ -182,6 +182,13 @@ class Denoiser(pl.LightningModule):
         if self.rotational_augmentation:
             py_logger.info("Rotational augmentation is enabled.")
 
+    def on_before_optimizer_step(self, optimizer):
+        # Log gradients and parameters.
+        for name, param in self.named_parameters():
+            self.log(f"parameter_norms/{name}", param.norm(), sync_dist=True)
+            if param.grad is not None:
+                self.log(f"gradient_norms/{name}", param.grad.norm(), sync_dist=True)
+
     def add_noise(self, x: torch.Tensor, sigma: float | torch.Tensor, num_graphs: int) -> torch.Tensor:
         # pos [B, ...]
         sigma = unsqueeze_trailing(sigma, x.ndim)
@@ -317,8 +324,8 @@ class Denoiser(pl.LightningModule):
                     x = align_A_to_B_batched_f(
                         x,
                         y,
-                        topology.batch,
-                        topology.num_graphs,
+                        batch,
+                        num_graphs,
                         sigma=sigma,
                         correction_order=self.alignment_correction_order,
                     )
@@ -386,8 +393,8 @@ class Denoiser(pl.LightningModule):
         align_noisy_input: bool,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Add noise to the input and compute the loss."""
-        xhat, x, _ = self.noise_and_denoise(x, topology, sigma, align_noisy_input=align_noisy_input)
-        return self.compute_loss(x, xhat, topology, sigma)
+        xhat, x, _ = self.noise_and_denoise(x, topology, batch, num_graphs, sigma, align_noisy_input=align_noisy_input)
+        return self.compute_loss(x, xhat, topology, batch, num_graphs, sigma)
 
     def training_step(self, data: torch_geometric.data.Batch, data_idx: int):
         """Called during training."""

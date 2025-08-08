@@ -121,11 +121,28 @@ class DenoiserWrapper(nn.Module):
         c_skip = unsqueeze_trailing(c_skip, y.ndim - 1)
         c_out = unsqueeze_trailing(c_out, y.ndim - 1)
         c_noise = c_noise.unsqueeze(0) if c_noise.dim() == 0 else c_noise
+        
+        # Ensure c_noise is float type (fix for dtype mismatch)
+        c_noise = c_noise.float()
 
         # Scale input positions by c_in
         y_scaled = y * c_in
 
-        # Call the denoiser's architecture (topology already has edges)
+        # # Call the denoiser's architecture (topology already has edges)
+        # # Add this right before line 129 in the pretrained wrapper call
+        # print("=== Debugging pretrained denoiser input types ===")
+        # print(f"y_scaled dtype: {y_scaled.dtype}, shape: {y_scaled.shape}")
+        # print(f"topology.edge_index dtype: {topology.edge_index.dtype if hasattr(topology, 'edge_index') else 'N/A'}")
+        # print(f"c_noise dtype: {c_noise.dtype}, shape: {c_noise.shape}")
+        # print(f"batch dtype: {batch.dtype}, shape: {batch.shape}")
+        # print(f"effective_radial_cutoff dtype: {type(effective_radial_cutoff)}")
+
+        # # Check if topology has any Long tensors
+        # for attr_name in dir(topology):
+        #     if not attr_name.startswith('_'):
+        #         attr = getattr(topology, attr_name)
+        #         if isinstance(attr, torch.Tensor):
+        #             print(f"topology.{attr_name} dtype: {attr.dtype}")
         g_pred = self.denoiser.g(
             pos=y_scaled,
             topology=topology,

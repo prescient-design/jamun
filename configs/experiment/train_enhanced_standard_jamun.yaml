@@ -42,7 +42,7 @@ model:
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 50
+  max_epochs: 100
   devices: 1
 
 logger:

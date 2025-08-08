@@ -132,8 +132,8 @@ def run(cfg):
             
             cfg.model.conditioner.c_in = c_in_float
             dist_log(f"Set cfg.model.conditioner.c_in to {c_in_float}")
-
-    if cfg.model.conditioner._target_ == "jamun.model.conditioners.conditioners.SpatioTemporalConditioner":
+    # breakpoint()
+    if cfg.model.get("conditioner") and cfg.model.conditioner.get("_target_") == "jamun.model.conditioners.conditioners.SpatioTemporalConditioner":
         cfg.model.conditioner.spatiotemporal_model.radial_cutoff = average_squared_distance
         max_radius = cfg.model.max_radius
         temporal_average_squared_distance = compute_temporal_average_squared_distance_from_config(cfg)

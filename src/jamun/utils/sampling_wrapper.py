@@ -35,8 +35,12 @@ class ModelSamplingWrapper:
         return self._model.score(self.positions_to_graph(y), sigma)
 
     def xhat(self, y, sigma, *args, **kwargs):
-        xhat_graph = self._model.xhat(self.positions_to_graph(y), sigma)
-        return xhat_graph.pos
+        data = self.positions_to_graph(y)
+        y, topology, batch, num_graphs = data.pos, data.clone(), data.batch, data.num_graphs
+        del topology.batch, topology.num_graphs
+        sigma = torch.as_tensor(sigma).to(y)
+        xhat_pos = self._model.xhat(y, topology, batch, num_graphs, sigma)
+        return xhat_pos
 
     def positions_to_graph(self, positions: torch.Tensor) -> torch_geometric.data.Data:
         """Wraps a tensor of positions to a graph with these positions as an attribute."""

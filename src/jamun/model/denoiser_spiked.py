@@ -106,6 +106,13 @@ class DenoiserSpiked(pl.LightningModule):
             raise ValueError("Conditioner must be a callable or None")
         py_logger.info(f"Conditioner: {self.conditioning_module}")
 
+    def on_before_optimizer_step(self, optimizer):
+        # Log gradients and parameters.
+        for name, param in self.named_parameters():
+            self.log(f"parameter_norms/{name}", param.norm(), sync_dist=True)
+            if param.grad is not None:
+                self.log(f"gradient_norms/{name}", param.grad.norm(), sync_dist=True)
+
     def conditioner_default(self, y: torch_geometric.data.Batch, x_clean: torch_geometric.data.Batch = None) -> list[torch.Tensor]:
         conditioned_structures = [y.pos]  # Return complete list starting with current position
         if x_clean is not None:

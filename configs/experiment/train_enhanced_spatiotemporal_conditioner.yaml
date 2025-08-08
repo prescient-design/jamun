@@ -8,7 +8,7 @@ defaults:
 
 data:
   datamodule:
-    batch_size: 8  # Reduced batch size due to increased model complexity
+    batch_size: 32  # Reduced batch size due to increased model complexity
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -42,7 +42,7 @@ model:
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 100  # Increased due to model complexity
+  max_epochs: 1  # Increased due to model complexity
   # devices: 1
   # gradient_clip_val: 1.0  # Add gradient clipping for stability
 
@@ -50,4 +50,4 @@ logger:
   wandb:
     group: enhanced_sampling_conditioner_comparison
     notes: "SpatioTemporalConditioner on enhanced sampling data - processes temporal sequences through spatial and temporal modules"
-    tags: ["spatiotemporal_conditioner", "enhanced_sampling", "transformer", "e3conv"] 
+    tags: ["spatiotemporal_conditioner", "enhanced_sampling", "transformer", "debug run"] 

@@ -31,7 +31,7 @@ spatiotemporal_model:
     hidden_layer_factory:
       _target_: e3tools.nn.ConvBlock
       _partial_: true
-      conv:---
+      conv:
         _target_: e3tools.nn.Conv # replace with Conv for non-separable case
         _partial_: true
     output_head_factory:
@@ -47,6 +47,7 @@ spatiotemporal_model:
     irreps_hidden: "120x0e + 32x1e"
     irreps_sh: "1x0e + 1x1e"
     irreps_node_attr: "1x1e"  # Match spatial module output
+    irreps_node_attr_temporal: "3x0e"
     num_layers: 2
     edge_attr_dim: 24
     num_attention_heads: 1

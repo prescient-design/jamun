@@ -1,6 +1,7 @@
 defaults:
   - arch: e3conv_conditional.yaml
   - optim: adam.yaml
+  - conditioner: position_conditioner.yaml
   - lr_scheduler_config: null
   - _self_
 
@@ -18,14 +19,14 @@ torch_compile_kwargs:
   dynamic: true
   mode: default
 
-conditioner:
-  _target_: jamun.model.conditioners.PositionConditioner
-  N_structures: ${model.arch.N_structures}
+# conditioner:
+#   _target_: jamun.model.conditioners.PositionConditioner
+#   N_structures: ${model.arch.N_structures}
 
 # Multimeasurement specific parameters
 multimeasurement: true
-N_measurements: 1
-N_measurements_hidden: 1
-max_graphs_per_batch: null
+N_measurements: 4
+N_measurements_hidden: 4
+max_graphs_per_batch: 32
 
 _target_: jamun.model.DenoiserMultimeasurement 

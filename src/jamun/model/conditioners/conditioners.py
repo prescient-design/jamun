@@ -330,7 +330,7 @@ class SpatioTemporalConditioner(pl.LightningModule):
         # Prepare noise conditioning
         device = y_aligned.pos.device
         sigma = torch.tensor(self.c_noise, device=device)
-        sigma = unsqueeze_trailing(sigma, 1)
+        sigma = unsqueeze_trailing(sigma, 1) # actually this is correct, but this is bad variable naming. the positional e3conv will take a c_noise, so this is right, but it is not right to call it sigma.  
         
         # Process through spatio-temporal model with aligned hidden states
         # Only disable gradients if the model is frozen

@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 from jamun.utils.align import kabsch_algorithm
+import os
 
 
 class Denoiser(pl.LightningModule):
@@ -108,6 +109,13 @@ class Denoiser(pl.LightningModule):
         if self.conditioning_module is not None and not callable(self.conditioning_module):
             raise ValueError("Conditioner must be a callable or None")
         py_logger.info(f"Conditioner: {self.conditioning_module}")
+
+    def on_before_optimizer_step(self, optimizer):
+        # Log gradients and parameters.
+        for name, param in self.named_parameters():
+            self.log(f"parameter_norms/{name}", param.norm(), sync_dist=True)
+            if param.grad is not None:
+                self.log(f"gradient_norms/{name}", param.grad.norm(), sync_dist=True)
 
     def conditioner_default(self, y: torch_geometric.data.Batch) -> list[torch.Tensor]:
         conditioned_structures = [y.pos]  # Return complete list starting with current position
@@ -410,8 +418,28 @@ class Denoiser(pl.LightningModule):
             batch,
             sigma,
             align_noisy_input=align_noisy_input,
-        )
-
+        ) # check if the loss is nan. if nan then save the model, and the batch and see what went on. 
+        if torch.isnan(loss.sum()):
+            print(f"Loss is nan at step {self.global_step}")
+            print(f"Batch: {batch}")
+            print(f"Sigma: {sigma}")
+            print(f"Align noisy input: {align_noisy_input}")
+            print(f"Loss: {loss}")
+            print(f"Aux: {aux}")
+            # Create debug directory if it doesn't exist
+            debug_dir = f"/homefs/home/sules/jamun/debug_nan_loss_step_{self.global_step}"
+            os.makedirs(debug_dir, exist_ok=True)
+            
+            # Save model checkpoint
+            checkpoint_path = os.path.join(debug_dir, "model_nan_loss.ckpt")
+            self.trainer.save_checkpoint(checkpoint_path)
+            print(f"Model saved to {checkpoint_path}")
+            
+            torch.save(batch, debug_dir + "/batch_nan_loss.pt")
+            
+            # Optionally raise an exception to stop training
+            raise RuntimeError(f"NaN loss detected at step {self.global_step}. Debug files saved to {debug_dir}")
+            
         # Average the loss and other metrics over all graphs.
         with torch.cuda.nvtx.range("mean_over_graphs"):
             aux["loss"] = loss

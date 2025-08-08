@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
 from jamun.utils.align import kabsch_algorithm
+import os
 
 
 class DenoiserMultimeasurement(pl.LightningModule):
@@ -125,6 +126,13 @@ class DenoiserMultimeasurement(pl.LightningModule):
                 f"Manual optimization enabled with micro-batch size of {self.max_graphs_per_batch} graphs."
             )
 
+    def on_before_optimizer_step(self, optimizer):
+        # Log gradients and parameters.
+        for name, param in self.named_parameters():
+            self.log(f"parameter_norms/{name}", param.norm(), sync_dist=True)
+            if param.grad is not None:
+                self.log(f"gradient_norms/{name}", param.grad.norm(), sync_dist=True)
+
     def _align_A_to_B_batched_with_hidden_states(
         self, A: torch_geometric.data.Batch, B: torch_geometric.data.Batch
     ) -> torch_geometric.data.Batch:
@@ -134,12 +142,13 @@ class DenoiserMultimeasurement(pl.LightningModule):
         # Align positions
         A_aligned.pos = kabsch_algorithm(A.pos, B.pos, A.batch, A.num_graphs)
 
-        # Align hidden states
+            # Align hidden states
         if hasattr(A, "hidden_state") and A.hidden_state is not None:
+            A_aligned.hidden_state = []
             for i in range(len(A.hidden_state)):
-                A_aligned.hidden_state[i] = kabsch_algorithm(
+                A_aligned.hidden_state.append(kabsch_algorithm(
                     A.hidden_state[i], B.pos, A.batch, A.num_graphs
-                )
+                ))
         return A_aligned
 
     def _mean_center_hidden_states(self, data: torch_geometric.data.Batch):
@@ -575,8 +584,28 @@ class DenoiserMultimeasurement(pl.LightningModule):
             batch,
             sigma,
             align_noisy_input=align_noisy_input,
-        )
-
+        ) # check if the loss is nan. if nan then save the model, and the batch and see what went on. 
+        # if torch.isnan(loss.sum()):
+        #     print(f"Loss is nan at step {self.global_step}")
+        #     print(f"Batch: {batch}")
+        #     print(f"Sigma: {sigma}")
+        #     print(f"Align noisy input: {align_noisy_input}")
+        #     print(f"Loss: {loss}")
+        #     print(f"Aux: {aux}")
+        #     # Create debug directory if it doesn't exist
+        #     debug_dir = f"/homefs/home/sules/jamun/debug_nan_loss_step_{self.global_step}"
+        #     os.makedirs(debug_dir, exist_ok=True)
+        #     
+        #     # Save model checkpoint
+        #     checkpoint_path = os.path.join(debug_dir, "model_nan_loss.ckpt")
+        #     self.trainer.save_checkpoint(checkpoint_path)
+        #     print(f"Model saved to {checkpoint_path}")
+        #     
+        #     torch.save(batch, debug_dir + "/batch_nan_loss.pt")
+        #     
+        #     # Optionally raise an exception to stop training
+        #     raise RuntimeError(f"NaN loss detected at step {self.global_step}. Debug files saved to {debug_dir}")
+            
         # Average the loss and other metrics over all graphs.
         with torch.cuda.nvtx.range("mean_over_graphs"):
             aux["loss"] = loss
