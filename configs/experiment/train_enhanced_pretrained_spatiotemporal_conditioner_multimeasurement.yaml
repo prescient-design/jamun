@@ -1,8 +1,8 @@
 # @package _global_
-# Training PositionConditioner on enhanced sampling data
-
 defaults:
-  - override /model: denoiser_conditional
+  - override /model: denoiser_multimeasurement
+  - override /model/arch: e3conv_conditional_spatiotemporal
+  - override /model/conditioner: spatiotemporal_pretrained
   - override /callbacks:
     - timing.yaml
     - lr_monitor.yaml
@@ -10,7 +10,7 @@ defaults:
 
 data:
   datamodule:
-    batch_size: 32
+    batch_size: 4  # Reduced batch size due to increased model complexity
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory
@@ -20,7 +20,7 @@ data:
         subsample: 1
         total_lag_time: 5
         lag_subsample_rate: 1
-        # max_datasets: 1
+        # max_datasets: 2  # Increased for more training data
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -30,29 +30,26 @@ data:
         subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
-        # max_datasets: ${data.datamodule.datasets.train.max_datasets}
+        # max_datasets: 1
 
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
   arch:
-    n_layers: 2
-    N_structures: ${data.datamodule.datasets.train.total_lag_time}
-  max_radius: 1000.0
+    n_layers: 1
+  max_radius: 1.0
   optim:
-    lr: 0.002
-  conditioner:
-    _target_: jamun.model.conditioners.PositionConditioner
-    N_structures: ${model.arch.N_structures}
+    lr: 0.002  # Slightly reduced learning rate for stability
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 1
-  devices: 1
+  max_epochs: 50  # Increased due to model complexity
+  # devices: 1
+  # gradient_clip_val: 1.0  # Add gradient clipping for stability
 
 logger:
   wandb:
     group: enhanced_sampling_conditioner_comparison
-    notes: "PositionConditioner on enhanced sampling data"
-    tags: ["position_conditioner", "enhanced_sampling"] 
+    notes: "SpatioTemporalConditioner on enhanced sampling data - processes temporal sequences through spatial and temporal modules"
+    tags: ["spatiotemporal_conditioner", "enhanced_sampling", "transformer", "e3conv"] 

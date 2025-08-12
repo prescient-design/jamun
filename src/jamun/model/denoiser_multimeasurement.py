@@ -713,7 +713,7 @@ class DenoiserMultimeasurement(pl.LightningModule):
         if self.automatic_optimization:
             return self._automatic_step(batch, "train")
         else:
-            print(f"Manual optimization enabled for training step {batch_idx}.")
+            # print(f"Manual optimization enabled for training step {batch_idx}.")
             return self._manual_step(batch, "train")
 
     def validation_step(self, batch: torch_geometric.data.Batch, batch_idx: int):

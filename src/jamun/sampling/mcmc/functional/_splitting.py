@@ -187,6 +187,7 @@ def aboba_memory(
     save_trajectory=False,
     save_every_n_steps=1,
     burn_in_steps=0,
+    history_update_frequency=1,
     verbose=False,
     cpu_offload=False,
     delta: float = 1.0,
@@ -232,8 +233,9 @@ def aboba_memory(
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
             y_hist_traj.append(list(y_hist))
 
-        y_hist.pop(-1)
-        y_hist.insert(0, y_current)
+        if i % history_update_frequency == 0:
+            y_hist.pop(-1)
+            y_hist.insert(0, y_current)
 
     return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj
 
@@ -247,6 +249,7 @@ def baoab_memory(
     save_trajectory=False,
     save_every_n_steps=1,
     burn_in_steps=0,
+    history_update_frequency=1,
     verbose=False,
     cpu_offload=False,
     delta: float = 1.0,
@@ -286,8 +289,9 @@ def baoab_memory(
         R = torch.randn_like(y)
         vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
         y = y + (delta / 2) * vhat
-        y_hist.pop(-1) # remove the last element of the history
-        y_hist.insert(0, y_current) # present point is the first element of the history
+        if i % history_update_frequency == 0:
+            y_hist.pop(-1) # remove the last element of the history
+            y_hist.insert(0, y_current) # present point is the first element of the history
         psi, orig_score = score_fn_processed(y, y_hist=y_hist)
         v = vhat + (delta / 2) * psi
 

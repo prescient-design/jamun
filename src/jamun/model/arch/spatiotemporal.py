@@ -243,7 +243,7 @@ class E3Transformer(nn.Module):
         edge_sh = self.sh(edge_vec)
 
         # Compute edge attributes: radial and temporal
-        if self.radial_edge_attr_encoding_function is not "ones":
+        if self.radial_edge_attr_encoding_function != "ones":
             radial_edge_attr = e3nn.math.soft_one_hot_linspace(
                 edge_vec.norm(dim=1),
                 0.0,
@@ -265,7 +265,7 @@ class E3Transformer(nn.Module):
         
         # Temporal edge attributes from temporal_position differences
         temporal_edge_vec = temporal_position[src] - temporal_position[dst]
-        if self.edge_attr_temporal_encoding_function is not "ones":
+        if self.edge_attr_temporal_encoding_function != "ones":
             temporal_edge_attr = e3nn.math.soft_one_hot_linspace(
                 temporal_edge_vec.abs(),  # Use absolute difference
                 0.0,
@@ -297,7 +297,7 @@ class E3Transformer(nn.Module):
         # Process node attributes with temporal gating
 
         # Concatenate node_attr with temporal_position (scalar)
-        if self.node_attr_temporal_encoding_function is not "ones":
+        if self.node_attr_temporal_encoding_function != "ones":
             temporal_position = e3nn.math.soft_one_hot_linspace(
                 temporal_position,  # Use absolute difference
                 0.0, # time always starts at 0

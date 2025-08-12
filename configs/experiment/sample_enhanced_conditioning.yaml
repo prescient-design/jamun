@@ -33,14 +33,14 @@ init_datasets:
 #   conditioner:
 #     N_structures: ${init_datasets.total_lag_time}
 
-num_sampling_steps_per_batch: 1000
+num_sampling_steps_per_batch: 10000
 num_batches: 1
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
 # Add your checkpoint path here - update with actual trained model path
-wandb_train_run_path: "sule-shashank/jamun/i0rd0uoa"
+wandb_train_run_path: "sule-shashank/jamun/l1n5tg48"
 # checkpoint_type: last
 # checkpoint_dir: "/data2/sules/jamun-conditional-runs/outputs/train/dev/runs/2025-07-31_00-43-14/checkpoints/"
 checkpoint_type: last
@@ -67,7 +67,7 @@ eval_dataset:
   subsample: 10
   total_lag_time: 5
   lag_subsample_rate: 1
-  max_datasets: 1
+  max_datasets: 10
   label_override: "ALA_ALA"
 
 # Override ALL callbacks to use eval_dataset for metrics computation

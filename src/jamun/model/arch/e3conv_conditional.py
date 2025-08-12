@@ -381,7 +381,7 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
         
         # Set up input attribute handling
         self.input_attr_irreps = o3.Irreps(input_attr_irreps)
-        
+        self.input_attr_irreps_dim = self.input_attr_irreps.dim
         # Create input irrep aggregator to combine node_attr with input_attr
         # Combined irreps: node_attr irreps + input_attr irreps
         combined_irreps = self.irreps_hidden + self.input_attr_irreps
@@ -445,7 +445,7 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
         
         # Combine node_attr with spatial features (input_attr)
         # Validate spatial features shape
-        expected_dim = self.input_attr_irreps.dim
+        expected_dim = self.input_attr_irreps_dim
         if pos_features.shape[-1] != expected_dim:
             raise ValueError(
                 f"Expected spatial features to have dimension {expected_dim}, "

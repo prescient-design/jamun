@@ -1,0 +1,18 @@
+program: jamun_sample
+method: grid
+project: jamun
+name: conditional_vs_self
+metric:
+  name: Jenson-Shannon Divergence vs. Number of Samples for Predicted Trajectory joined
+  goal: minimize
+parameters:
+  delta: 
+    values: [0.017889, 0.026833, 0.040000, 0.059665, 0.089443]
+  friction:
+    values: [2.52572864, 1.2552661, 0.71334989, 0.36384343, 0.10536052]
+
+command: 
+  - ${program}
+  - "--config-dir=configs"
+  - "experiment=sample_enhanced_conditioning_sweep"
+  - ${args_no_hyphens}
