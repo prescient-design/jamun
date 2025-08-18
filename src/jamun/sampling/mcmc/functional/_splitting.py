@@ -219,23 +219,24 @@ def aboba_memory(
         steps_iter = tqdm(steps_iter, leave=False, desc="ABOBA Memory")
 
     for i in steps_iter:
-        y_current = y.clone().detach()
-        y = y + (delta / 2) * v
-        psi, orig_score = score_fn_processed(y, y_hist=y_hist)
-        v = v + u * (delta / 2) * psi
-        R = torch.randn_like(y)
-        vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
-        v = vhat + (delta / 2) * psi
-        y = y + (delta / 2) * v
+        for j in range(1,history_update_frequency):
+            # inner aboba loop for equilibration to conditional density p(y_t | y_hist)
+            y_current = y.clone().detach()
+            y = y + (delta / 2) * v
+            psi, orig_score = score_fn_processed(y, y_hist=y_hist)
+            v = v + u * (delta / 2) * psi
+            R = torch.randn_like(y)
+            vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
+            v = vhat + (delta / 2) * psi
+            y = y + (delta / 2) * v
 
         if save_trajectory and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
             y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
             y_hist_traj.append(list(y_hist))
 
-        if i % history_update_frequency == 0:
-            y_hist.pop(-1)
-            y_hist.insert(0, y_current)
+        y_hist.pop(-1)
+        y_hist.insert(0, y_current)
 
     return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj
 
@@ -283,18 +284,19 @@ def baoab_memory(
         y_hist_traj.append(list(y_hist))
 
     for i in steps_iter:
-        y_current = y.clone().detach()
-        v = v + u * (delta / 2) * psi # update with previous psi 
-        y = y + (delta / 2) * v # update with previous v 
-        R = torch.randn_like(y)
-        vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
-        y = y + (delta / 2) * vhat
-        if i % history_update_frequency == 0:
-            y_hist.pop(-1) # remove the last element of the history
-            y_hist.insert(0, y_current) # present point is the first element of the history
-        psi, orig_score = score_fn_processed(y, y_hist=y_hist)
-        v = vhat + (delta / 2) * psi
-
+        # print(f"Equilibrating to conditional density p(y_t | y_hist) for {history_update_frequency} steps...")
+        for j in range(1,history_update_frequency):
+            # inner baoab loop for equilibration to conditional density p(y_t | y_hist)
+            y_current = y.clone().detach()
+            v = v + u * (delta / 2) * psi # update with previous psi 
+            y = y + (delta / 2) * v # update with previous v 
+            R = torch.randn_like(y)
+            vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
+            y = y + (delta / 2) * vhat
+            psi, orig_score = score_fn_processed(y, y_hist=y_hist)
+            v = vhat + (delta / 2) * psi
+        y_hist.pop(-1) # remove the last element of the history
+        y_hist.insert(0, y_current) # present point is the first element of the history
         if save_trajectory and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
             y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())

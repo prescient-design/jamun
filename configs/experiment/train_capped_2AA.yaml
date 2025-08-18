@@ -1,4 +1,9 @@
 # @package _global_
+defaults:
+  - override /callbacks:
+    - timing.yaml
+    - lr_monitor.yaml
+    - model_checkpoint.yaml
 
 model:
   sigma_distribution:
@@ -8,9 +13,9 @@ model:
   optim:
     lr: 0.002
 
-callbacks:
-  viz:
-    sigma_list: ["${model.sigma_distribution.sigma}"]
+# callbacks:
+#   viz:
+#     sigma_list: ["${model.sigma_distribution.sigma}"]
 
 data:
   datamodule:
@@ -21,30 +26,44 @@ data:
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
+        filter_codes: ['ALA_GLU', 'GLU_ALA', 'ALA_ALA']
+        as_iterable: false
+        subsample: 5
+        total_lag_time: 5
+        lag_subsample_rate: 5
         num_frames: 320000
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/val/"
+        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        subsample: 100
-        max_datasets: 20
-        num_frames: 320000
+        filter_codes: ['GLU_GLU']
+        as_iterable: false
+        subsample: 5
+        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
+        lag_subsample_rate: 5
+        num_frames: 10000
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
-        root: "${paths.data_path}/capped_diamines/timewarp_splits/test/"
+        root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        subsample: 100
-        max_datasets: 20
-        num_frames: 320000
+        filter_codes: ['ALA_ALA']
+        as_iterable: false
+        subsample: 1
+        total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
+        lag_subsample_rate: 1
+        num_frames: 1000
 
 trainer:
   val_check_interval: 0.1
-  max_epochs: 20
+  max_epochs: 100
 
 logger:
   wandb:
-    group: train_capped_2AA
+    group: 2AA_capped_diamines_conditioner_comparison
+    notes: "Standard JAMUN on ALA_GLU, GLU_ALA, ALA_ALA"
+    tags: ["standard_jamun", "2AA", "capped_diamines"]
+

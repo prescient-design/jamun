@@ -25,9 +25,10 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 10
-        
+        as_iterable: False
+        subsample: 80
+        start_frame: 0 
+        num_frames: 800000
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -35,8 +36,10 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 10
+        as_iterable: False
+        subsample: 80
+        start_frame: 800000 
+        num_frames: 100000
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -44,8 +47,10 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
-        as_iterable: false
-        subsample: 10
+        as_iterable: False
+        subsample: 80
+        start_frame: 900000 
+        num_frames: 200000
 
 
 trainer:
@@ -54,6 +59,6 @@ trainer:
 
 logger:
   wandb:
-    group: train_test
-    notes: "alanine dipeptide"
-    tags: ["single_shape", "ALA_ALA", "standard JAMUN"]
+    group: model_comparison_delta_t_T_models_graphs
+    notes: "Standard JAMUN on 2AA capped diamines data"
+    tags: ["standard_jamun", "2AA", "capped_diamines", "denoiser", "generalization"]

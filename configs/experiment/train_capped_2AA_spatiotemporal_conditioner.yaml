@@ -1,7 +1,8 @@
 # @package _global_
+# Training SpatioTemporalConditioner on 2AA capped diamines data
 
 defaults:
-  - override /model: denoiser_conditional
+  - override /model: denoiser_conditional_spatiotemporal
   - override /callbacks:
     - timing.yaml
     - lr_monitor.yaml
@@ -16,26 +17,24 @@ data:
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: False
-        subsample: 80
-        total_lag_time: 8
-        lag_subsample_rate: 10
-        start_frame: 0 
-        num_frames: 800000
+        filter_codes: ['ALA_GLU', 'GLU_ALA', 'ALA_ALA']
+        as_iterable: false
+        subsample: 5
+        total_lag_time: 5
+        lag_subsample_rate: 5
+        num_frames: 320000
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
         root: "${paths.data_path}/capped_diamines/timewarp_splits/train"
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
-        filter_codes: ['ALA_ALA']
-        as_iterable: False
-        subsample: 80
+        filter_codes: ['GLU_GLU']
+        as_iterable: false
+        subsample: 5
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
-        start_frame: 800000 
-        num_frames: 100000
+        lag_subsample_rate: 5
+        num_frames: 10000
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -43,36 +42,30 @@ data:
         traj_pattern: "^(.*).xtc"
         pdb_pattern: "^(.*).pdb"
         filter_codes: ['ALA_ALA']
-        as_iterable: False
-        subsample: 80
+        as_iterable: false
+        subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
-        lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
-        start_frame: 900000 
-        num_frames: 200000
+        lag_subsample_rate: 1
+        num_frames: 1000
+
 model:
   sigma_distribution:
     _target_: jamun.distributions.ConstantSigma
     sigma: 0.04
   arch:
-    n_layers: 2
-    N_structures: ${data.datamodule.datasets.train.total_lag_time}
-  max_radius: 1000.0
+    n_layers: 1
+  max_radius: 1.0
   optim:
-    lr: 0.002
-  conditioner:
-    _target_: jamun.model.conditioners.PositionConditioner
-    N_structures: ${model.arch.N_structures}
-    pretrained_model_path: null
-    c_in: null
-
+    lr: 0.002  # Slightly reduced learning rate for stability
 
 trainer:
   val_check_interval: 0.5
   max_epochs: 100
-
+  devices: 1
 
 logger:
   wandb:
-    group: model_comparison_delta_t_T_models_graphs
-    notes: "PositionConditioner on 2AA capped diamines data"
-    tags: ["position_conditioner", "2AA", "capped_diamines", "conditional", "generalization"] 
+    group: 2AA_capped_diamines_conditioner_comparison
+    notes: "SpatioTemporalConditioner on 2AA capped diamines data - processes temporal sequences through spatial and temporal modules"
+    tags: ["spatiotemporal_conditioner", "2AA", "capped_diamines", "transformer", "generalization"]
+

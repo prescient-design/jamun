@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 
-#SBATCH --partition=gpu3
+#SBATCH --partition=gpu2
 #SBATCH --job-name=model_comparison
-#SBATCH --qos=preempt
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --time=3-0
 #SBATCH --mem-per-cpu=32G
-#SBATCH --array=2-4
+#SBATCH --array=0-4
 
 # Initialize conda
 source ~/.bashrc
@@ -23,6 +22,10 @@ echo "Conda environment: $CONDA_DEFAULT_ENV"
 nvidia-smi
 
 echo "Running array job ${SLURM_ARRAY_TASK_ID}"
+
+# NOTE: We generate this in submit script instead of using time-based default to ensure consistency across ranks.
+RUN_KEY=$(openssl rand -hex 12)
+echo "RUN_KEY = ${RUN_KEY}"
 
 # Define configurations for each job
 case ${SLURM_ARRAY_TASK_ID} in
@@ -42,14 +45,14 @@ case ${SLURM_ARRAY_TASK_ID} in
         OVERRIDES=""
         ;;
     3)
-        echo "Job 3: Spatiotemporal conditioner with mean pooling and trainable pretrained denoiser"
-        CONFIG="train_enhanced_pretrained_spatiotemporal_conditioner"
-        OVERRIDES="++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=jamun.model.pooling.TemporalToSpatialNodeAttrMean ++model.conditioner.spatiotemporal_model.spatial_module.trainable=true"
+        echo "Job 3: Spatiotemporal conditioner with temporal embedding and mean pooling"
+        CONFIG="train_enhanced_spatiotemporal_conditioner"
+        OVERRIDES="++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=jamun.model.pooling.TemporalToSpatialNodeAttrMean"
         ;;
     4)
-        echo "Job 4: Spatiotemporal conditioner with mean pooling, trainable pretrained denoiser, and ones temporal encoding"
-        CONFIG="train_enhanced_pretrained_spatiotemporal_conditioner"
-        OVERRIDES="++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=jamun.model.pooling.TemporalToSpatialNodeAttrMean ++model.conditioner.spatiotemporal_model.spatial_module.trainable=true ++model.conditioner.spatiotemporal_model.temporal_module.node_attr_temporal_encoding_function=ones ++model.conditioner.spatiotemporal_model.temporal_module.edge_attr_temporal_encoding_function=ones"
+        echo "Job 4: Spatiotemporal conditioner with ones temporal encoding and mean pooling"
+        CONFIG="train_enhanced_spatiotemporal_conditioner"
+        OVERRIDES="++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=jamun.model.pooling.TemporalToSpatialNodeAttrMean ++model.conditioner.spatiotemporal_model.temporal_module.node_attr_temporal_encoding_function=ones ++model.conditioner.spatiotemporal_model.temporal_module.edge_attr_temporal_encoding_function=ones"
         ;;
     *)
         echo "Unknown job ID: ${SLURM_ARRAY_TASK_ID}"
@@ -68,7 +71,8 @@ fi
 # Add common training overrides
 CMD="$CMD ++trainer.max_epochs=100"
 CMD="$CMD ++logger.wandb.group=model_comparison_high_noise"
-CMD="$CMD ++model.sigma_distribution.sigma=0.08"
+CMD="$CMD ++model.sigma_distribution.sigma=0.06"
+CMD="$CMD ++run_key=${RUN_KEY}"
 
 # Add dataset overrides for debugging (quick completion)
 # CMD="$CMD ++data.datamodule.datasets.train.max_datasets=1"
@@ -76,7 +80,7 @@ CMD="$CMD ++model.sigma_distribution.sigma=0.08"
 
 # Add job-specific wandb tags
 WANDB_TAG="job_${SLURM_ARRAY_TASK_ID}"
-CMD="$CMD ++logger.wandb.tags=[${WANDB_TAG},model_comparison]"
+CMD="$CMD ++logger.wandb.tags=[${WANDB_TAG},model_comparison,separable_conv]"
 
 echo "Running command: $CMD"
 exec $CMD

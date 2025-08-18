@@ -21,7 +21,7 @@ hidden_layer_factory:
   _target_: e3tools.nn.ConvBlock
   _partial_: true
   conv:
-    _target_: e3tools.nn.Conv # replace with Conv for non-separable case
+    _target_: e3tools.nn.SeparableConv # replace with Conv for non-separable case
     _partial_: true
 output_head_factory:
   _target_: e3tools.nn.EquivariantMLP

@@ -32,7 +32,7 @@ spatiotemporal_model:
       _target_: e3tools.nn.ConvBlock
       _partial_: true
       conv:
-        _target_: e3tools.nn.Conv # replace with Conv for non-separable case
+        _target_: e3tools.nn.SeparableConv # replace with Conv for non-separable case
         _partial_: true
     output_head_factory:
       _target_: e3tools.nn.EquivariantMLP
@@ -48,6 +48,9 @@ spatiotemporal_model:
     irreps_sh: "1x0e + 1x1e"
     irreps_node_attr: "1x1e"  # Match spatial module output
     irreps_node_attr_temporal: "3x0e"
+    conv: 
+      _target_: e3tools.nn.SeparableConv
+      _partial_: true
     num_layers: 2
     edge_attr_dim: 24
     num_attention_heads: 1

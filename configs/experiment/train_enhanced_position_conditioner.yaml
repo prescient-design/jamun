@@ -20,7 +20,7 @@ data:
         subsample: 1
         total_lag_time: 5
         lag_subsample_rate: 1
-        # max_datasets: 1
+        max_datasets: 250
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -30,7 +30,7 @@ data:
         subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
-        # max_datasets: ${data.datamodule.datasets.train.max_datasets}
+        max_datasets: 50
 
 model:
   sigma_distribution:
@@ -48,7 +48,7 @@ model:
 
 trainer:
   val_check_interval: 0.5
-  max_epochs: 1
+  max_epochs: 50
   devices: 1
 
 logger:

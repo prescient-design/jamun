@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-#SBATCH --partition=gpu3
-#SBATCH --job-name=model_comparison
-#SBATCH --qos=preempt
+#SBATCH --partition=gpu2
+#SBATCH --job-name=capped_2AA_comparison
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
@@ -31,28 +30,28 @@ echo "RUN_KEY = ${RUN_KEY}"
 # Define configurations for each job
 case ${SLURM_ARRAY_TASK_ID} in
     0)
-        echo "Job 0: Standard JAMUN"
-        CONFIG="train_enhanced_standard_jamun"
+        echo "Job 0: Standard JAMUN on 2AA capped diamines"
+        CONFIG="train_capped_2AA"
         OVERRIDES=""
         ;;
     1)
-        echo "Job 1: Position conditioner"
-        CONFIG="train_enhanced_position_conditioner"
+        echo "Job 1: Position conditioner on 2AA capped diamines"
+        CONFIG="train_capped_2AA_position_conditioner"
         OVERRIDES=""
         ;;
     2)
-        echo "Job 2: Self conditioner"
-        CONFIG="train_enhanced_self_conditioner"
+        echo "Job 2: Self conditioner on 2AA capped diamines"
+        CONFIG="train_capped_2AA_self_conditioner"
         OVERRIDES=""
         ;;
     3)
-        echo "Job 3: Spatiotemporal conditioner with temporal embedding and mean pooling"
-        CONFIG="train_enhanced_spatiotemporal_conditioner"
+        echo "Job 3: Spatiotemporal conditioner with temporal embedding and mean pooling on 2AA capped diamines"
+        CONFIG="train_capped_2AA_spatiotemporal_conditioner"
         OVERRIDES="++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=jamun.model.pooling.TemporalToSpatialNodeAttrMean"
         ;;
     4)
-        echo "Job 4: Spatiotemporal conditioner with ones temporal encoding and mean pooling"
-        CONFIG="train_enhanced_spatiotemporal_conditioner"
+        echo "Job 4: Spatiotemporal conditioner with ones temporal encoding and mean pooling on 2AA capped diamines"
+        CONFIG="train_capped_2AA_spatiotemporal_conditioner"
         OVERRIDES="++model.conditioner.spatiotemporal_model.temporal_to_spatial_pooler._target_=jamun.model.pooling.TemporalToSpatialNodeAttrMean ++model.conditioner.spatiotemporal_model.temporal_module.node_attr_temporal_encoding_function=ones ++model.conditioner.spatiotemporal_model.temporal_module.edge_attr_temporal_encoding_function=ones"
         ;;
     *)
@@ -71,9 +70,7 @@ fi
 
 # Add common training overrides
 CMD="$CMD ++trainer.max_epochs=100"
-CMD="$CMD ++logger.wandb.group=model_comparison_full_swarm"
-CMD="$CMD ++data.datamodule.datasets.train.root=/data2/sules/ALA_ALA_enhanced_full_swarm/train"
-CMD="$CMD ++data.datamodule.datasets.val.root=/data2/sules/ALA_ALA_enhanced_full_swarm/val"
+CMD="$CMD ++logger.wandb.group=capped_2AA_model_comparison"
 CMD="$CMD ++run_key=${RUN_KEY}"
 
 # Add dataset overrides for debugging (quick completion)
@@ -82,7 +79,7 @@ CMD="$CMD ++run_key=${RUN_KEY}"
 
 # Add job-specific wandb tags
 WANDB_TAG="job_${SLURM_ARRAY_TASK_ID}"
-CMD="$CMD ++logger.wandb.tags=[${WANDB_TAG},model_comparison,separable_conv]"
+CMD="$CMD ++logger.wandb.tags=[${WANDB_TAG},capped_2AA_comparison,generalization_test]"
 
 echo "Running command: $CMD"
 exec $CMD

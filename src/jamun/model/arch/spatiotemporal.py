@@ -7,7 +7,7 @@ This module contains:
 - Spatial-temporal graph conversion utilities
 """
 
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 
 import e3nn
 import torch
@@ -47,15 +47,30 @@ def calculate_temporal_positions(temporal_length, mode="linear", device=None):
     return normalized_positions
 
 
-def spatial_to_temporal_graphs(batch, temporal_position_mode="linear"):
+def spatial_to_temporal_graphs(batch, graph_type="fan"):
     """
-    Convert a batch of spatial graphs to temporal graphs.
+    Convert a batch of spatial graphs to temporal graphs with configurable connectivity.
     
     For each spatial node with position + hidden states, create a temporal graph where:
     - Node 0: current position
-    - Nodes 1-T: hidden state positions  
-    - Connectivity: Node 0 connects to all others, sequential connections 1->2->3->...
+    - Nodes 1-T: hidden state positions
+    - Connectivity depends on graph_type parameter
+    
+    Args:
+        batch: Input spatial graph batch
+        graph_type: Type of connectivity to use
+            - "fan": Hub connects to all + sequential connections (0->all, i->(i+1))
+            - "hub_n_spoke": Only hub-spoke connections (0->all, no sequential)
+            - "complete": Complete graph with self-loops (all-to-all including self)
+            - "complete_no_self": Complete graph without self-loops (all-to-all excluding self)
     """
+    import torch_geometric
+    
+    # Validate graph_type
+    valid_types = ["fan", "hub_n_spoke", "complete", "complete_no_self"]
+    if graph_type not in valid_types:
+        raise ValueError(f"graph_type must be one of {valid_types}, got {graph_type}")
+    
     # Get device from input batch
     device = batch.pos.device
     
@@ -71,8 +86,18 @@ def spatial_to_temporal_graphs(batch, temporal_position_mode="linear"):
         num_hidden_states = 0
         temporal_length = 1
     
+    # print(f"Creating {graph_type} temporal graphs: {num_spatial_nodes} spatial nodes -> {num_spatial_nodes} temporal graphs of length {temporal_length}")
+    
     # Store reference to spatial graph
-    # spatial_graph = batch.clone()
+    spatial_graph = batch.clone()
+    
+    # Set connectivity type code for tracking
+    connectivity_type_map = {
+        "fan": 0,
+        "hub_n_spoke": 1, 
+        "complete": 2,
+        "complete_no_self": 3
+    }
     
     temporal_graphs = []
     
@@ -88,34 +113,64 @@ def spatial_to_temporal_graphs(batch, temporal_position_mode="linear"):
         temporal_pos = torch.stack(temporal_positions)  # Shape: [T, 3]
         
         # Calculate temporal positions for this sequence
-        temporal_position = calculate_temporal_positions(temporal_length, mode=temporal_position_mode, device=device)
+        temporal_position = calculate_temporal_positions(temporal_length, device=device)
         
-        # Create edge connectivity
+        # Create edge connectivity based on graph_type
         if temporal_length > 1:
-            # Node 0 connects to all others: 0->1, 0->2, 0->3, ..., 0->T-1
-            hub_src = [0] * (temporal_length - 1)
-            hub_dst = list(range(1, temporal_length))
-            
-            # Sequential connections: 1->2, 2->3, ..., (T-2)->(T-1)
-            seq_src = list(range(1, temporal_length - 1))
-            seq_dst = list(range(2, temporal_length))
-            
-            # Combine all edges
-            all_src = hub_src + seq_src
-            all_dst = hub_dst + seq_dst
-            
-            edge_index = torch.tensor([all_src, all_dst], dtype=torch.long, device=device)
+            if graph_type == "fan":
+                # Original fan system: hub-spoke + sequential
+                # Hub connections: 0->1, 0->2, 0->3, ..., 0->T-1
+                hub_src = [0] * (temporal_length - 1)
+                hub_dst = list(range(1, temporal_length))
+                
+                # Sequential connections: 1->2, 2->3, ..., (T-2)->(T-1)
+                seq_src = list(range(1, temporal_length - 1))
+                seq_dst = list(range(2, temporal_length))
+                
+                # Combine all edges
+                all_src = hub_src + seq_src
+                all_dst = hub_dst + seq_dst
+                
+                edge_index = torch.tensor([all_src, all_dst], dtype=torch.long, device=device)
+                
+            elif graph_type == "hub_n_spoke":
+                # Hub-and-spoke only: 0 connects to all others, no sequential
+                hub_src = [0] * (temporal_length - 1)
+                hub_dst = list(range(1, temporal_length))
+                
+                edge_index = torch.tensor([hub_src, hub_dst], dtype=torch.long, device=device)
+                
+            elif graph_type == "complete":
+                # Complete graph without self-loops: all-to-all excluding self
+                src_nodes = []
+                dst_nodes = []
+                
+                for i in range(temporal_length):
+                    for j in range(temporal_length):
+                        if i != j:  # Exclude self-loops
+                            src_nodes.append(i)
+                            dst_nodes.append(j)
+                
+                edge_index = torch.tensor([src_nodes, dst_nodes], dtype=torch.long, device=device)
+                
         else:
-            # Single node, no edges
-            edge_index = torch.tensor([[], []], dtype=torch.long, device=device)
+            # Single node case
+            if graph_type == "complete":
+                # Single node with self-loop
+                edge_index = torch.tensor([[0], [0]], dtype=torch.long, device=device)
+            else:
+                # Single node, no edges for other types
+                edge_index = torch.tensor([[], []], dtype=torch.long, device=device)
         
         # Create temporal graph for this spatial node
         temporal_graph = torch_geometric.data.Data(
             pos=temporal_pos,
             edge_index=edge_index,
-            spatial_node_idx=torch.tensor([node_idx], dtype=torch.long, device=device),  # Track which spatial node this came from
-            temporal_length=torch.tensor([temporal_length], dtype=torch.long, device=device),
-            temporal_position=temporal_position  # Normalized position in sequence [0, 1/T, 2/T, ...]
+            spatial_node_idx=torch.tensor([node_idx], device=device),  # Track which spatial node this came from
+            temporal_length=torch.tensor([temporal_length], device=device),
+            temporal_position=temporal_position,  # Normalized position in sequence [0, 1/T, 2/T, ...]
+            connectivity_type=torch.tensor([connectivity_type_map[graph_type]], device=device),
+            # Note: Removed graph_type string to avoid batching issues with PyTorch Geometric
         )
         temporal_graphs.append(temporal_graph)
     
@@ -123,7 +178,9 @@ def spatial_to_temporal_graphs(batch, temporal_position_mode="linear"):
     temporal_batch = torch_geometric.data.Batch.from_data_list(temporal_graphs)
     
     # Store spatial graph reference
-    # temporal_batch.spatial_graph = spatial_graph
+    temporal_batch.spatial_graph = spatial_graph
+    # Note: Removed graph_type string to avoid batching issues with PyTorch Geometric
+    # Graph type can be inferred from connectivity_type tensor attribute
     
     return temporal_batch
 
@@ -170,6 +227,7 @@ class E3Transformer(nn.Module):
         edge_attr_dim: int,
         num_attention_heads: int,
         reduce: str | None = None,
+        conv = e3tools.nn.Conv,
         irreps_node_attr_temporal: Union[str, e3nn.o3.Irreps] = "1x1e",
         radial_edge_attr_encoding_function: str = "gaussian",
         node_attr_temporal_encoding_function: str = "gaussian",
@@ -207,6 +265,7 @@ class E3Transformer(nn.Module):
                                                     irreps_gate=irreps_with_temporal,)
 
         self.layers = nn.ModuleList()
+        self.conv = conv
         for _ in range(num_layers):
             self.layers.append(
                 e3tools.nn.TransformerBlock(
@@ -215,6 +274,7 @@ class E3Transformer(nn.Module):
                     irreps_sh=self.irreps_sh,
                     edge_attr_dim=self.edge_attr_dim,
                     num_heads=self.num_attention_heads,
+                    conv=self.conv,
                 )
             )
         self.output_head = e3tools.nn.EquivariantMLP(
@@ -360,6 +420,7 @@ class E3SpatioTemporal(nn.Module):
         temporal_to_spatial_pooler: nn.Module,
         radial_cutoff: float,
         temporal_cutoff: float = 1.0,
+        graph_type: str | None = "fan",
     ):
         """
         Initialize the E3SpatioTemporal model.
@@ -380,7 +441,7 @@ class E3SpatioTemporal(nn.Module):
         self.temporal_to_spatial_pooler = temporal_to_spatial_pooler
         self.radial_cutoff = radial_cutoff
         self.temporal_cutoff = temporal_cutoff
-    
+        self.graph_type = graph_type
     
     def forward(
         self,
@@ -404,13 +465,17 @@ class E3SpatioTemporal(nn.Module):
                 - 'spatial_graph': Output spatial graph
                 - 'temporal_features': Temporal features (if requested)
                 - 'temporal_graph': Temporal graph (if requested)
+                - 'graph_type': Graph type used for conversion
             Otherwise returns just the final spatial features tensor
         """
         # Store original device
         device = batch.pos.device
         
         # Step 1: Convert spatial graph to temporal graphs
-        temporal_batch = spatial_to_temporal_graphs(batch)
+        if self.graph_type is not None:
+            temporal_batch = spatial_to_temporal_graphs(batch, graph_type=self.graph_type)
+        else:
+            temporal_batch = spatial_to_temporal_graphs(batch) # default to fan graph type
         
         # Step 2: Process all positions (current + hidden states) with spatial module
         # Create topology for spatial processing (without positions)

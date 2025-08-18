@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-
 #SBATCH --partition=gpu2
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1 # Number of agents to run in parallel on this node
 #SBATCH --gpus-per-node=1   # Assign one GPU to each agent
 #SBATCH --cpus-per-task=12
-#SBATCH --time 3-0
+#SBATCH --time 2-0
 #SBATCH --mem-per-cpu=32G
-#SBATCH --array 0-4
+#SBATCH --array 0-10
 
 # Check if a Sweep ID is provided as an argument
 export JAMUN_ROOT_PATH=/data2/sules/jamun-conditional-runs
@@ -20,6 +19,7 @@ fi
 SWEEP_ID=$1
 
 # Set up the environment
+source ~/.bashrc
 eval "$(conda shell.bash hook)"
 conda activate jamun
 

@@ -24,7 +24,7 @@ init_datasets:
   pdb_pattern: "^(.*).pdb"
   as_iterable: false
   subsample: 1
-  total_lag_time: 2
+  total_lag_time: 5
   lag_subsample_rate: 1
   max_datasets: 10
   label_override: "ALA_ALA"
@@ -34,21 +34,21 @@ init_datasets:
 #     N_structures: ${init_datasets.total_lag_time}
 
 num_sampling_steps_per_batch: 1000
-num_batches: 10
+num_batches: 1
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
 continue_chain: true
 
 # Add your checkpoint path here - update with actual trained model path
-wandb_train_run_path: sule-shashank/jamun/cz5a6xo8
+wandb_train_run_path: sule-shashank/jamun/9ewlap6x
 # checkpoint_type: last
 # checkpoint_dir: "/data2/sules/jamun-conditional-runs/outputs/train/dev/runs/2025-07-31_00-43-14/checkpoints/"
 checkpoint_type: last
 
-sigma: 0.04
+sigma: 0.06
 M: 1.0
-delta: 0.04
-friction: 1.0
+delta: 0.066
+friction: 0.36384343
 inverse_temperature: 1.0
 score_fn_clip: null
 
