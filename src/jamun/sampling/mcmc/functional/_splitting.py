@@ -195,6 +195,8 @@ def aboba_memory(
     M: float = 1.0,
     inverse_temperature: float = 1.0,
     score_fn_clip: Optional[float] = None,
+    cleanup: Optional[bool] = None,
+    sigma: Optional[float] = None,
     **_,
 ):
     """ABOBA splitting scheme that updates a state history."""
@@ -235,8 +237,17 @@ def aboba_memory(
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
             y_hist_traj.append(list(y_hist))
 
-        y_hist.pop(-1)
-        y_hist.insert(0, y_current)
+        if cleanup is not None and cleanup and sigma is not None:
+            y_current = y.clone().detach()
+            _, orig_score = score_fn_processed(y_current, y_hist=y_hist)
+            y_denoised_and_noised = y_current + (sigma**2)*orig_score
+            y_hist.pop(-1)
+            y_hist.insert(0, y_denoised_and_noised)
+            y = y_denoised_and_noised
+        else:
+            y_current = y.clone().detach()
+            y_hist.pop(-1)
+            y_hist.insert(0, y_current)
 
     return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj
 
@@ -258,6 +269,8 @@ def baoab_memory(
     M: float = 1.0,
     inverse_temperature: float = 1.0,
     score_fn_clip: Optional[float] = None,
+    cleanup: Optional[bool] = None,
+    sigma: Optional[float] = None,
     **_,
 ):
     """BAOAB splitting scheme that updates a state history."""
@@ -295,8 +308,17 @@ def baoab_memory(
             y = y + (delta / 2) * vhat
             psi, orig_score = score_fn_processed(y, y_hist=y_hist)
             v = vhat + (delta / 2) * psi
-        y_hist.pop(-1) # remove the last element of the history
-        y_hist.insert(0, y_current) # present point is the first element of the history
+        
+        if cleanup is not None and cleanup and sigma is not None:
+            y_current = y.clone().detach()
+            _, orig_score = score_fn_processed(y_current, y_hist=y_hist)
+            y_denoised_and_noised = y_current + (sigma**2)*orig_score + sigma*torch.randn_like(y_current) # clean and add noise
+            y_hist.pop(-1)
+            y_hist.insert(0, y_denoised_and_noised)
+            y = y_denoised_and_noised
+        else:
+            y_hist.pop(-1) # remove the last element of the history
+            y_hist.insert(0, y_current) # present point is the first element of the history
         if save_trajectory and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
             y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())

@@ -86,6 +86,13 @@ def run(cfg):
     # Overwrite the checkpoint path in the config.
     cfg.model.checkpoint_path = checkpoint_path
     model = hydra.utils.instantiate(cfg.model)
+    
+    # Set default graph_type to "fan" if spatiotemporal model exists but doesn't have graph_type
+    if (hasattr(model, 'conditioner') and hasattr(model.conditioner, 'spatiotemporal_model') and 
+        not hasattr(model.conditioner.spatiotemporal_model, 'graph_type')):
+        model.conditioner.spatiotemporal_model.graph_type = "fan"
+    
+    
     print(f'Checkpoint path at: {checkpoint_path}')
     init_datasets = hydra.utils.instantiate(cfg.init_datasets)
     # breakpoint()

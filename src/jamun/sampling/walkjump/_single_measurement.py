@@ -116,7 +116,7 @@ class SingleMeasurementSamplerMemory:
         if y_hist_init is None:
             raise RuntimeError("y_hist_init must be supplied")
         y, v, y_hist,y_traj, score_traj, y_hist_traj = self.mcmc(y_init, y_hist_init, lambda y, y_hist: model.score(y, y_hist, self.sigma), \
-                                             v_init=v_init)
+                                             v_init=v_init, cleanup=True, sigma=self.sigma)
 
         if y_traj is not None:
             t_traj = torch.ones(y_traj.size(0), device=y_traj.device, dtype=int)

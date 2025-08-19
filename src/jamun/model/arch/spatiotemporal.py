@@ -472,7 +472,7 @@ class E3SpatioTemporal(nn.Module):
         device = batch.pos.device
         
         # Step 1: Convert spatial graph to temporal graphs
-        if self.graph_type is not None:
+        if hasattr(self, 'graph_type') and self.graph_type is not None:
             temporal_batch = spatial_to_temporal_graphs(batch, graph_type=self.graph_type)
         else:
             temporal_batch = spatial_to_temporal_graphs(batch) # default to fan graph type
