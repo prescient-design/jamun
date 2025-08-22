@@ -18,7 +18,7 @@ data:
         subsample: 1
         total_lag_time: 5
         lag_subsample_rate: 1
-        max_datasets: 500  # Increased for more training data
+        max_datasets: 1  # Increased for more training data
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -28,7 +28,7 @@ data:
         subsample: 1
         total_lag_time: ${data.datamodule.datasets.train.total_lag_time}
         lag_subsample_rate: ${data.datamodule.datasets.train.lag_subsample_rate}
-        max_datasets: 100
+        max_datasets: 1
 
 model:
   sigma_distribution:

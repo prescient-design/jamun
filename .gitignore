@@ -25,4 +25,3 @@ torch_compile_debug
 **/*.log
 **/*.err
 wandb/*
-scratch/*

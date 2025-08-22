@@ -815,7 +815,7 @@ Both datasets consist of swarms sampled at **20 fs intervals**, providing high t
 
 **Source Location**: `/data/bucket/vanib/ALA_ALA/swarms/swarm_results`
 
-The raw swarm data has been reorganized using the script: `reorganize_swarm_data.py` which sorts the trajectories into training and validation buckets according to different splitting strategies.
+The raw swarm data has been reorganized using the script: `scratch/reorganize_swarm_data.py` which sorts the trajectories into training and validation buckets according to different splitting strategies.
 
 #### Data Splitting Strategies
 
@@ -916,48 +916,6 @@ Once data selection is completed, models can be trained using the `train_enhance
 jamun_train --config-dir=configs experiment={experimental_config_name}
 ```
 
-#### Conditional Denoiser Configuration
-
-KALA-JAMUN uses a specialized model configuration for conditional denoisers:
-
-**Configuration Name**: `denoiser_conditional`
-
-This configuration differs from the standard denoiser in several key aspects:
-- **Conditioning Module**: Includes spatiotemporal conditioning components
-- **Architecture Module**: Uses E3ConvConditional variants
-- **Training Parameters**: Optimized for temporal conditioning tasks
-- **Memory Management**: Handles hidden_state processing during training
-
-#### Parameter Tuning
-
-All training parameters are preset in the experimental configurations but can be tuned through the Hydra configuration system:
-
-**Key Configuration Sections:**
-- `model/denoiser_conditional`: Model architecture and conditioning parameters
-- `data`: Dataset loading and preprocessing settings
-- `training`: Optimization parameters (learning rate, batch size, etc.)
-- `callbacks`: Training monitoring and checkpointing
-
-**Example Parameter Modifications:**
-```yaml
-# In configs/model/denoiser_conditional/spatiotemporal.yaml
-conditioning_module:
-  total_lag_time: 5
-  lag_subsample_rate: 10
-
-architecture_module:
-  hidden_dim: 128
-  num_layers: 4
-```
-
-#### Training Process
-
-1. **Data Loading**: Enhanced datasets are loaded with proper temporal subsampling
-2. **Model Initialization**: Conditional denoiser with spatiotemporal components
-3. **Training Loop**: Includes hidden_state processing and temporal loss computation
-4. **Validation**: Tests on held-out swarms/states based on splitting strategy
-5. **Checkpointing**: Regular model saves for sampling and analysis
-
 ### 4.3 Sampling
 
 #### Sampling Configuration
@@ -986,27 +944,6 @@ The `sample_memory` configuration automatically handles:
 2. **Memory Initialization**: Sets up initial historical states from validation data
 3. **Sampler Selection**: Uses `SamplerMemory` with `baoab_memory` algorithm
 4. **Wrapper Configuration**: Employs `ModelSamplingWrapperMemory` for proper interface
-
-#### Sampling Parameters
-
-Key parameters in the memory sampling configuration:
-
-```yaml
-sampler:
-  _target_: jamun.sampling.SamplerMemory
-  
-batch_sampler:
-  _target_: jamun.sampling.mcmc.splitting.BAOABMemory
-  history_update_frequency: 10  # Inner loop equilibration steps
-  steps: 10000                  # Outer loop iterations
-  
-model_wrapper:
-  _target_: jamun.utils.ModelSamplingWrapperMemory
-  sigma: 0.1
-  recenter_on_init: true
-```
-
-This experimental framework enables comprehensive evaluation of KALA-JAMUN's temporal conditioning capabilities across different data splitting strategies and conformational scenarios.
 
 ### 4.4 Experiments
 
