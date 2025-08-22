@@ -185,7 +185,7 @@ def load_validation_data(total_lag_time: int, val_root: str = "/data2/sules/ALA_
             subsample=1,
             total_lag_time=total_lag_time,
             lag_subsample_rate=1,
-            max_datasets=5  # Use a few datasets for validation
+            max_datasets=100
         )
         
         if not datasets:
@@ -210,7 +210,7 @@ def load_validation_data(total_lag_time: int, val_root: str = "/data2/sules/ALA_
         raise
 
 def load_model_and_compute_rmsd(run_info: Dict[str, Any], val_loader: torch_geometric.loader.DataLoader) -> float:
-    """Load a model from checkpoint and compute validation RMSD²."""
+    """Load a model from checkpoint and compute validation MSE (RMSD²)."""
     run_path = run_info['run_path']
     run_name = run_info['run_name']
     
@@ -220,7 +220,7 @@ def load_model_and_compute_rmsd(run_info: Dict[str, Any], val_loader: torch_geom
         # Find checkpoint
         checkpoint_path = find_checkpoint(
             wandb_train_run_path=run_path,
-            checkpoint_type="best_so_far"
+            checkpoint_type="last"
         )
         
         # Load model
@@ -233,8 +233,8 @@ def load_model_and_compute_rmsd(run_info: Dict[str, Any], val_loader: torch_geom
         
         logger.info(f"Model loaded successfully for run: {run_name}")
         
-        # Compute validation squared RMSD
-        total_rmsd_squared = 0.0
+        # Compute validation MSE (which equals RMSD²)
+        total_mse = 0.0
         total_batches = 0
         
         with torch.no_grad():
@@ -244,31 +244,31 @@ def load_model_and_compute_rmsd(run_info: Dict[str, Any], val_loader: torch_geom
                 # Use the model's validation logic
                 sigma = model.sigma_distribution.sample().to(device)
                 loss, aux = model.noise_and_compute_loss(
-                    batch.pos, 
                     batch, 
-                    batch.batch, 
-                    batch.num_graphs,
                     sigma,
                     align_noisy_input=model.align_noisy_input_during_evaluation
                 )
                 
-                # Extract RMSD from aux dictionary and square it
-                if 'rmsd' in aux:
+                # Extract MSE from aux dictionary (since rmsd = sqrt(mse), we want mse for squared error)
+                if 'mse' in aux:
+                    mse_value = aux['mse'].mean().item()
+                    total_mse += mse_value  # This is actually MSE (RMSD²)
+                elif 'rmsd' in aux:
                     rmsd_value = aux['rmsd'].mean().item()
-                    total_rmsd_squared += rmsd_value ** 2  # Square the RMSD
+                    total_mse += rmsd_value ** 2  # Square the RMSD to get MSE
                 else:
-                    logger.warning(f"RMSD not found in aux dictionary for {run_name}. Available keys: {list(aux.keys())}")
-                    # Fallback to loss if RMSD not available
-                    total_rmsd_squared += loss.mean().item()
+                    logger.warning(f"Neither MSE nor RMSD found in aux dictionary for {run_name}. Available keys: {list(aux.keys())}")
+                    # Fallback to loss if neither MSE nor RMSD available
+                    total_mse += loss.mean().item()
                 
                 total_batches += 1
-        print(f"total_rmsd_squared: {total_rmsd_squared}")
+        print(f"total_mse: {total_mse}")
         print(f"total_batches: {total_batches}")
         breakpoint()
-        avg_rmsd_squared = total_rmsd_squared / total_batches if total_batches > 0 else float('inf')
-        logger.info(f"Validation RMSD² for {run_name}: {avg_rmsd_squared:.6f}")
+        avg_mse = total_mse / total_batches if total_batches > 0 else float('inf')
+        logger.info(f"Validation MSE (RMSD²) for {run_name}: {avg_mse:.6f}")
         
-        return avg_rmsd_squared
+        return avg_mse
         
     except Exception as e:
         logger.error(f"Error computing validation error for run {run_name}: {e}")
@@ -304,7 +304,7 @@ def plot_validation_errors(results: List[Dict[str, Any]], output_path: str = "va
     
     # Find the correct validation column name for plotting
     validation_col = None
-    for col in ['validation_rmsd_squared', 'validation_rmsd', 'validation_error']:
+    for col in ['validation_mse', 'validation_rmsd_squared', 'validation_rmsd', 'validation_error']:
         if col in df.columns:
             validation_col = col
             break
@@ -325,8 +325,8 @@ def plot_validation_errors(results: List[Dict[str, Any]], output_path: str = "va
                     fontsize=8, alpha=0.7)
     
     plt.xlabel(x_param.replace('_', ' ').title())
-    plt.ylabel('Validation RMSD²')
-    plt.title('Validation RMSD² for Spatiotemporal Multimeasurement Models\nGroup: noise_check_experiment_multimeasurement_vs_correlation')
+    plt.ylabel('Validation MSE (RMSD²)')
+    plt.title('Validation MSE for Spatiotemporal Multimeasurement Models\nGroup: noise_check_experiment_multimeasurement_vs_correlation')
     plt.grid(True, alpha=0.3)
     
     # Set x-axis limits to 2-10 if appropriate
@@ -342,10 +342,10 @@ def plot_validation_errors(results: List[Dict[str, Any]], output_path: str = "va
     df.to_csv(csv_path, index=False)
     logger.info(f"Data saved to: {csv_path}")
     
-    # Save validation RMSD² paired with total_lag_time as npy file
+    # Save validation MSE paired with total_lag_time as npy file
     # Find the correct validation column name
     validation_col = None
-    for col in ['validation_rmsd_squared', 'validation_rmsd', 'validation_error']:
+    for col in ['validation_mse', 'validation_rmsd_squared', 'validation_rmsd', 'validation_error']:
         if col in df.columns:
             validation_col = col
             break
@@ -357,11 +357,11 @@ def plot_validation_errors(results: List[Dict[str, Any]], output_path: str = "va
     if 'total_lag_time' in df.columns:
         # Create structured array with total_lag_time and validation values
         data = np.array(list(zip(df['total_lag_time'].values, df[validation_col].values)),
-                       dtype=[('total_lag_time', 'i4'), ('validation_rmsd_squared', 'f8')])
+                       dtype=[('total_lag_time', 'i4'), ('validation_mse', 'f8')])
         npy_path = "validation_errors_spatiotemporal_multimeasurement.npy"
         np.save(npy_path, data)
         logger.info(f"Validation data with total_lag_time saved to: {npy_path}")
-        logger.info(f"Data format: structured array with fields 'total_lag_time' and 'validation_rmsd_squared'")
+        logger.info(f"Data format: structured array with fields 'total_lag_time' and 'validation_mse'")
         logger.info(f"Used validation column: {validation_col}")
     else:
         # Fallback to just validation values if total_lag_time not available
@@ -411,7 +411,7 @@ def main():
         # Step 4: Compute validation errors for each model
         results = []
         total_runs = sum(len(runs_for_lag_time) for runs_for_lag_time in runs_by_lag_time.values())
-        
+        breakpoint()
         with tqdm(total=total_runs, desc="Processing models", unit="model") as pbar:
             for lag_time, runs_for_lag_time in runs_by_lag_time.items():
                 logger.info(f"Loading validation data for total_lag_time={lag_time}")
@@ -420,12 +420,12 @@ def main():
                 for run_info in runs_for_lag_time:
                     pbar.set_description(f"Processing {run_info['run_name'][:20]}...")
                     
-                    validation_rmsd_squared = load_model_and_compute_rmsd(run_info, val_loader)
+                    validation_mse = load_model_and_compute_rmsd(run_info, val_loader)
                     
                     result = {
                         'run_name': run_info['run_name'],
                         'run_path': run_info['run_path'],
-                        'validation_rmsd_squared': validation_rmsd_squared,
+                        'validation_mse': validation_mse,
                         **{k: v for k, v in run_info.items() if k not in ['run', 'cfg']}
                     }
                     results.append(result)
@@ -439,10 +439,10 @@ def main():
         logger.info("SUMMARY")
         logger.info("="*50)
         logger.info(f"Total runs processed: {len(results)}")
-        logger.info("Top 5 best performing models (lowest RMSD²):")
-        sorted_results = sorted(results, key=lambda x: x['validation_rmsd_squared'])
+        logger.info("Top 5 best performing models (lowest MSE):")
+        sorted_results = sorted(results, key=lambda x: x['validation_mse'])
         for i, result in enumerate(sorted_results[:5]):
-            logger.info(f"{i+1}. {result['run_name']}: {result['validation_rmsd_squared']:.6f}")
+            logger.info(f"{i+1}. {result['run_name']}: {result['validation_mse']:.6f}")
         
     except Exception as e:
         logger.error(f"Error in main execution: {e}")

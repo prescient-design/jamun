@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-#SBATCH --partition=gpu3
+#SBATCH --partition=b200
 #SBATCH --job-name=enhanced_long_comparison
-#SBATCH --qos=preempt
-#SBATCH --nodes=1
+ #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
 #SBATCH --cpus-per-task=8
@@ -34,7 +33,7 @@ case ${SLURM_ARRAY_TASK_ID} in
         echo "Job 0: Standard JAMUN on enhanced_long, noise 0.04"
         CONFIG="train_enhanced_standard_jamun"
         DATA_PATH="/data2/sules/ALA_ALA_enhanced_long"
-        WANDB_GROUP="model_comparison_enhanced_long"
+        WANDB_GROUP="model_comparison_enhanced_long_take2"
         NOISE_LEVEL="0.04"
         RUN_NAME="enhanced_long_standard_noise0.04"
         ;;
@@ -42,7 +41,7 @@ case ${SLURM_ARRAY_TASK_ID} in
         echo "Job 1: Spatiotemporal JAMUN on enhanced_long, noise 0.04"
         CONFIG="train_enhanced_spatiotemporal_conditioner"
         DATA_PATH="/data2/sules/ALA_ALA_enhanced_long"
-        WANDB_GROUP="model_comparison_enhanced_long"
+        WANDB_GROUP="model_comparison_enhanced_long_take2"
         NOISE_LEVEL="0.04"
         RUN_NAME="enhanced_long_spatiotemporal_noise0.04"
         ;;
@@ -50,7 +49,7 @@ case ${SLURM_ARRAY_TASK_ID} in
         echo "Job 2: Standard JAMUN on enhanced_long, noise 0.06"
         CONFIG="train_enhanced_standard_jamun"
         DATA_PATH="/data2/sules/ALA_ALA_enhanced_long"
-        WANDB_GROUP="model_comparison_enhanced_long"
+        WANDB_GROUP="model_comparison_enhanced_long_take2"
         NOISE_LEVEL="0.06"
         RUN_NAME="enhanced_long_standard_noise0.06"
         ;;
@@ -58,7 +57,7 @@ case ${SLURM_ARRAY_TASK_ID} in
         echo "Job 3: Spatiotemporal JAMUN on enhanced_long, noise 0.06"
         CONFIG="train_enhanced_spatiotemporal_conditioner"
         DATA_PATH="/data2/sules/ALA_ALA_enhanced_long"
-        WANDB_GROUP="model_comparison_enhanced_long"
+        WANDB_GROUP="model_comparison_enhanced_long_take2"
         NOISE_LEVEL="0.06"
         RUN_NAME="enhanced_long_spatiotemporal_noise0.06"
         ;;
@@ -66,7 +65,7 @@ case ${SLURM_ARRAY_TASK_ID} in
         echo "Job 4: Standard JAMUN on enhanced_long_state_split, noise 0.04"
         CONFIG="train_enhanced_standard_jamun"
         DATA_PATH="/data2/sules/ALA_ALA_enhanced_long_state_split"
-        WANDB_GROUP="withheld_state"
+        WANDB_GROUP="withheld_state_take2"
         NOISE_LEVEL="0.04"
         RUN_NAME="enhanced_long_state_split_standard_noise0.04"
         ;;
@@ -74,7 +73,7 @@ case ${SLURM_ARRAY_TASK_ID} in
         echo "Job 5: Spatiotemporal JAMUN on enhanced_long_state_split, noise 0.04"
         CONFIG="train_enhanced_spatiotemporal_conditioner"
         DATA_PATH="/data2/sules/ALA_ALA_enhanced_long_state_split"
-        WANDB_GROUP="withheld_state"
+        WANDB_GROUP="withheld_state_take2"
         NOISE_LEVEL="0.04"
         RUN_NAME="enhanced_long_state_split_spatiotemporal_noise0.04"
         ;;
@@ -103,6 +102,7 @@ CMD="$CMD ++data.datamodule.datasets.val.total_lag_time=5"
 CMD="$CMD ++data.datamodule.datasets.train.max_datasets=200"
 CMD="$CMD ++data.datamodule.datasets.val.max_datasets=50"
 CMD="$CMD ++trainer.max_epochs=100"
+CMD="$CMD ++trainer.val_check_interval=0.2"
 
 # Add noise level
 CMD="$CMD ++model.sigma_distribution.sigma=${NOISE_LEVEL}"
