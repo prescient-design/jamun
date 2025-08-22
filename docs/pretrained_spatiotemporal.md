@@ -794,7 +794,7 @@ This design ensures that the sampling process respects the temporal dependencies
 
 ---
 
-## Chapter 4: Experiments
+## Chapter 4: Usage
 
 ### Overview
 
@@ -1007,3 +1007,72 @@ model_wrapper:
 ```
 
 This experimental framework enables comprehensive evaluation of KALA-JAMUN's temporal conditioning capabilities across different data splitting strategies and conformational scenarios.
+
+### 4.4 Experiments
+
+This section describes key experiments designed to evaluate KALA-JAMUN's performance and validate design choices for temporal conditioning.
+
+#### 4.4.1 Model Comparison
+
+**Objective**: Compare different conditioning strategies and temporal graph topologies to establish the effectiveness of spatiotemporal conditioning.
+
+**Models Compared**:
+1. **Standard JAMUN**: Baseline unconditional denoiser without temporal information
+2. **Position Conditioner**: Simple conditioning using current positions only
+3. **Spatiotemporal Conditioner (Fan Graph)**: Full spatiotemporal model with fan temporal graph topology
+4. **Spatiotemporal Conditioner (Hub-and-Spoke)**: Full spatiotemporal model with hub-and-spoke temporal graph topology
+
+For instance, check out this wandb [run](https://genentech.wandb.io/sule-shashank/jamun/runs/scxc4bt4/overview) and its associated group. 
+
+
+#### 4.4.2 Noise Check (Multimeasurement Validation)
+
+**Objective**: Validate the multimeasurement approach by comparing standard JAMUN with reduced noise against spatiotemporal models using repeated position datasets.
+
+**Experimental Setup**:
+
+**Standard JAMUN Configuration**:
+- Noise level: `σ/√T` (reduced noise to account for T measurements)
+- Dataset: Standard molecular trajectory data
+- Model: Unconditional denoiser
+
+**Spatiotemporal Model Configuration**:
+- **Repeated Position Dataset**: `total_lag_time = T` with repeated copies of current state
+- **Standard Temporal Dataset**: `total_lag_time = T` with historical trajectory states
+- Noise level: Standard `σ`
+- Model: Spatiotemporal conditioner
+
+**Experimental Script**: [`scripts/slurm/train_noise_check.sh`](scripts/slurm/train_noise_check.sh)
+
+**Key Comparisons**:
+1. **Standard JAMUN (σ/√T)** vs **Spatiotemporal + Repeated Dataset (σ)**
+2. **Standard JAMUN (σ/√T)** vs **Spatiotemporal + Temporal Dataset (σ)**
+3. **Repeated Dataset** vs **Temporal Dataset** (both with spatiotemporal conditioning)
+
+**Sample wandb run**
+Run [here](https://genentech.wandb.io/sule-shashank/jamun/runs/4j8bfj5k/overview) and check out its associated group. 
+
+#### 4.4.3 Total Lag Time vs Lag Subsample Rate Experiment
+
+**Objective**: Systematically evaluate the impact of temporal parameters (`total_lag_time` and `lag_subsample_rate`) across different temporal graph topologies.
+
+**Parameter Space**:
+- **Total Lag Time**: Number of historical states included (e.g., 2, 4, 6, 8, 10)
+- **Lag Subsample Rate**: Temporal spacing between consecutive states (e.g., 5, 10, 20, 50 timesteps)
+- **Graph Types**: Fan, Hub-and-Spoke, Complete graph topologies
+
+**Experimental Design**:
+- Grid search across parameter combinations
+- Fixed computational budget per configuration
+- Consistent evaluation metrics across all runs
+
+**Experimental Script**: [`scripts/slurm/train_graph_type_comparison.sh`](scripts/slurm/train_graph_type_comparison.sh)
+
+**Wandb runs**
+
+Run [here](https://genentech.wandb.io/sule-shashank/jamun/runs/tjwcsf4g/overview) and check out its associated group 
+#### 4.4.4 Sampling runs 
+
+1. **Bond degradation** The bond degradation of KALA-JAMUN vs Standard JAMUN with a trajectory of 50K steps was compared. We also compared KALA-JAMUN to a standard JAMUN trained for 500 epochs. The run for KALA jamun is [here](https://genentech.wandb.io/sule-shashank/jamun/runs/1j4us3nx?nw=nwusersuleshashank). The run for Standard JAMUN is [here](https://genentech.wandb.io/sule-shashank/jamun/runs/vigqbemt/overview) and the run for the highly trained standard JAMUN is [here](https://genentech.wandb.io/sule-shashank/jamun/runs/9u4qo5ax/overview). 
+
+2. **Comparing ensembles**: We compared KALA JAMUN vs JAMUN in terms of being able to converge the distribution from the short swarm data (1ps). The results for KALA-JAMUN are [here](https://genentech.wandb.io/sule-shashank/jamun/runs/jwk7i45j/overview) and standard JAMUN are [here](https://genentech.wandb.io/sule-shashank/jamun/runs/u2of58jn/overview). 
