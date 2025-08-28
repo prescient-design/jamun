@@ -38,6 +38,7 @@ dependencies = [
     "universal-pathlib>=0.2.6",
     "wandb>=0.19.1",
     "orb_models>=0.5.4",
+    "optree>=0.17.0",
 ]
 
 [project.scripts]
