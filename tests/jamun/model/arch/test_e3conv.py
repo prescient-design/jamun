@@ -121,7 +121,11 @@ def test_e3conv_equivariance(model, device, data):
     "device",
     [
         pytest.param(torch.device("cpu"), id="cpu"),
-        pytest.param(torch.device("cuda:0"), id="cuda"),
+        pytest.param(
+            torch.device("cuda:0"),
+            id="cuda",
+            marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="cuda required"),
+        ),
     ],
 )
 def test_e3conv_compile(model, device, data):
@@ -175,7 +179,11 @@ def test_e3conv_energy_parameterization(model, device, data):
     "device",
     [
         pytest.param(torch.device("cpu"), id="cpu", marks=pytest.mark.xpass),
-        pytest.param(torch.device("cuda:0"), id="cuda"),
+        pytest.param(
+            torch.device("cuda:0"),
+            id="cuda",
+            marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="cuda required"),
+        ),
     ],
 )
 def test_e3conv_energy_parameterization_compile(model, device, data):
@@ -210,7 +218,11 @@ def test_e3conv_energy_parameterization_compile(model, device, data):
     "device",
     [
         pytest.param(torch.device("cpu"), id="cpu", marks=pytest.mark.xpass),
-        pytest.param(torch.device("cuda:0"), id="cuda"),
+        pytest.param(
+            torch.device("cuda:0"),
+            id="cuda",
+            marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="cuda required"),
+        ),
     ],
 )
 def test_e3conv_energy_parameterization_double_backprop_compile(model, device, data):
