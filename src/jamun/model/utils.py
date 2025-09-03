@@ -98,12 +98,13 @@ def compute_rmsd_metrics(
         with torch.cuda.nvtx.range("mean_center_x"):
             x = mean_center_f(x, batch, num_graphs)
 
-    xhat_aligned = align_A_to_B_batched_looped_f(
-        xhat,
-        x,
-        batch,
-        num_graphs,
-    )
+    with torch.cuda.nvtx.range("align_xhat"):
+        xhat_aligned = align_A_to_B_batched_looped_f(
+            xhat,
+            x,
+            batch,
+            num_graphs,
+        )
 
     # Compute the raw loss.
     with torch.cuda.nvtx.range("raw_coordinate_loss"):

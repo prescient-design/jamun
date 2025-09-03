@@ -9,8 +9,7 @@ max_radius: null
 average_squared_distance: null
 add_fixed_noise: false
 add_fixed_ones: false
-align_noisy_input_during_training: true
-align_noisy_input_during_evaluation: true
+use_alignment_estimators: true
 mean_center: true
 mirror_augmentation_rate: 0.0
 use_torch_compile: true

@@ -22,11 +22,9 @@ class Denoiser(pl.LightningModule):
         average_squared_distance: float,
         add_fixed_noise: bool,
         add_fixed_ones: bool,
-        align_noisy_input_during_training: bool,
-        align_noisy_input_during_evaluation: bool,
+        use_alignment_estimators: bool,
         mean_center: bool,
         mirror_augmentation_rate: float,
-        bond_loss_coefficient: float = 1.0,
         normalization_type: str | None = "JAMUN",
         sigma_data: float | None = None,  # Only used if normalization_type is "EDM"
         lr_scheduler_config: dict | None = None,
@@ -68,18 +66,6 @@ class Denoiser(pl.LightningModule):
         self.average_squared_distance = average_squared_distance
         py_logger.info(f"Average squared distance = {self.average_squared_distance}")
 
-        self.align_noisy_input_during_training = align_noisy_input_during_training
-        if self.align_noisy_input_during_training:
-            py_logger.info("Aligning noisy input during training.")
-        else:
-            py_logger.info("Not aligning noisy input during training.")
-
-        self.align_noisy_input_during_evaluation = align_noisy_input_during_evaluation
-        if self.align_noisy_input_during_evaluation:
-            py_logger.info("Aligning noisy input during evaluation.")
-        else:
-            py_logger.info("Not aligning noisy input during evaluation.")
-
         self.mean_center = mean_center
         if self.mean_center:
             py_logger.info("Mean centering input and output.")
@@ -101,9 +87,12 @@ class Denoiser(pl.LightningModule):
         elif self.normalization_type != "EDM" and self.sigma_data is not None:
             raise ValueError("sigma_data can only be used when normalization_type is 'EDM'")
 
-        self.bond_loss_coefficient = bond_loss_coefficient
         self.alignment_correction_order = alignment_correction_order
-        py_logger.info(f"Alignment correction order: {self.alignment_correction_order}")
+        self.use_alignment_estimators = use_alignment_estimators
+        if self.use_alignment_estimators:
+            py_logger.info(f"Using alignment estimators for x with correction order {self.alignment_correction_order}.")
+        else:
+            py_logger.info("Using standard estimators for x.")
 
         self.pass_topology_as_atom_graphs = pass_topology_as_atom_graphs
         self.rotational_augmentation = rotational_augmentation
@@ -225,9 +214,9 @@ class Denoiser(pl.LightningModule):
         batch: torch.Tensor,
         num_graphs: int,
         sigma: float | torch.Tensor,
-        align_noisy_input: bool,
+        use_alignment_estimators: bool,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Add noise to the input and denoise it."""
+        """Add noise to the input and denoise it, also returning the estimator of x."""
         with torch.no_grad():
             if self.mean_center:
                 with torch.cuda.nvtx.range("mean_center_x"):
@@ -242,10 +231,9 @@ class Denoiser(pl.LightningModule):
                 with torch.cuda.nvtx.range("mean_center_y"):
                     y = mean_center_f(y, batch, num_graphs)
 
-            # Aligning each batch.
-            if align_noisy_input:
-                with torch.cuda.nvtx.range("align_A_to_B_batched"):
-                    x = align_A_to_B_batched_f(
+            if use_alignment_estimators:
+                with torch.cuda.nvtx.range("align_x"):
+                    xtarget = align_A_to_B_batched_f(
                         x,
                         y,
                         batch,
@@ -253,15 +241,19 @@ class Denoiser(pl.LightningModule):
                         sigma=sigma,
                         correction_order=self.alignment_correction_order,
                     )
+            else:
+                xtarget = x
 
         with torch.cuda.nvtx.range("xhat"):
             xhat = self.xhat(y, topology, batch, num_graphs, sigma)
 
-        return xhat, x, y
+        return xhat, xtarget, y
 
     def compute_loss(
         self,
+        *,
         x: torch.Tensor,
+        xtarget: torch.Tensor,
         xhat: torch.Tensor,
         topology: torch_geometric.data.Batch,
         batch: torch.Tensor,
@@ -269,13 +261,20 @@ class Denoiser(pl.LightningModule):
         sigma: float | torch.Tensor,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute the loss."""
+        aux = {}
+        aux_xtarget = compute_rmsd_metrics(
+            x=xtarget, xhat=xhat, batch=batch, num_graphs=num_graphs, sigma=sigma, mean_center=self.mean_center
+        )
+        for key in aux_xtarget:
+            aux[f"xtarget/{key}"] = aux_xtarget[key]
 
-        aux = compute_rmsd_metrics(
+        aux_x = compute_rmsd_metrics(
             x=x, xhat=xhat, batch=batch, num_graphs=num_graphs, sigma=sigma, mean_center=self.mean_center
         )
+        for key in aux_x:
+            aux[f"x/{key}"] = aux_x[key]
 
-        mse = aux["mse"]
-
+        mse = aux["xtarget/mse"]
         D = xhat.shape[-1]
 
         # Account for the loss weight across graphs and noise levels.
@@ -287,7 +286,7 @@ class Denoiser(pl.LightningModule):
                 normalization_type=self.normalization_type,
                 sigma_data=self.sigma_data,
                 D=D,
-                device=x.device,
+                device=xtarget.device,
             )
             loss = loss / (c_out**2)
 
@@ -295,16 +294,32 @@ class Denoiser(pl.LightningModule):
 
     def noise_and_compute_loss(
         self,
+        *,
         x: torch.Tensor,
         topology: torch_geometric.data.Batch,
         batch: torch.Tensor,
         num_graphs: int,
         sigma: float | torch.Tensor,
-        align_noisy_input: bool,
+        use_alignment_estimators: bool,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Add noise to the input and compute the loss."""
-        xhat, x, _ = self.noise_and_denoise(x, topology, batch, num_graphs, sigma, align_noisy_input=align_noisy_input)
-        return self.compute_loss(x, xhat, topology, batch, num_graphs, sigma)
+        xhat, xtarget, _ = self.noise_and_denoise(
+            x=x,
+            topology=topology,
+            batch=batch,
+            num_graphs=num_graphs,
+            sigma=sigma,
+            use_alignment_estimators=use_alignment_estimators,
+        )
+        return self.compute_loss(
+            x=x,
+            xtarget=xtarget,
+            xhat=xhat,
+            topology=topology,
+            batch=batch,
+            num_graphs=num_graphs,
+            sigma=sigma,
+        )
 
     def training_step(self, data: torch_geometric.data.Batch, data_idx: int):
         """Called during training."""
@@ -324,12 +339,12 @@ class Denoiser(pl.LightningModule):
                 x = torch.einsum("ni,ij->nj", x, R.T)
 
         loss, aux = self.noise_and_compute_loss(
-            x,
-            topology,
-            batch,
-            num_graphs,
-            sigma,
-            align_noisy_input=self.align_noisy_input_during_training,
+            x=x,
+            topology=topology,
+            batch=batch,
+            num_graphs=num_graphs,
+            sigma=sigma,
+            use_alignment_estimators=self.use_alignment_estimators,
         )
 
         # Average the loss and other metrics over all graphs.
@@ -358,7 +373,12 @@ class Denoiser(pl.LightningModule):
             x = torch.einsum("ni,ij->nj", x, R.T)
 
         loss, aux = self.noise_and_compute_loss(
-            x, topology, batch, num_graphs, sigma, align_noisy_input=self.align_noisy_input_during_training
+            x=x,
+            topology=topology,
+            batch=batch,
+            num_graphs=num_graphs,
+            sigma=sigma,
+            use_alignment_estimators=self.use_alignment_estimators,
         )
 
         # Average the loss and other metrics over all graphs.

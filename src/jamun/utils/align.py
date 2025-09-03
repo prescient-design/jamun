@@ -234,7 +234,7 @@ def align_A_to_B_batched_looped_f(
     correction_order: int = 0,
     alignment_batch_size: int = 32,
 ) -> torch.Tensor:
-    """Aligns each graph of A to corresponding graph in B, by looping over nodes in the same batch."""
+    """Loops over align_A_to_B_batched_f to save memory."""
     A_aligned = torch.zeros_like(A)
     for i in range(num_graphs // alignment_batch_size + 1):
         start = i * alignment_batch_size
