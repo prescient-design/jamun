@@ -17,17 +17,14 @@ def C1(S: torch.Tensor) -> torch.Tensor:
     s1, s2, s3 = S[:, 0], S[:, 1], S[:, 2]  # Each is [batch_size]
 
     # Compute coefficients for each batch
-    c1 = 1 / (s1 + s2) + 1 / (s1 + s3)  # [batch_size]
-    c2 = 1 / (s2 + s1) + 1 / (s2 + s3)  # [batch_size]
-    c3 = 1 / (s3 + s1) + 1 / (s3 + s2)  # [batch_size]
+    r1 = 1 / (s1 + s2) + 1 / (s1 + s3)  # [batch_size]
+    r2 = 1 / (s2 + s1) + 1 / (s2 + s3)  # [batch_size]
+    r3 = 1 / (s3 + s1) + 1 / (s3 + s2)  # [batch_size]
 
     # Stack to create diagonal elements matrix
-    diag_elements = torch.stack([c1, c2, c3], dim=-1)  # [batch_size, 3]
+    C1 = torch.stack([r1, r2, r3], dim=-1)  # [batch_size, 3]
 
-    # Create batch of diagonal matrices
-    C1_batch = torch.diag_embed(diag_elements)  # [batch_size, 3, 3]
-
-    return -C1_batch / 2
+    return -C1 / 2
 
 
 def C2(S: torch.Tensor) -> torch.Tensor:
@@ -44,17 +41,14 @@ def C2(S: torch.Tensor) -> torch.Tensor:
     s1, s2, s3 = S[:, 0], S[:, 1], S[:, 2]  # Each is [batch_size]
 
     # Compute coefficients for each batch
-    c1 = 1 / (s1 + s2) ** 2 + 1 / (s1 + s3) ** 2  # [batch_size]
-    c2 = 1 / (s2 + s1) ** 2 + 1 / (s2 + s3) ** 2  # [batch_size]
-    c3 = 1 / (s3 + s1) ** 2 + 1 / (s3 + s2) ** 2  # [batch_size]
+    r1 = 1 / (s1 + s2) ** 2 + 1 / (s1 + s3) ** 2  # [batch_size]
+    r2 = 1 / (s2 + s1) ** 2 + 1 / (s2 + s3) ** 2  # [batch_size]
+    r3 = 1 / (s3 + s1) ** 2 + 1 / (s3 + s2) ** 2  # [batch_size]
 
     # Stack to create diagonal elements matrix
-    diag_elements = torch.stack([c1, c2, c3], dim=-1)  # [batch_size, 3]
+    C2 = torch.stack([r1, r2, r3], dim=-1)  # [batch_size, 3]
 
-    # Create batch of diagonal matrices
-    C2_batch = torch.diag_embed(diag_elements)  # [batch_size, 3, 3]
-
-    return -C2_batch / 8
+    return -C2 / 8
 
 
 def alignment_correction_upto_order(S: torch.Tensor, sigma: float, correction_order: int) -> torch.Tensor:
@@ -72,14 +66,14 @@ def alignment_correction_upto_order(S: torch.Tensor, sigma: float, correction_or
     batch_size = S.shape[0]
     assert S.shape == (batch_size, 3)
 
-    identity = torch.eye(3, device=S.device, dtype=S.dtype).unsqueeze(0).expand(batch_size, -1, -1)
+    ones = torch.ones((batch_size, 3), device=S.device, dtype=S.dtype)
 
     if correction_order == 0:
-        return identity
+        return ones
     if correction_order == 1:
-        return identity + (sigma**2) * C1(S)
+        return ones + (sigma**2) * C1(S)
     if correction_order == 2:
-        return identity + (sigma**2) * C1(S) + (sigma**4) * C2(S)
+        return ones + (sigma**2) * C1(S) + (sigma**4) * C2(S)
 
     raise ValueError(f"Correction order {correction_order} not supported.")
 
@@ -123,15 +117,18 @@ def kabsch_algorithm(
     H = torch.einsum("Ni,Nj,NG->Gij", A_c, B_c, batch_one_hot)
 
     # SVD to get rotation.
-    U, S_orig, VH = torch.linalg.svd(H)
-    S = alignment_correction_upto_order(S_orig, sigma=sigma, correction_order=correction_order)
-    R_check = torch.einsum("Gki,Gkk,Gjk->Gij", VH, S, U)  # V U^T
+    U, S, VH = torch.linalg.svd(H)
+
+    # Compute corrected S.
+    R_check = torch.einsum("Gki,Gjk->Gij", VH, U)  # V U^T
+    dets = torch.linalg.det(R_check)
+    signs = torch.ones(num_graphs, 3, device=dets.device)
+    signs[:, 2] = dets
+    S = torch.einsum("Gk,Gk->Gk", signs, S)
 
     # Remove reflections.
-    dets = torch.linalg.det(R_check)
-    signs = torch.eye(3, device=dets.device).repeat(num_graphs, 1, 1)  # repeat the identity matrix
-    signs[:, 2, 2] = dets
-    R = torch.einsum("Gki,Gkk,Gkk,Gjk->Gij", VH, signs, S, U)  # V S U^T
+    S = alignment_correction_upto_order(S, sigma=sigma, correction_order=correction_order)
+    R = torch.einsum("Gki,Gk,Gk,Gjk->Gij", VH, signs, S, U)  # V S U^T
 
     # Align y to x.
     RA_mu = torch.einsum("Gij,Gj->Gi", R, A_mu)
