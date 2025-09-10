@@ -244,16 +244,30 @@ class Denoiser(pl.LightningModule):
             else:
                 xtarget = x
 
+        xtarget_second_order = align_A_to_B_batched_f(
+            x,
+            y,
+            batch,
+            num_graphs,
+            sigma=sigma,
+            correction_order=2,
+        )
+
         with torch.cuda.nvtx.range("xhat"):
             xhat = self.xhat(y, topology, batch, num_graphs, sigma)
 
-        return xhat, xtarget, y
+        return xhat, {
+            "xtarget": xtarget,
+            "xtarget_second_order": xtarget_second_order,
+            "y": y,
+        }
 
     def compute_loss(
         self,
         *,
         x: torch.Tensor,
         xtarget: torch.Tensor,
+        xtarget_second_order: torch.Tensor,
         xhat: torch.Tensor,
         topology: torch_geometric.data.Batch,
         batch: torch.Tensor,
@@ -267,6 +281,17 @@ class Denoiser(pl.LightningModule):
         )
         for key in aux_xtarget:
             aux[f"xtarget/{key}"] = aux_xtarget[key]
+
+        aux_xtarget_second_order = compute_rmsd_metrics(
+            x=xtarget_second_order,
+            xhat=xhat,
+            batch=batch,
+            num_graphs=num_graphs,
+            sigma=sigma,
+            mean_center=self.mean_center,
+        )
+        for key in aux_xtarget_second_order:
+            aux[f"xtarget_second_order/{key}"] = aux_xtarget_second_order[key]
 
         aux_x = compute_rmsd_metrics(
             x=x, xhat=xhat, batch=batch, num_graphs=num_graphs, sigma=sigma, mean_center=self.mean_center
@@ -303,7 +328,7 @@ class Denoiser(pl.LightningModule):
         use_alignment_estimators: bool,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Add noise to the input and compute the loss."""
-        xhat, xtarget, _ = self.noise_and_denoise(
+        xhat, aux = self.noise_and_denoise(
             x=x,
             topology=topology,
             batch=batch,
@@ -313,7 +338,8 @@ class Denoiser(pl.LightningModule):
         )
         return self.compute_loss(
             x=x,
-            xtarget=xtarget,
+            xtarget=aux["xtarget"],
+            xtarget_second_order=aux["xtarget_second_order"],
             xhat=xhat,
             topology=topology,
             batch=batch,
@@ -336,7 +362,7 @@ class Denoiser(pl.LightningModule):
         if self.rotational_augmentation:
             with torch.cuda.nvtx.range("rotational_augmentation"):
                 R = e3nn.o3.rand_matrix(device=self.device, dtype=x.dtype)
-                x = torch.einsum("ni,ij->nj", x, R.T)
+                x = torch.einsum("Ni,ij->Nj", x, R.T)
 
         loss, aux = self.noise_and_compute_loss(
             x=x,
@@ -370,7 +396,7 @@ class Denoiser(pl.LightningModule):
         x, batch, num_graphs = data.pos, data.batch, data.num_graphs
         if self.rotational_augmentation:
             R = e3nn.o3.rand_matrix(device=self.device, dtype=x.dtype)
-            x = torch.einsum("ni,ij->nj", x, R.T)
+            x = torch.einsum("Ni,ij->Nj", x, R.T)
 
         loss, aux = self.noise_and_compute_loss(
             x=x,

@@ -1,5 +1,5 @@
 defaults:
-  - arch: e3conv.yaml
+  - arch: e3conv_separable.yaml
   - optim: adam.yaml
   - lr_scheduler_config: null
   - _self_

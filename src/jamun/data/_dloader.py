@@ -4,7 +4,7 @@ from typing import Any
 import lightning.pytorch as pl
 import numpy as np
 import torch_geometric.loader
-from torch.utils.data import ConcatDataset, Dataset, IterableDataset
+from torch.utils.data import Dataset, IterableDataset
 
 from jamun import utils
 
