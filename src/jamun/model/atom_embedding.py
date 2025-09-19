@@ -44,6 +44,9 @@ class AtomEmbeddingWithResidueInformation(nn.Module):
         max_sequence_length: int,
         num_atom_codes: int,
         num_residue_types: int,
+        use_residue_chirality: bool = False,
+        residue_chirality_embedding_dim: int = 0,
+        num_chirality_types: int = 2,
     ):
         super().__init__()
         self.atom_type_embedding = torch.nn.Embedding(num_atom_types, atom_type_embedding_dim)
@@ -51,11 +54,27 @@ class AtomEmbeddingWithResidueInformation(nn.Module):
         self.residue_code_embedding = torch.nn.Embedding(num_residue_types, residue_code_embedding_dim)
         self.residue_index_embedding = torch.nn.Embedding(max_sequence_length, residue_index_embedding_dim)
         self.use_residue_sequence_index = use_residue_sequence_index
-        self.irreps_out = e3nn.o3.Irreps(
-            f"{atom_type_embedding_dim}x0e + {atom_type_embedding_dim}x0e + {residue_code_embedding_dim}x0e + {residue_index_embedding_dim}x0e"
-        )
+        self.use_residue_chirality = use_residue_chirality
+        
+        # Add chirality embedding if requested
+        if self.use_residue_chirality:
+            if residue_chirality_embedding_dim <= 0:
+                raise ValueError("residue_chirality_embedding_dim must be positive when use_residue_chirality=True")
+            self.residue_chirality_embedding = torch.nn.Embedding(num_chirality_types, residue_chirality_embedding_dim)
+        
+        # Build irreps_out string based on whether chirality is used
+        irreps_parts = [
+            f"{atom_type_embedding_dim}x0e",
+            f"{atom_code_embedding_dim}x0e", 
+            f"{residue_code_embedding_dim}x0e",
+            f"{residue_index_embedding_dim}x0e"
+        ]
+        if self.use_residue_chirality:
+            irreps_parts.append(f"{residue_chirality_embedding_dim}x0e")
+        
+        self.irreps_out = e3nn.o3.Irreps(" + ".join(irreps_parts))
 
-    def forward(self, data: utils.DataWithResidueInformation) -> torch.Tensor:
+    def forward(self, data) -> torch.Tensor:
         features = []
         atom_type_embedded = self.atom_type_embedding(data.atom_type_index)
         features.append(atom_type_embedded)
@@ -71,6 +90,14 @@ class AtomEmbeddingWithResidueInformation(nn.Module):
             residue_sequence_index = torch.zeros_like(residue_sequence_index)
         residue_sequence_index_embedded = self.residue_index_embedding(residue_sequence_index)
         features.append(residue_sequence_index_embedded)
+
+        # Add chirality embedding if enabled and available in data
+        if self.use_residue_chirality:
+            if hasattr(data, 'residue_chirality_index'):
+                residue_chirality_embedded = self.residue_chirality_embedding(data.residue_chirality_index)
+                features.append(residue_chirality_embedded)
+            else:
+                raise ValueError("use_residue_chirality=True but data does not have residue_chirality_index attribute")
 
         features = torch.cat(features, dim=-1)
         return features

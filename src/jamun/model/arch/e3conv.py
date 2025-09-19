@@ -31,6 +31,9 @@ class E3Conv(torch.nn.Module):
         max_sequence_length: int = 10,
         num_atom_codes: int = 10,
         num_residue_types: int = 25,
+        use_residue_chirality: bool = False,
+        residue_chirality_embedding_dim: int = 0,
+        num_chirality_types: int = 2,
         test_equivariance: bool = False,
     ):
         super().__init__()
@@ -57,6 +60,9 @@ class E3Conv(torch.nn.Module):
                 max_sequence_length=max_sequence_length,
                 num_atom_codes=num_atom_codes,
                 num_residue_types=num_residue_types,
+                use_residue_chirality=use_residue_chirality,
+                residue_chirality_embedding_dim=residue_chirality_embedding_dim,
+                num_chirality_types=num_chirality_types,
             )
         else:
             self.atom_embedder = SimpleAtomEmbedding(

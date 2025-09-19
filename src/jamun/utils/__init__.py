@@ -6,7 +6,7 @@ from .dist_log import dist_log, wandb_dist_log
 from .mdtraj import coordinates_to_trajectories, save_pdb
 from .mean_center import mean_center
 from .plot import animate_trajectory_with_py3Dmol, plot_molecules_with_py3Dmol
-from .rdkit import to_rdkit_mols
+from .rdkit import to_rdkit_mols, save_sdf_from_coords
 from .residue_metadata import (
     ResidueMetadata,
     convert_to_one_letter_code,

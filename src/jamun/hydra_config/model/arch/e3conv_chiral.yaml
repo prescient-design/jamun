@@ -11,8 +11,8 @@ residue_code_embedding_dim: 32
 residue_index_embedding_dim: 8
 use_residue_information: ${data.use_residue_information}
 use_residue_sequence_index: false
-use_residue_chirality: false
-residue_chirality_embedding_dim: 0
+use_residue_chirality: true
+residue_chirality_embedding_dim: 16
 num_chirality_types: 2
 num_atom_types: 20
 max_sequence_length: 10
@@ -28,4 +28,4 @@ output_head_factory:
   _target_: e3tools.nn.EquivariantMLP
   _partial_: true
   irreps_hidden_list:
-    - ${model.arch.irreps_hidden}
+    - ${model.arch.irreps_hidden} 

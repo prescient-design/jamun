@@ -8,6 +8,9 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.rdchem import ChiralType, HybridizationType
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Constants for encoding
 ATOMIC_NUMS = list(range(1, 100))
@@ -44,32 +47,40 @@ FORMAL_CHARGE_FEATURE_NAMES = [f"charge{c}" for c in FORMAL_CHARGES] + ["chargeU
 RING_SIZE_FEATURE_NAMES = [f"ringsize{rs}" for rs in RING_SIZES]  # No "unknown" name needed
 NUM_RING_FEATURE_NAMES = [f"numring{nr}" for nr in NUM_RINGS] + ["numringUNK"]
 
-# Constants and data for amino acids
-AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "amino_acids.csv"
-NON_CANONICAL_AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "non_canonical_amino_acids.csv"
-# Load both canonical and noncanonical amino acids
+AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "CycPeptMPDB_Monomer_combined.csv"
 AMINO_ACID_DATA=pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa")
-# AMINO_ACID_DATA = pd.concat([
-#     pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa"),
-#     pd.read_csv(NON_CANONICAL_AMINO_ACID_DATA_PATH, index_col="aa")
-# ])
 AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].map(Chem.MolFromSmiles)
-# Constants and data for amino acids
+
+# # Constants and data for amino acids
 # AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "amino_acids.csv"
 # NON_CANONICAL_AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "non_canonical_amino_acids.csv"
-
 # # Load both canonical and noncanonical amino acids
-# AMINO_ACID_DATA = pd.concat([
-#     pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa"),
-#     pd.read_csv(NON_CANONICAL_AMINO_ACID_DATA_PATH, index_col="aa")
-# ])
+# AMINO_ACID_DATA=pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa")
+# # AMINO_ACID_DATA = pd.concat([
+# #     pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa"),
+# #     pd.read_csv(NON_CANONICAL_AMINO_ACID_DATA_PATH, index_col="aa")
+# # ])
+# AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].map(Chem.MolFromSmiles)
+# # Constants and data for amino acids
+# # AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "amino_acids.csv"
+# # NON_CANONICAL_AMINO_ACID_DATA_PATH = importlib.resources.files("jamun.resources") / "non_canonical_amino_acids.csv"
 
-# # Ensure residue_smiles contains valid strings before mapping
-# AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].dropna().map(
-#     lambda x: Chem.MolFromSmiles(str(x)) if isinstance(x, str) else None
-# )
+# # # Load both canonical and noncanonical amino acids
+# # AMINO_ACID_DATA = pd.concat([
+# #     pd.read_csv(AMINO_ACID_DATA_PATH, index_col="aa"),
+# #     pd.read_csv(NON_CANONICAL_AMINO_ACID_DATA_PATH, index_col="aa")
+# # ])
+
+# # # Ensure residue_smiles contains valid strings before mapping
+# # AMINO_ACID_DATA["residue_mol"] = AMINO_ACID_DATA["residue_smiles"].dropna().map(
+# #     lambda x: Chem.MolFromSmiles(str(x)) if isinstance(x, str) else None
+# # )
 
 RING_PEPTIDE_BOND_PATTERN = Chem.MolFromSmarts("[C;R:0](=[OX1:1])[C;R:2][N;R:3]")
+RING_PEPTIDE_BOND_PATTERN_2 = Chem.MolFromSmarts("[C;R:0](=[OX1:1])[C;R:2][C;R:3][N;R:4]") #THIS is for bHph
+RING_PEPTIDE_BOND_PATTERN_3 = Chem.MolFromSmarts("[C;R:0](=[OX1:1])[C;R:2][C;R:3][C;R:4][N;R:5]") #THIS is for Sta and some monos
+
+
 GENERIC_AMINO_ACID_SMARTS = "[$([CX3](=[OX1]))][NX3,NX4+][$([CX4H]([CX3](=[OX1])[O,N]))][*]"
 
 SIDE_CHAIN_TORSIONS_SMARTS_DICT = {
@@ -186,21 +197,21 @@ def extract_macrocycle(mol: Chem.Mol) -> Chem.Mol:
     return new_mol
 
 
-def combine_mols(mols: List[Chem.Mol]) -> Chem.Mol:
-    """Combine multiple molecules with one conformer each into one molecule with multiple
-    conformers.
+# def combine_mols(mols: List[Chem.Mol]) -> Chem.Mol:
+#     """Combine multiple molecules with one conformer each into one molecule with multiple
+#     conformers.
 
-    Args:
-        mols: List of molecules.
+#     Args:
+#         mols: List of molecules.
 
-    Returns:
-        Combined molecule.
-    """
-    new_mol = Chem.Mol(mols[0], quickCopy=True)
-    for mol in mols:
-        conf = Chem.Conformer(mol.GetConformer())
-        new_mol.AddConformer(conf, assignId=True)
-    return new_mol
+#     Returns:
+#         Combined molecule.
+#     """
+#     new_mol = Chem.Mol(mols[0], quickCopy=True)
+#     for mol in mols:
+#         conf = Chem.Conformer(mol.GetConformer())
+#         new_mol.AddConformer(conf, assignId=True)
+#     return new_mol
 
 
 def set_atom_positions(
@@ -445,7 +456,17 @@ def get_residues(
         if macrocycle_idxs is None:
             raise ValueError(f"Couldn't get macrocycle indices for '{Chem.MolToSmiles(Chem.RemoveHs(mol))}'")
 
-    backbone_idxs = mol.GetSubstructMatches(RING_PEPTIDE_BOND_PATTERN)
+    m1 = mol.GetSubstructMatches(RING_PEPTIDE_BOND_PATTERN)
+    m2 = mol.GetSubstructMatches(RING_PEPTIDE_BOND_PATTERN_2)
+    m3 = mol.GetSubstructMatches(RING_PEPTIDE_BOND_PATTERN_3)
+    seen = set()
+    for match in list(m1) + list(m2) + list(m3):
+        key = frozenset(match)
+        if key not in seen:
+            seen.add(key)
+            backbone_idxs = list(seen)
+
+    #backbone_idxs = mol.GetSubstructMatches(RING_PEPTIDE_BOND_PATTERN)
     if residues_in_mol is None:
         potential_residues = AMINO_ACID_DATA.index
     else:

@@ -7,7 +7,7 @@ model:
     num_atom_types: 20
     max_sequence_length: 20
     num_atom_codes: 10
-    num_residue_types: 50
+    num_residue_types: 450
     # Chirality embedding parameters
     use_residue_chirality: true
     residue_chirality_embedding_dim: 16
@@ -17,7 +17,9 @@ model:
     sigma: 0.04 #try doing a sigma of .01-0.07 do something like .06
   max_radius: 1.0
   optim:
+    _target_: jamun.optim.AdamW
     lr: 0.002
+    betas: [0.9, 0.9]
 
 
 callbacks:
@@ -33,31 +35,31 @@ data:
     datasets:
       train:
         _target_: jamun.data.parse_datasets_from_directory_new
-        root: "/data/davidsd5/cremp_prepro/"
+        root: "/data/davidsd5/both_cremps/prepro"
         traj_pattern: "^(.*).npz"
         topology_pattern: "^(.*).sdf"
-        filter_codes_csv: "/data/davidsd5/jamun_run/train_4mers.csv"
+        filter_codes_csv: "/data/davidsd5/jamun_run/cremp_cremp2_files_train.csv"
         filter_codes_csv_header: "sequence"
         as_sdf: true
         use_chiral: true
 
       val:
         _target_: jamun.data.parse_datasets_from_directory_new
-        root: "/data/davidsd5/cremp_prepro/"
+        root: "/data/davidsd5/both_cremps/prepro"
         traj_pattern: "^(.*).npz"
         topology_pattern: "^(.*).sdf"
         max_datasets: 100
-        filter_codes_csv: "/data/davidsd5/jamun_run/val_4mers.csv"
+        filter_codes_csv: "/data/davidsd5/jamun_run/cremp_cremp2_files_val.csv"
         filter_codes_csv_header: "sequence"
         as_sdf: true
         use_chiral: true
 
       test:
         _target_: jamun.data.parse_datasets_from_directory_new
-        root: "/data/davidsd5/cremp_prepro/"
+        root: "/data/davidsd5/both_cremps/prepro"
         traj_pattern: "^(.*).npz"
         topology_pattern: "^(.*).sdf"
-        filter_codes_csv: "/data/davidsd5/jamun_run/test_4mers.csv"
+        filter_codes_csv: "/data/davidsd5/jamun_run/cremp_cremp2_files_test.csv"
         filter_codes_csv_header: "sequence"
         as_sdf: true
         use_chiral: true
@@ -68,8 +70,8 @@ trainer:
   max_epochs: 100
 
 resume_from_checkpoint: 
-  wandb_train_run_path: "prescient-design/jamun/afy9toc5"
-  checkpoint_type: epoch=0-step=20000.ckpt 
+  wandb_train_run_path: "prescient-design/jamun/frxy5j28"
+  checkpoint_type: last 
 
 logger:
   wandb:

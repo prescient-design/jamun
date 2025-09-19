@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+#SBATCH --partition b200
+#SBATCH --nodes 1
+#SBATCH --ntasks-per-node 2
+#SBATCH --gpus-per-node 2
+#SBATCH --cpus-per-task 8
+#SBATCH --time 3-0
+#SBATCH --mem-per-cpu=32G
+
+eval "$(conda shell.bash hook)"
+conda activate jamun1
+
+set -eux
+
+echo "SLURM_JOB_ID = ${SLURM_JOB_ID}"
+echo "hostname = $(hostname)"
+
+export HYDRA_FULL_ERROR=1
+# export TORCH_LOGS="+dynamo"
+# export TORCHDYNAMO_VERBOSE=1
+export TORCH_USE_CUDA_DSA=1
+export TORCH_CUDA_ARCH_LIST="10.0+PTX"   # for B200
+export CUDA_LAUNCH_BLOCKING=1
+export TORCHINDUCTOR_DISABLE_AUTOTUNE=1
+# export TORCH_LOGS="+dynamo,inductor"
+export TORCH_COMPILE_DEBUG=1
+
+
+# NOTE we generate this in submit script instead of using time based default to ensure consistency across ranks
+RUN_KEY=$(openssl rand -hex 12)
+echo "RUN_KEY = ${RUN_KEY}"
+
+nvidia-smi
+
+srun --cpus-per-task 8 --cpu-bind=cores,verbose \
+  jamun_train --config-dir=/homefs/home/davidsd5/jamun/jamun/configs \
+    experiment=train_macrocycles_all_chiral.yaml\
+    ++trainer.devices=$SLURM_GPUS_PER_NODE \
+    ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
+    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train"] \
+    ++run_key=$RUN_KEY

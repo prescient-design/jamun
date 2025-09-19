@@ -2,6 +2,7 @@
 
 defaults:
   - override /callbacks:
+    - sampler/measure_sampling_time.yaml
     - sampler/save_trajectory.yaml
   - _self_
 

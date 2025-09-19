@@ -1,3 +1,5 @@
 save_trajectory:
   _target_: jamun.callbacks.sampler.SaveTrajectoryCallback
   datasets: ${init_datasets}
+  # Options: dcd, sdf, both
+  timeseries_format: dcd

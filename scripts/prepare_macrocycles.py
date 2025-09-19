@@ -22,26 +22,29 @@ def preprocess_sdf(sdf_file, output_file):
     ).T
     residues = utils.featurize_macrocycles.get_residues(rdkit_mol, residues_in_mol=None, macrocycle_idxs=None)
     
-    # Normalize residue names using convert_to_canonical_residue_names
-    for atom_set, residue in residues.items():
-        try:
-            residues[atom_set] = utils.convert_to_canonical_residue_names(residue)
-        except ValueError as e:
-            print(f"Warning: {e}. Skipping residue normalization for {residue}.")
+    # # Normalize residue names using convert_to_canonical_residue_names
+    # for atom_set, residue in residues.items():
+    #     try:
+    #         residues[atom_set] = utils.convert_to_canonical_residue_names(residue)
+    #     except ValueError as e:
+    #         print(f"Warning: {e}. Skipping residue normalization for {residue}.")
     
     # Replace "Me" with "Me+" in residue names
-    for atom_set, residue in residues.items():
-        if residue.startswith("Me"):
-            residues[atom_set] = residue.replace("Me", "Me+")
-    
-
+    # for atom_set, residue in residues.items():
+    #     if residue.startswith("Me"):
+    #         residues[atom_set] = residue.replace("Me", "Me+")
     residue_sequence = [v for k, v in residues.items()]
+    #print(f"residue_sequence: {residue_sequence}")
     residue_to_sequence_index = {residue: index for index, residue in enumerate(residue_sequence)}
+    #print(f"residue_to_sequence_index: {residue_to_sequence_index}")
     atom_to_residue = {atom_idx: symbol for atom_idxs, symbol in residues.items() for atom_idx in atom_idxs}
+    #print(f"atom_to_residue: {atom_to_residue}")
     atom_to_residue = dict(sorted(atom_to_residue.items(), key=lambda x: x[0]))
+    #print(f"atom_to_residue: {atom_to_residue}")
     atom_to_residue_sequence_index = {
         atom_idx: residue_to_sequence_index[symbol] for atom_idx, symbol in atom_to_residue.items()
     }
+    #print(f"atom_to_residue_sequence_index: {atom_to_residue_sequence_index}")
     atom_to_3_letter = {
         atom_idx: utils.convert_to_three_letter_code(symbol) for atom_idx, symbol in atom_to_residue.items()
     }
@@ -51,19 +54,13 @@ def preprocess_sdf(sdf_file, output_file):
     residue_sequence_index = np.asarray(
         [atom_to_residue_sequence_index[atom_idx] for atom_idx in range(len(atom_to_residue))], dtype=np.int64
     )
-    # Function to determine chirality based on residue naming
-    def determine_chirality(residue_name):
-        if residue_name.islower() or residue_name.startswith("Me") and residue_name[2:].islower():
-            return "D"  # Lowercase or "Me" followed by lowercase indicates D chirality
-        else:
-            return "L"  # Otherwise, it's L chirality
-
-    # Function to map chirality to index
+    # Determine residue chirality and chirality index using dataset-provided stereo
     def chirality_to_index(chirality):
         return 1 if chirality == "D" else 0
 
-    # Determine residue chirality and chirality index
-    residue_chirality = [determine_chirality(residue) for residue in residue_sequence]
+    residue_chirality = [
+        utils.featurize_macrocycles.get_amino_acid_stereo(residue) or "L" for residue in residue_sequence
+    ]
     residue_chiral_index_per_residue = np.asarray(
     [chirality_to_index(chirality) for chirality in residue_chirality], dtype=np.int64
     )
@@ -112,17 +109,25 @@ if __name__ == "__main__":
 
     start_index = args.index * 50
     end_index = start_index + 50
+    total_files = len(sdf_files)
 
-    for index in range(start_index, end_index):
+    for index in range(start_index, min(end_index, total_files)):
         filename = sdf_files[index]
         code = os.path.splitext(filename)[0]
         sdf_file = os.path.join(args.input_dir, filename)
 
         output_file = os.path.join(args.output_dir, f"{code}.npz")
-        mol = preprocess_sdf(sdf_file, output_file)
+        writer = None
+        try:
+            mol = preprocess_sdf(sdf_file, output_file)
 
-        # Save the RDKit molecule with hydrogens to a file
-        output_mol_file = os.path.join(args.output_dir, f"{code}.sdf")
-        writer = Chem.SDWriter(output_mol_file)
-        writer.write(mol)
-        writer.close()
+            # Save the RDKit molecule with hydrogens to a file
+            output_mol_file = os.path.join(args.output_dir, f"{code}.sdf")
+            writer = Chem.SDWriter(output_mol_file)
+            writer.write(mol)
+            print(f"Wrote molecule to {output_mol_file}")
+        except Exception as e:
+            print(f"Error processing {sdf_file}: {e}. Skipping.")
+        finally:
+            if writer is not None:
+                writer.close()

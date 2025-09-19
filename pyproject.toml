@@ -8,7 +8,7 @@ requires-python = ">=3.10"
 dependencies = [
     "ase>=3.23.0",
     "e3nn>=0.5.6",
-    "e3tools>=0.1.1",
+    "e3tools>=0.1.2",
     "einops>=0.8.0",
     "hydra-core>=1.3.2",
     "lightning>=2.4.0",
@@ -29,6 +29,7 @@ dependencies = [
     "s3fs[boto3]>=2024.10.0",
     "scipy>=1.13.1",
     "statsmodels>=0.14.0",
+    "tabulate>=0.9.0",
     "torch>=2.5.1",
     "torch-geometric>=2.6.1",
     "torchmetrics>=1.6.0",
@@ -36,11 +37,20 @@ dependencies = [
     "tqdm>=4.67.1",
     "universal-pathlib>=0.2.6",
     "wandb>=0.19.1",
+    "orb_models>=0.5.4",
+    "optree>=0.17.0",
 ]
 
 [project.scripts]
 jamun_train = "jamun.cmdline.train:main"
 jamun_sample = "jamun.cmdline.sample:main"
+
+[project.optional-dependencies]
+analysis = [
+    "polars>=1.32.0",
+    "pyarrow>=21.0.0",
+    "seaborn>=0.13.2",
+]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -68,7 +78,8 @@ git_describe_command = "git describe --dirty --tags --long --match v* --first-pa
 [tool.ruff]
 line-length = 120
 exclude = [
-  "analysis"
+  "analysis",
+  "scripts"
 ]
 
 [tool.ruff.lint]
@@ -78,6 +89,7 @@ select = [
     "F",  # pyflakes
     "I",  # isort
     "B",  # flake8-bugbear
+    "UP", # pyupgrade
 ]
 ignore = [
     "E501",  # line too long, handled by black
@@ -85,6 +97,7 @@ ignore = [
     "B905",  # requires python >= 3.10
     "B007",  # unused-loop-control-variable
     "E741",  # ambiguous-variable-name
+    "E402",  # Module level import not at top of file
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -94,6 +107,9 @@ ignore = [
 
 [tool.uv]
 no-build-package = ["mdtraj"]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
 
 [tool.pyright]
 exclude = [ ".venv" ]

@@ -857,8 +857,8 @@ if __name__ == "__main__":
     file_name = os.path.basename(topology_path)  # Pull out 'MeS.MeS.V.L.sdf'
 
     # Modify the path
-    #new_directory = "/data/davidsd5/cremp/sdf_and_json/"  # Replace the base directory
-    new_directory = "/data/davidsd5/jamun_run/ringer_sample_sdf/"  # Replace the base directory
+    new_directory = "/data/davidsd5/cremp/sdf_and_json/"  # Replace the base directory
+    #new_directory = "/data/davidsd5/jamun_run/ringer_sample_sdf/"  # Replace the base directory
     new_file_name = file_name  # Example: Prepend 'renamed_' to the filename
     new_topology_file = os.path.join(new_directory, new_file_name)
 
