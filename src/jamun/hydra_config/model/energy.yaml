@@ -1,5 +1,5 @@
 defaults:
-  - arch: e3conv.yaml
+  - arch: e3conv_separable.yaml
   - optim: adam.yaml
   - lr_scheduler_config: null
   - _self_
@@ -9,7 +9,7 @@ max_radius: null
 average_squared_distance: null
 add_fixed_noise: false
 add_fixed_ones: false
-use_alignment_estimators: true
+use_alignment_estimators: false
 mean_center: true
 mirror_augmentation_rate: 0.0
 use_torch_compile: true

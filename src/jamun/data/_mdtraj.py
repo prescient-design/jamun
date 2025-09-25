@@ -243,8 +243,8 @@ class MDtrajDataset(torch.utils.data.Dataset):
             with open(pdb_file) as f:
                 struct = PdbStructure(f, load_all_models=True)
             temperature_factors = np.asarray([atom.temperature_factor for atom in struct.iter_atoms()])
-            lambda_0_indices = np.where(temperature_factors <= 0.5)[0]
-            lambda_1_indices = np.where(temperature_factors >= 0.5)[0]
+            lambda_0_indices = np.where((temperature_factors > 0) & (temperature_factors <= 0.5))[0]
+            lambda_1_indices = np.where((temperature_factors > 0) & (temperature_factors >= 0.5))[0]
 
             if lambda_for_atom_indices == 0:
                 atom_indices = lambda_0_indices
