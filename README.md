@@ -4,7 +4,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 This is the official implementation of the paper
-[JAMUN: Bridging Smoothed Molecular Dynamics and Score-Based Learning for Conformational Ensembles](https://arxiv.org/abs/2410.14621).
+[JAMUN: Bridging Smoothed Molecular Dynamics and Score-Based Learning for Conformational Ensembles](https://arxiv.org/abs/2410.14621), accepted at NeurIPS 2025.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8181274d-b165-45fb-8c05-00565a4f7833" alt="Overview of walk-jump sampling in JAMUN" width="400"/>
