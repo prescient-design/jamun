@@ -324,7 +324,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
             filename = f"dataset_pdbs/{self.label()}.pdb"
         utils.save_pdb(self.traj[0], filename)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> torch_geometric.data.Data:
         graph = self.graph.clone("pos")
         graph.pos = torch.tensor(self.traj.xyz[idx])
         if self.transform:
