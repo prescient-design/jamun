@@ -1,0 +1,65 @@
+# @package _global_
+
+defaults:
+  - override /callbacks:
+    - timing.yaml
+    - lr_monitor.yaml
+    - model_checkpoint.yaml
+
+
+model:
+  sigma_distribution:
+    _target_: jamun.distributions.ConstantSigma
+    sigma: 0.04
+  max_radius: 1.0
+  optim:
+    lr: 0.002
+
+callbacks:
+  viz:
+    sigma_list: ["${model.sigma_distribution.sigma}"]
+
+data:
+  datamodule:
+    batch_size: 4
+    datasets:
+      train:
+        _target_: jamun.data.parse_datasets_from_directory_new
+        root: "${paths.data_path}/atlas"
+        traj_pattern: "^(.*)/protein/(.*).xtc"
+        topology_pattern: "^(.*)/protein/(.*).pdb"
+        filter_codes_csv: "${paths.data_path}/atlas-splits/train.csv"
+        filter_codes_csv_header: "code"
+        as_iterable: true
+      
+      val:
+        _target_: jamun.data.parse_datasets_from_directory_new
+        root: "${paths.data_path}/atlas"
+        traj_pattern: "^(.*)/protein/(.*).xtc"
+        topology_pattern: "^(.*)/protein/(.*).pdb"
+        filter_codes_csv: "${paths.data_path}/atlas-splits/val.csv"
+        filter_codes_csv_header: "code"
+        max_datasets: 10
+        subsample: 100
+        as_iterable: true
+
+      test:
+        _target_: jamun.data.parse_datasets_from_directory_new
+        root: "${paths.data_path}/atlas"
+        traj_pattern: "^(.*)/protein/(.*).xtc"
+        topology_pattern: "^(.*)/protein/(.*).pdb"
+        filter_codes_csv: "${paths.data_path}/atlas-splits/test.csv"
+        filter_codes_csv_header: "code"
+        max_datasets: 10
+        subsample: 100
+        as_iterable: true
+
+
+trainer:
+  val_check_interval: 6000
+  limit_val_batches: 1000
+  max_epochs: 100
+
+logger:
+  wandb:
+    group: train_atlas

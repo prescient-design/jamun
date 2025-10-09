@@ -1,6 +1,6 @@
 # @package _global_
 
-num_sampling_steps_per_batch: 100000
+num_sampling_steps_per_batch: 10000
 num_batches: 1
 num_init_samples_per_dataset: 1
 repeat_init_samples: 1
@@ -18,11 +18,21 @@ continue_chain: true
 # wandb_train_run_path: prescient-design/jamun/x6rwt91k
 
 # trpcage
-wandb_train_run_path: prescient-design/jamun/30ud8v9x
+# wandb_train_run_path: prescient-design/jamun/30ud8v9x
+
+# proteing
+# wandb_train_run_path: prescient-design/jamun/uikn2rrg
+
+# ATLAS
+wandb_train_run_path: prescient-design/jamun/psxyw586
 
 init_pdbs:
-  chignolin: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
-  trpcage: /data/bucket/kleinhej/fast-folding/processed/trpcage/filtered.pdb
+  # chignolin: /data/bucket/kleinhej/fast-folding/processed/chignolin/filtered.pdb
+  # trpcage: /data/bucket/kleinhej/fast-folding/processed/trpcage/filtered.pdb
+  # proteing: /data/bucket/kleinhej/fast-folding/processed/proteing/filtered.pdb
+  # 3g5k_D: /data/bucket/kleinhej/atlas/3g5k_D/protein/3g5k_D.pdb
+  # 6hr2_B: /data/bucket/kleinhej/atlas/6hr2_B/protein/6hr2_B.pdb
+  2vfx_C: /data/bucket/kleinhej/atlas/2vfx_C/protein/2vfx_C.pdb
 
 checkpoint_type: best_so_far
 sigma: 0.04

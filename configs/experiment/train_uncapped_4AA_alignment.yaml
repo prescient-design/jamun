@@ -32,7 +32,6 @@ data:
         traj_pattern: "^(AEQN*)-traj-arrays.npz"
         pdb_pattern: "^(AEQN*)-traj-state0.pdb"
         max_datasets: 10
-        num_frames: 1
 
       val:
         _target_: jamun.data.parse_datasets_from_directory
@@ -40,7 +39,6 @@ data:
         traj_pattern: "^(AEQN*)-traj-arrays.npz"
         pdb_pattern: "^(AEQN*)-traj-state0.pdb"
         max_datasets: 10
-        num_frames: 1
 
       test:
         _target_: jamun.data.parse_datasets_from_directory
@@ -48,7 +46,6 @@ data:
         traj_pattern: "^(AEQN*)-traj-arrays.npz"
         pdb_pattern: "^(AEQN*)-traj-state0.pdb"
         max_datasets: 10
-        num_frames: 1
 
 trainer:
   val_check_interval: 1000
