@@ -21,7 +21,6 @@ data:
         root: "${paths.data_path}/fast-folding/processed/trpcage"
         traj_pattern: "train/^(.*).xtc"
         pdb_file: "filtered.pdb"
-        max_datasets: 10
 
       val:
         _target_: jamun.data.parse_datasets_from_directory

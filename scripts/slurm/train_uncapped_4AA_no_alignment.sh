@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-#SBATCH --partition gpu2
+#SBATCH --partition g6e
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 2
-#SBATCH --gpus-per-node 2
-#SBATCH --cpus-per-task 8
-#SBATCH --time 3-0
-#SBATCH --mem-per-cpu=32G
+#SBATCH --gpus-per-node 1
+#SBATCH --cpus-per-task 4
+#SBATCH --time 1-0
+#SBATCH --mem=60G
 
 eval "$(conda shell.bash hook)"
 conda activate jamun
@@ -27,10 +27,17 @@ echo "RUN_KEY = ${RUN_KEY}"
 
 nvidia-smi
 
-srun --cpus-per-task 8 --cpu-bind=cores,verbose \
+# Define the array of sigma values
+# Bash arrays are 0-indexed
+# declare -a SIGMAS=(0.1 0.2 0.5 1.0)
+# SIGMA=${SIGMAS[$SLURM_ARRAY_TASK_ID]}
+
+srun --cpus-per-task 4 --cpu-bind=cores,verbose \
   jamun_train --config-dir=/homefs/home/daigavaa/jamun/configs \
-    experiment=train_uncapped_4AA.yaml \
+    experiment=train_uncapped_4AA_alignment.yaml \
     ++trainer.devices=$SLURM_GPUS_PER_NODE \
     ++trainer.num_nodes=$SLURM_JOB_NUM_NODES \
-    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","uncapped_4AA"] \
+    ++model.use_alignment_estimators=false \
+    ++model.alignment_correction_order=null \
+    ++logger.wandb.tags=["'${SLURM_JOB_ID}'","'${RUN_KEY}'","train","align-4AA"] \
     ++run_key=$RUN_KEY
