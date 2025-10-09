@@ -86,6 +86,7 @@ def add_edges(
 
 
 def compute_rmsd_metrics(
+    *,
     x: torch.Tensor,
     xhat: torch.Tensor,
     batch: torch.Tensor,
@@ -126,6 +127,7 @@ def compute_rmsd_metrics(
 
     return {
         "mse": mse,
+        "mse_aligned": mse_aligned,
         "rmsd": rmsd,
         "rmsd_aligned": rmsd_aligned,
         "scaled_rmsd": scaled_rmsd,

@@ -118,16 +118,33 @@ def kabsch_algorithm(
 
     # SVD to get rotation.
     U, S, VH = torch.linalg.svd(H)
+    verbose = False
+
+    if verbose:
+        print("sigma:", sigma)
+        print("S before sign correction:", S)
 
     # Compute corrected S.
     R_check = torch.einsum("Gki,Gjk->Gij", VH, U)  # V U^T
+    if verbose:
+        print("det U:", torch.linalg.det(U))
+        print("det V:", torch.linalg.det(VH))
+        print("U[0]:", U[0])
+        print("VH[0]:", VH[0])
     dets = torch.linalg.det(R_check)
     signs = torch.ones(num_graphs, 3, device=dets.device)
-    signs[:, 2] = dets
+    signs[:, -1] = (dets >= 0).float() * 2 - 1
     S = torch.einsum("Gk,Gk->Gk", signs, S)
+    if verbose:
+        print("det R:", dets)
+        print("signs:", signs)
+        print("S after sign correction:", S)
 
     # Remove reflections.
     S = alignment_correction_upto_order(S, sigma=sigma, correction_order=correction_order)
+    if verbose:
+        print("S after correction:", S)
+        print()
     R = torch.einsum("Gki,Gk,Gk,Gjk->Gij", VH, signs, S, U)  # V S U^T
 
     # Align y to x.

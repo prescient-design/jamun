@@ -1,0 +1,19 @@
+_target_: jamun.model.arch.Transformer
+_partial_: true
+input_dims: 3
+embed_dims: 32
+noise_input_dims: 1
+n_layers: 6
+n_heads: 4
+atom_embedder_factory:
+  _target_: jamun.model.embedding.ResidueAtomEmbedder
+  _partial_: true
+  atom_type_embedding_dim: 8
+  atom_code_embedding_dim: 8
+  residue_code_embedding_dim: 8
+  residue_index_embedding_dim: 8
+  use_residue_sequence_index: false
+  num_atom_types: 20
+  max_sequence_length: 10
+  num_atom_codes: 10
+  num_residue_types: 25

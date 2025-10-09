@@ -48,9 +48,8 @@ class VisualizeDenoise(pl.Callback):
         del topology.pos, topology.batch, topology.num_graphs
 
         x, batch, num_graphs = data.pos, data.batch, data.num_graphs
-
         for sigma in self.sigma_list:
-            xhat, _, y = pl_module.noise_and_denoise(
+            xhat, aux = pl_module.noise_and_denoise(
                 x, topology, batch, num_graphs, sigma, use_alignment_estimators=pl_module.use_alignment_estimators
             )
             xhat_graphs = topology.clone()
@@ -60,7 +59,7 @@ class VisualizeDenoise(pl.Callback):
             x_graphs.pos = x
 
             y_graphs = topology.clone()
-            y_graphs.pos = y
+            y_graphs.pos = aux["y"]
 
             for xhat_graph, y_graph, x_graph in zip(
                 torch_geometric.data.Batch.to_data_list(xhat_graphs),

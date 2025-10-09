@@ -325,6 +325,8 @@ class MDtrajDataset(torch.utils.data.Dataset):
         utils.save_pdb(self.traj[0], filename)
 
     def __getitem__(self, idx):
+        if idx >= self.traj.n_frames:
+            idx = self.traj.n_frames - 1
         graph = self.graph.clone("pos")
         graph.pos = torch.tensor(self.traj.xyz[idx])
         if self.transform:
@@ -332,7 +334,7 @@ class MDtrajDataset(torch.utils.data.Dataset):
         return graph
 
     def __len__(self):
-        return self.traj.n_frames
+        return max(32, self.traj.n_frames)
 
     @functools.cached_property
     def topology(self) -> md.Topology:
