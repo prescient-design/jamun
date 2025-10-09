@@ -31,7 +31,7 @@ data:
         filter_codes_csv: "${paths.data_path}/atlas-splits/train.csv"
         filter_codes_csv_header: "code"
         as_iterable: true
-      
+
       val:
         _target_: jamun.data.parse_datasets_from_directory_new
         root: "${paths.data_path}/atlas"
