@@ -343,7 +343,7 @@ class EnergyModel(pl.LightningModule):
             aux[f"xtarget_{key}"] = aux_xtarget[key]
 
         aux_x = compute_rmsd_metrics(
-            x=x, xhat=xtarget, batch=batch, num_graphs=num_graphs, sigma=sigma, mean_center=self.mean_center
+            x=x, xhat=xhat, batch=batch, num_graphs=num_graphs, sigma=sigma, mean_center=self.mean_center
         )
         for key in aux_x:
             aux[f"x_{key}"] = aux_x[key]
