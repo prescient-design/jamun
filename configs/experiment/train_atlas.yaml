@@ -56,6 +56,7 @@ data:
 
 
 trainer:
+  num_sanity_val_steps: 0
   val_check_interval: 6000
   limit_val_batches: 1000
   max_epochs: 100
