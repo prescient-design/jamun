@@ -1,6 +1,6 @@
 import functools
 import os
-from typing import Callable, Optional, Sequence, Tuple, List
+from collections.abc import Callable, Sequence
 
 import mdtraj as md
 import numpy as np
@@ -16,39 +16,39 @@ def get_subsampled_indices(
     subsample_rate: int,
     total_lag_time: int,
     lag_subsample_rate: int,
-) -> List[np.ndarray]:
+) -> list[np.ndarray]:
     """
     Generate subsampled indices and their corresponding lagged indices.
-    
+
     Args:
         N: Total number of frames
         subsample_rate: Rate at which to subsample the frames
         total_lag_time: Number of lagged frames to generate for each subsampled frame
         lag_subsample_rate: Rate at which to subsample the lagged frames
-        
+
     Returns:
         List of arrays, where each array contains the lagged indices for a subsampled frame
-                         
+
     Raises:
         ValueError: If the input parameters don't satisfy the required constraints
     """
     # Check guardrails
     if N / subsample_rate < 1:
-        raise ValueError(f"Number of samples (N/subsample_rate = {N/subsample_rate}) must be >= 1")
-    
+        raise ValueError(f"Number of samples (N/subsample_rate = {N / subsample_rate}) must be >= 1")
+
     # Generate subsampled indices
     subsampled_indices = np.arange(0, N, subsample_rate)
-    
+
     # Generate lagged indices for each subsampled index
     lagged_indices = []
     for idx in subsampled_indices:
         # Calculate lagged indices
         lagged = [int(idx - j * lag_subsample_rate) for j in range(total_lag_time)]
-        
+
         # Check if we have enough lagged indices
         if len(lagged) == total_lag_time and all(x >= 0 for x in lagged):
-            lagged_indices.append(lagged) 
-    
+            lagged_indices.append(lagged)
+
     return lagged_indices
 
 
@@ -77,7 +77,7 @@ def make_graph_from_topology(
         num_residues=residue_sequence_index.max().item() + 1,
         bonded_edge_index=bonds,
         pos=None,
-        hidden_state=None
+        hidden_state=None,
     )
     graph.residues = [x.residue.name for x in topology.atoms]
     graph.atom_names = [x.name for x in topology.atoms]
@@ -203,12 +203,12 @@ class MDtrajDataset(torch.utils.data.Dataset):
         traj_files: Sequence[str],
         pdb_file: str,
         label: str,
-        num_frames: Optional[int] = None,
-        start_frame: Optional[int] = None,
-        transform: Optional[Callable] = None,
-        subsample: Optional[int] = None,
-        total_lag_time: Optional[int] = None,
-        lag_subsample_rate: Optional[int] = None,
+        num_frames: int | None = None,
+        start_frame: int | None = None,
+        transform: Callable | None = None,
+        subsample: int | None = None,
+        total_lag_time: int | None = None,
+        lag_subsample_rate: int | None = None,
         loss_weight: float = 1.0,
         verbose: bool = False,
         keep_hydrogens: bool = False,
@@ -244,21 +244,19 @@ class MDtrajDataset(torch.utils.data.Dataset):
 
         if subsample is None or subsample == 0:
             subsample = 1
-        
+
         # Get lagged indices if lag parameters are provided
         if total_lag_time is not None and lag_subsample_rate is not None:
             # print(f"total_lag_time: {total_lag_time}, lag_subsample_rate: {lag_subsample_rate}")
-            self.traj = self.traj[start_frame : start_frame + num_frames] # accommodate for start_frame and num_frames
-            lagged_indices = get_subsampled_indices(
-                self.traj.n_frames, subsample, total_lag_time, lag_subsample_rate
-            )
+            self.traj = self.traj[start_frame : start_frame + num_frames]  # accommodate for start_frame and num_frames
+            lagged_indices = get_subsampled_indices(self.traj.n_frames, subsample, total_lag_time, lag_subsample_rate)
             # Extract subsampled indices (first element of each list)
             subsampled_indices = [indices[0] for indices in lagged_indices]
             # Extract lagged indices (all except first element)
             self.lagged_indices = [indices[1:] for indices in lagged_indices]
             # Subsample the trajectory using the subsampled indices
             self.hidden_state = [self.traj[indices] for indices in self.lagged_indices]
-            self.traj = self.traj[subsampled_indices] # self.traj is permanently modified.
+            self.traj = self.traj[subsampled_indices]  # self.traj is permanently modified.
         else:
             # Regular subsampling without lag
             # print(f"subsample: {subsample}, regular subsampling")
@@ -271,7 +269,9 @@ class MDtrajDataset(torch.utils.data.Dataset):
         self.graph = make_graph_from_topology(self.top)
         self.traj = self.traj.atom_slice(atom_selection)
         if self.hidden_state is not None:
-            self.hidden_state = [traj.atom_slice(atom_selection) for traj in self.hidden_state] # select protein atoms for hidden state(s)
+            self.hidden_state = [
+                traj.atom_slice(atom_selection) for traj in self.hidden_state
+            ]  # select protein atoms for hidden state(s)
 
         self.graph.pos = torch.tensor(self.traj.xyz[0], dtype=torch.float32)
         self.graph.loss_weight = torch.tensor([loss_weight], dtype=torch.float32)
@@ -299,12 +299,14 @@ class MDtrajDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         graph = self.graph.clone()
         graph.pos = torch.tensor(self.traj.xyz[idx])
-        
+
         if self.hidden_state is not None:
-            graph.hidden_state = [torch.tensor(self.hidden_state[idx].xyz[i]) for i in range(self.hidden_state[idx].n_frames)]
+            graph.hidden_state = [
+                torch.tensor(self.hidden_state[idx].xyz[i]) for i in range(self.hidden_state[idx].n_frames)
+            ]
         else:
             graph.hidden_state = []
-            
+
         if self.transform:
             graph = self.transform(graph)
         return graph

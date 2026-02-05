@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Dict, Optional, Tuple, Union
+from collections.abc import Callable
 
 import e3tools
 import lightning.pytorch as pl
@@ -7,9 +7,8 @@ import numpy as np
 import torch
 import torch_geometric
 from e3tools import scatter
-from tqdm import tqdm
 
-from jamun.utils import align_A_to_B_batched, mean_center, unsqueeze_trailing
+from jamun.utils import mean_center, unsqueeze_trailing
 from jamun.utils.align import kabsch_algorithm
 
 
@@ -30,11 +29,11 @@ class DenoiserSpiked(pl.LightningModule):
         mean_center: bool,
         mirror_augmentation_rate: float,
         bond_loss_coefficient: float = 1.0,
-        normalization_type: Optional[str] = "JAMUN",
-        sigma_data: Optional[float] = None,  # Only used if normalization_type is "EDM"
-        lr_scheduler_config: Optional[Dict] = None,
+        normalization_type: str | None = "JAMUN",
+        sigma_data: float | None = None,  # Only used if normalization_type is "EDM"
+        lr_scheduler_config: dict | None = None,
         use_torch_compile: bool = True,
-        torch_compile_kwargs: Optional[Dict] = None,
+        torch_compile_kwargs: dict | None = None,
         conditioner: Callable[..., list[torch.Tensor]] = None,
     ):
         super().__init__()
@@ -113,20 +112,24 @@ class DenoiserSpiked(pl.LightningModule):
             if param.grad is not None:
                 self.log(f"gradient_norms/{name}", param.grad.norm(), sync_dist=True)
 
-    def conditioner_default(self, y: torch_geometric.data.Batch, x_clean: torch_geometric.data.Batch = None) -> list[torch.Tensor]:
+    def conditioner_default(
+        self, y: torch_geometric.data.Batch, x_clean: torch_geometric.data.Batch = None
+    ) -> list[torch.Tensor]:
         conditioned_structures = [y.pos]  # Return complete list starting with current position
         if x_clean is not None:
             conditioned_structures.append(x_clean.pos)  # Add clean sample positions
         return conditioned_structures
 
-    def conditioner(self, y: torch_geometric.data.Batch, x_clean: torch_geometric.data.Batch = None) -> list[torch.Tensor]:
+    def conditioner(
+        self, y: torch_geometric.data.Batch, x_clean: torch_geometric.data.Batch = None
+    ) -> list[torch.Tensor]:
         if self.conditioning_module is None:
             return self.conditioner_default(y, x_clean)
         elif callable(self.conditioning_module):
             return self.conditioning_module(y, x_clean)
         else:
             raise ValueError("Conditioner must be a callable or None")
-    
+
     def _align_A_to_B_batched_with_hidden_states(
         self, A: torch_geometric.data.Batch, B: torch_geometric.data.Batch
     ) -> torch_geometric.data.Batch:
@@ -136,13 +139,11 @@ class DenoiserSpiked(pl.LightningModule):
         # Align positions
         A_aligned.pos = kabsch_algorithm(A.pos, B.pos, A.batch, A.num_graphs)
 
-            # Align hidden states
+        # Align hidden states
         if hasattr(A, "hidden_state") and A.hidden_state is not None:
             A_aligned.hidden_state = []
             for i in range(len(A.hidden_state)):
-                A_aligned.hidden_state.append(kabsch_algorithm(
-                    A.hidden_state[i], B.pos, A.batch, A.num_graphs
-                ))
+                A_aligned.hidden_state.append(kabsch_algorithm(A.hidden_state[i], B.pos, A.batch, A.num_graphs))
         return A_aligned
 
     def _mean_center_hidden_states(self, data: torch_geometric.data.Batch):
@@ -151,8 +152,8 @@ class DenoiserSpiked(pl.LightningModule):
                 mean = scatter(data.hidden_state[i], data.batch, dim=0, reduce="mean")
                 data.hidden_state[i] = data.hidden_state[i] - mean[data.batch]
         return data
-    
-    def add_noise(self, x: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor]) -> torch_geometric.data.Batch:
+
+    def add_noise(self, x: torch_geometric.data.Batch, sigma: float | torch.Tensor) -> torch_geometric.data.Batch:
         # pos [B, ...]
         sigma = unsqueeze_trailing(sigma, x.pos.ndim)
 
@@ -165,12 +166,17 @@ class DenoiserSpiked(pl.LightningModule):
             num_batches = x.batch.max().item() + 1
             if len(x.pos.shape) == 2:
                 num_nodes_per_batch = x.pos.shape[0] // num_batches
-                noise = torch.randn_like((x.pos[:num_nodes_per_batch])).repeat(num_batches, 1)
-                hidden_noise = [torch.randn_like((x.hidden_state[i][:num_nodes_per_batch])).repeat(num_batches, 1) for i in range(len(x.hidden_state))]
+                noise = torch.randn_like(x.pos[:num_nodes_per_batch]).repeat(num_batches, 1)
+                hidden_noise = [
+                    torch.randn_like(x.hidden_state[i][:num_nodes_per_batch]).repeat(num_batches, 1)
+                    for i in range(len(x.hidden_state))
+                ]
             if len(x.pos.shape) == 3:
                 num_nodes_per_batch = x.pos.shape[1]
-                noise = torch.randn_like((x.pos[0])).repeat(num_batches, 1, 1)
-                hidden_noise = [torch.randn_like((x.hidden_state[i][0])).repeat(num_batches, 1, 1) for i in range(len(x.hidden_state))]
+                noise = torch.randn_like(x.pos[0]).repeat(num_batches, 1, 1)
+                hidden_noise = [
+                    torch.randn_like(x.hidden_state[i][0]).repeat(num_batches, 1, 1) for i in range(len(x.hidden_state))
+                ]
         else:
             noise = torch.randn_like(x.pos)
             hidden_noise = [torch.randn_like(x.hidden_state[i]) for i in range(len(x.hidden_state))]
@@ -181,12 +187,14 @@ class DenoiserSpiked(pl.LightningModule):
             y.pos = -y.pos
         return y
 
-    def score(self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor], x_clean: torch_geometric.data.Batch) -> torch_geometric.data.Batch:
+    def score(
+        self, y: torch_geometric.data.Batch, sigma: float | torch.Tensor, x_clean: torch_geometric.data.Batch
+    ) -> torch_geometric.data.Batch:
         """Compute the score function."""
         sigma = torch.as_tensor(sigma).to(y.pos)
         return (self.xhat(y, sigma, x_clean).pos - y.pos) / (unsqueeze_trailing(sigma, y.pos.ndim - 1) ** 2)
 
-    def normalization_factors(self, sigma: float, D: int = 3) -> Tuple[float, float, float, float]:
+    def normalization_factors(self, sigma: float, D: int = 3) -> tuple[float, float, float, float]:
         """Normalization factors for the input and output."""
         sigma = torch.as_tensor(sigma)
 
@@ -217,7 +225,7 @@ class DenoiserSpiked(pl.LightningModule):
         _, _, c_out, _ = self.normalization_factors(sigma, D)
         return 1 / (c_out**2)
 
-    def effective_radial_cutoff(self, sigma: Union[float, torch.Tensor]) -> torch.Tensor:
+    def effective_radial_cutoff(self, sigma: float | torch.Tensor) -> torch.Tensor:
         """Compute the effective radial cutoff for the noise level."""
         return torch.sqrt((self.max_radius**2) + 6 * (sigma**2))
 
@@ -253,7 +261,7 @@ class DenoiserSpiked(pl.LightningModule):
         return y
 
     def xhat_normalized(
-        self, y: torch_geometric.data.Batch, sigma: Union[float, torch.Tensor], x_clean: torch_geometric.data.Batch
+        self, y: torch_geometric.data.Batch, sigma: float | torch.Tensor, x_clean: torch_geometric.data.Batch
     ) -> torch_geometric.data.Batch:
         """Compute the denoised prediction using the normalization factors from JAMUN."""
         sigma = torch.as_tensor(sigma).to(y.pos)
@@ -290,19 +298,23 @@ class DenoiserSpiked(pl.LightningModule):
             if hasattr(y, "hidden_state") and y.hidden_state is not None:
                 xhat.hidden_state = [h.clone() for h in y.hidden_state]
 
-        with torch.cuda.nvtx.range("conditioning"): 
+        with torch.cuda.nvtx.range("conditioning"):
             conditioned_structures = self.conditioner(y_scaled, x_clean)
             # print(f"Conditioner is working, number of conditioned structures: {len(conditioned_structures)}")
-        with torch.cuda.nvtx.range("g"):    
-            g_pred = self.g(torch.cat([*conditioned_structures], dim=-1), topology=y_scaled, \
-                            c_noise=c_noise, effective_radial_cutoff=radial_cutoff)
+        with torch.cuda.nvtx.range("g"):
+            g_pred = self.g(
+                torch.cat([*conditioned_structures], dim=-1),
+                topology=y_scaled,
+                c_noise=c_noise,
+                effective_radial_cutoff=radial_cutoff,
+            )
 
         xhat.pos = c_skip * y.pos + c_out * g_pred
         if hasattr(y, "hidden_state") and y.hidden_state is not None:
             xhat.hidden_state = [y.pos, *y.hidden_state[:-1]]
         return xhat
 
-    def xhat(self, y: torch.Tensor, sigma: Union[float, torch.Tensor], x_clean: torch_geometric.data.Batch):
+    def xhat(self, y: torch.Tensor, sigma: float | torch.Tensor, x_clean: torch_geometric.data.Batch):
         """Compute the denoised prediction."""
         if self.mean_center:
             with torch.cuda.nvtx.range("mean_center_y"):
@@ -325,9 +337,9 @@ class DenoiserSpiked(pl.LightningModule):
     def noise_and_denoise(
         self,
         x: torch_geometric.data.Batch,
-        sigma: Union[float, torch.Tensor],
+        sigma: float | torch.Tensor,
         align_noisy_input: bool,
-    ) -> Tuple[torch_geometric.data.Batch, torch_geometric.data.Batch, torch_geometric.data.Batch]:
+    ) -> tuple[torch_geometric.data.Batch, torch_geometric.data.Batch, torch_geometric.data.Batch]:
         """
         Add noise to the input and denoise it.
         Returns the target for the loss, the prediction, and the noisy input.
@@ -369,8 +381,8 @@ class DenoiserSpiked(pl.LightningModule):
         self,
         x: torch_geometric.data.Batch,
         xhat: torch.Tensor,
-        sigma: Union[float, torch.Tensor],
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        sigma: float | torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute the loss."""
         if self.mean_center:
             with torch.cuda.nvtx.range("mean_center_x"):
@@ -405,18 +417,20 @@ class DenoiserSpiked(pl.LightningModule):
     def noise_and_compute_loss(
         self,
         x: torch_geometric.data.Batch,
-        sigma: Union[float, torch.Tensor],
+        sigma: float | torch.Tensor,
         align_noisy_input: bool,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Add noise to the input and compute the loss."""
         x_target, xhat, _ = self.noise_and_denoise(x, sigma, align_noisy_input=align_noisy_input)
         return self.compute_loss(x_target, xhat, sigma)
 
     def _automatic_step(self, batch: torch_geometric.data.Batch, stage: str):
         """The standard step for automatic optimization."""
-        align_noisy_input = self.align_noisy_input_during_training if stage == "train" else self.align_noisy_input_during_evaluation
+        align_noisy_input = (
+            self.align_noisy_input_during_training if stage == "train" else self.align_noisy_input_during_evaluation
+        )
         sigma = self.sigma_distribution.sample().to(self.device)
-        
+
         loss, aux = self.noise_and_compute_loss(
             batch,
             sigma,
@@ -432,17 +446,19 @@ class DenoiserSpiked(pl.LightningModule):
                     self.log(f"train/{key}", aux[key], prog_bar=False, batch_size=batch.num_graphs, sync_dist=False)
                 elif stage == "val":
                     self.log(
-                f"val/{key}", aux[key], prog_bar=(key == "scaled_rmsd"), batch_size=batch.num_graphs, sync_dist=True
-            )
+                        f"val/{key}",
+                        aux[key],
+                        prog_bar=(key == "scaled_rmsd"),
+                        batch_size=batch.num_graphs,
+                        sync_dist=True,
+                    )
                 else:
                     continue
-
 
         return {
             "sigma": sigma,
             **aux,
         }
-
 
     def training_step(self, batch: torch_geometric.data.Batch, batch_idx: int):
         """Called during training."""
@@ -464,4 +480,4 @@ class DenoiserSpiked(pl.LightningModule):
                 **self.lr_scheduler_config,
             }
 
-        return out 
+        return out

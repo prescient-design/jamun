@@ -1,15 +1,16 @@
-from typing import Callable
+from collections.abc import Callable
 
 import e3nn
+import e3tools.nn
 import torch
 import torch_geometric
 from e3nn import o3
 from e3nn.o3 import Irreps
 from e3tools import scatter
 from torch import Tensor
+
 from jamun.model.atom_embedding import AtomEmbeddingWithResidueInformation, SimpleAtomEmbedding
 from jamun.model.noise_conditioning import NoiseConditionalScaling, NoiseConditionalSkipConnection
-import e3tools.nn
 
 
 class E3ConvConditional(torch.nn.Module):
@@ -36,7 +37,7 @@ class E3ConvConditional(torch.nn.Module):
         num_residue_types: int = 25,
         test_equivariance: bool = False,
         reduce: str | None = None,
-        N_structures: int = 1
+        N_structures: int = 1,
     ):
         super().__init__()
 
@@ -75,7 +76,7 @@ class E3ConvConditional(torch.nn.Module):
         self.initial_projector = hidden_layer_factory(
             irreps_in=self.initial_noise_scaling.irreps_out,
             irreps_out=self.irreps_hidden,
-            irreps_sh=N_structures*self.irreps_sh,
+            irreps_sh=N_structures * self.irreps_sh,
             edge_attr_dim=edge_attr_dim,
         )
 
@@ -87,7 +88,7 @@ class E3ConvConditional(torch.nn.Module):
                 hidden_layer_factory(
                     irreps_in=self.irreps_hidden,
                     irreps_out=self.irreps_hidden,
-                    irreps_sh=N_structures*self.irreps_sh,
+                    irreps_sh=N_structures * self.irreps_sh,
                     edge_attr_dim=self.edge_attr_dim,
                 )
             )
@@ -100,7 +101,7 @@ class E3ConvConditional(torch.nn.Module):
 
     def forward(
         self,
-        pos: Tensor, # should be [batch_size*N, 3T], T is the number of previous time-steps
+        pos: Tensor,  # should be [batch_size*N, 3T], T is the number of previous time-steps
         topology: torch_geometric.data.Batch,
         c_noise: Tensor,
         effective_radial_cutoff: float,
@@ -109,13 +110,13 @@ class E3ConvConditional(torch.nn.Module):
         edge_index = topology["edge_index"]
         bond_mask = topology["bond_mask"]
 
-        src, dst = edge_index                    # compute edge spherical harmonics over concat structures
+        src, dst = edge_index  # compute edge spherical harmonics over concat structures
         positions = torch.split(pos, 3, dim=-1)
         edge_sh = []
-        for block in positions: 
+        for block in positions:
             edge_vec = block[src] - block[dst]
             edge_sh.append(self.sh(edge_vec))
-        edge_sh = torch.cat(edge_sh, dim=-1) 
+        edge_sh = torch.cat(edge_sh, dim=-1)
 
         # print(f"Edge spherical harmonics: {type(edge_sh)}")
         bonded_edge_attr = self.embed_bondedness(bond_mask)
@@ -149,7 +150,7 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
     Extension of E3ConvConditional that can accept additional input attributes
     and combine them with the computed node attributes.
     """
-    
+
     def __init__(
         self,
         irreps_out: str | Irreps,
@@ -176,7 +177,7 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
     ):
         """
         Initialize E3ConvConditionalWithInputAttr.
-        
+
         Args:
             input_attr_irreps: Irreps of the input attributes that will be combined with node_attr.
                               If None, the model behaves like the parent class.
@@ -204,14 +205,14 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
             reduce=reduce,
             N_structures=N_structures,
         )
-        
+
         self.input_attr_irreps = o3.Irreps(input_attr_irreps) if input_attr_irreps is not None else None
-        
+
         # Create input irrep aggregator if input attributes are provided
         if self.input_attr_irreps is not None:
             # Combined irreps: node_attr irreps + input_attr irreps
             combined_irreps = self.irreps_hidden + self.input_attr_irreps
-            
+
             # Create aggregator that takes combined input and outputs node_attr irreps
             self.input_irrep_aggregator = e3tools.nn.EquivariantMLP(
                 irreps_in=combined_irreps,
@@ -220,7 +221,7 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
             )
         else:
             self.input_irrep_aggregator = None
-    
+
     def forward(
         self,
         pos: Tensor,
@@ -231,7 +232,7 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
     ) -> Tensor:
         """
         Forward pass with optional input attributes.
-        
+
         Args:
             pos: Node positions
             topology: Graph topology
@@ -239,7 +240,7 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
             effective_radial_cutoff: Radial cutoff for edges
             input_attr: Optional input attributes to combine with node_attr.
                        Should have shape [N, input_attr_irreps.dim] where N is number of nodes.
-        
+
         Returns:
             Node attributes after processing
         """
@@ -247,13 +248,13 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
         edge_index = topology["edge_index"]
         bond_mask = topology["bond_mask"]
 
-        src, dst = edge_index                    # compute edge spherical harmonics over concat structures
+        src, dst = edge_index  # compute edge spherical harmonics over concat structures
         positions = torch.split(pos, 3, dim=-1)
         edge_sh = []
-        for block in positions: 
+        for block in positions:
             edge_vec = block[src] - block[dst]
             edge_sh.append(self.sh(edge_vec))
-        edge_sh = torch.cat(edge_sh, dim=-1) 
+        edge_sh = torch.cat(edge_sh, dim=-1)
 
         # print(f"Edge spherical harmonics: {type(edge_sh)}")
         bonded_edge_attr = self.embed_bondedness(bond_mask)
@@ -271,32 +272,28 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
         node_attr = self.atom_embedder(topology)
         node_attr = self.initial_noise_scaling(node_attr, c_noise)
         node_attr = self.initial_projector(node_attr, edge_index, edge_attr, edge_sh)
-        
+
         # Combine with input attributes if provided
         if input_attr is not None and self.input_irrep_aggregator is not None:
             # Validate input_attr shape
             expected_dim = self.input_attr_irreps.dim
             if input_attr.shape[-1] != expected_dim:
                 raise ValueError(
-                    f"Expected input_attr to have dimension {expected_dim}, "
-                    f"but got {input_attr.shape[-1]}"
+                    f"Expected input_attr to have dimension {expected_dim}, but got {input_attr.shape[-1]}"
                 )
             if input_attr.shape[0] != node_attr.shape[0]:
                 raise ValueError(
-                    f"Expected input_attr to have {node_attr.shape[0]} nodes, "
-                    f"but got {input_attr.shape[0]}"
+                    f"Expected input_attr to have {node_attr.shape[0]} nodes, but got {input_attr.shape[0]}"
                 )
-            
+
             # Concatenate node_attr with input_attr
             combined_attr = torch.cat([node_attr, input_attr], dim=-1)
-            
+
             # Aggregate to get back to node_attr irreps
             node_attr = self.input_irrep_aggregator(combined_attr)
         elif input_attr is not None and self.input_irrep_aggregator is None:
-            raise ValueError(
-                "input_attr provided but input_attr_irreps was not specified during initialization"
-            )
-        
+            raise ValueError("input_attr provided but input_attr_irreps was not specified during initialization")
+
         # Continue with normal processing
         for scaling, skip, layer in zip(self.noise_scalings, self.skip_connections, self.layers):
             node_attr = skip(node_attr, layer(scaling(node_attr, c_noise), edge_index, edge_attr, edge_sh), c_noise)
@@ -312,17 +309,17 @@ class E3ConvConditionalWithInputAttr(E3ConvConditional):
 class E3ConvConditionalSpatioTemporal(E3ConvConditional):
     """
     E3ConvConditional specifically designed for spatiotemporal conditioning.
-    
+
     This class expects input positions to be concatenated as [y.pos, spatial_features]
     where y.pos are the physical 3D coordinates and spatial_features are additional
     attributes from the spatiotemporal model.
-    
+
     Key differences from E3ConvConditional:
     - Edge spherical harmonics are only computed for the first 3 coordinates (y.pos)
     - Remaining coordinates are treated as per-node input attributes
     - Input attributes are combined with computed node attributes
     """
-    
+
     def __init__(
         self,
         irreps_out: str | Irreps,
@@ -349,7 +346,7 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
     ):
         """
         Initialize E3ConvConditionalSpatioTemporal.
-        
+
         Args:
             input_attr_irreps: Irreps of the spatial features from spatiotemporal model.
                               Should match the irreps_out of the spatiotemporal model.
@@ -378,21 +375,21 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
             reduce=reduce,
             N_structures=N_structures,
         )
-        
+
         # Set up input attribute handling
         self.input_attr_irreps = o3.Irreps(input_attr_irreps)
         self.input_attr_irreps_dim = self.input_attr_irreps.dim
         # Create input irrep aggregator to combine node_attr with input_attr
         # Combined irreps: node_attr irreps + input_attr irreps
         combined_irreps = self.irreps_hidden + self.input_attr_irreps
-        
+
         # Create aggregator that takes combined input and outputs node_attr irreps
         self.input_irrep_aggregator = e3tools.nn.EquivariantMLP(
             irreps_in=combined_irreps,
             irreps_out=self.irreps_hidden,
             irreps_hidden_list=[self.irreps_hidden],  # Single hidden layer
         )
-    
+
     def forward(
         self,
         pos: Tensor,  # should be [N, 3 + spatial_features_dim] from [y.pos, spatial_features]
@@ -402,13 +399,13 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
     ) -> Tensor:
         """
         Forward pass with spatiotemporal conditioning.
-        
+
         Args:
             pos: Concatenated positions [y.pos, spatial_features] with shape [N, 3 + spatial_features_dim]
             topology: Graph topology
             c_noise: Noise conditioning
             effective_radial_cutoff: Radial cutoff for edges
-        
+
         Returns:
             Node attributes after processing
         """
@@ -417,11 +414,11 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
         bond_mask = topology["bond_mask"]
 
         src, dst = edge_index
-        
+
         # Split positions: first 3 coords are physical positions, rest are spatial features
         pos_physical = pos[:, :3]  # [N, 3] - physical coordinates
         pos_features = pos[:, 3:]  # [N, spatial_features_dim] - spatial features
-        
+
         # Compute edge spherical harmonics ONLY for physical positions
         edge_vec_physical = pos_physical[src] - pos_physical[dst]
         edge_sh = self.sh(edge_vec_physical)
@@ -442,22 +439,21 @@ class E3ConvConditionalSpatioTemporal(E3ConvConditional):
         node_attr = self.atom_embedder(topology)
         node_attr = self.initial_noise_scaling(node_attr, c_noise)
         node_attr = self.initial_projector(node_attr, edge_index, edge_attr, edge_sh)
-        
+
         # Combine node_attr with spatial features (input_attr)
         # Validate spatial features shape
         expected_dim = self.input_attr_irreps_dim
         if pos_features.shape[-1] != expected_dim:
             raise ValueError(
-                f"Expected spatial features to have dimension {expected_dim}, "
-                f"but got {pos_features.shape[-1]}"
+                f"Expected spatial features to have dimension {expected_dim}, but got {pos_features.shape[-1]}"
             )
-        
+
         # Concatenate node_attr with spatial features
         combined_attr = torch.cat([node_attr, pos_features], dim=-1)
-        
+
         # Aggregate to get back to node_attr irreps
         node_attr = self.input_irrep_aggregator(combined_attr)
-        
+
         # Continue with normal processing using only physical positions for edge computations
         for scaling, skip, layer in zip(self.noise_scalings, self.skip_connections, self.layers):
             node_attr = skip(node_attr, layer(scaling(node_attr, c_noise), edge_index, edge_attr, edge_sh), c_noise)

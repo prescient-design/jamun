@@ -1,1 +1,1 @@
-from ._splitting import aboba, baoab, aboba_memory, baoab_memory
+from ._splitting import aboba, aboba_memory, baoab, baoab_memory

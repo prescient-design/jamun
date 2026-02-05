@@ -1,5 +1,7 @@
 import os
+
 from jamun.model.denoiser_conditional import Denoiser
+
 
 def load_model_from_local_checkpoint(checkpoint_dir: str):
     """
@@ -32,6 +34,7 @@ def load_model_from_local_checkpoint(checkpoint_dir: str):
         print(f"An error occurred: {e}")
         return None
 
+
 if __name__ == "__main__":
     checkpoint_dir = "/data2/sules/jamun-conditional-runs/outputs/train/dev/runs/2025-06-30_19-07-58/checkpoints"
-    load_model_from_local_checkpoint(checkpoint_dir) 
+    load_model_from_local_checkpoint(checkpoint_dir)

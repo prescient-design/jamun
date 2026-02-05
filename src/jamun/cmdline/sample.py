@@ -1,8 +1,7 @@
 import os
 import sys
 import traceback
-from typing import Sequence
-import pdb 
+from collections.abc import Sequence
 
 import dotenv
 import e3nn
@@ -29,16 +28,17 @@ import logging
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
 logger = logging.getLogger("load_wandb_checkpoint")
 
-dotenv.load_dotenv("../.env", verbose=True) # Adjust path if script is not in scratch/
+dotenv.load_dotenv("../.env", verbose=True)  # Adjust path if script is not in scratch/
 JAMUN_DATA_PATH = os.getenv("JAMUN_DATA_PATH")
 JAMUN_ROOT_PATH = os.getenv("JAMUN_ROOT_PATH")
 
-project_root = "/homefs/home/sules/jamun" # Adjust if necessary
+project_root = "/homefs/home/sules/jamun"  # Adjust if necessary
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
     logger.info(f"Added '{project_root}' to sys.path for module discovery.")
 else:
     logger.info(f"'{project_root}' is already in sys.path.")
+
 
 def get_initial_graphs(
     datasets: Sequence[MDtrajDataset], num_init_samples_per_dataset: int, repeat: int = 1
@@ -86,14 +86,16 @@ def run(cfg):
     # Overwrite the checkpoint path in the config.
     cfg.model.checkpoint_path = checkpoint_path
     model = hydra.utils.instantiate(cfg.model)
-    
+
     # Set default graph_type to "fan" if spatiotemporal model exists but doesn't have graph_type
-    if (hasattr(model, 'conditioner') and hasattr(model.conditioner, 'spatiotemporal_model') and 
-        not hasattr(model.conditioner.spatiotemporal_model, 'graph_type')):
+    if (
+        hasattr(model, "conditioner")
+        and hasattr(model.conditioner, "spatiotemporal_model")
+        and not hasattr(model.conditioner.spatiotemporal_model, "graph_type")
+    ):
         model.conditioner.spatiotemporal_model.graph_type = "fan"
-    
-    
-    print(f'Checkpoint path at: {checkpoint_path}')
+
+    print(f"Checkpoint path at: {checkpoint_path}")
     init_datasets = hydra.utils.instantiate(cfg.init_datasets)
     # breakpoint()
     init_graphs = get_initial_graphs(

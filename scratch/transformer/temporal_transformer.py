@@ -1,12 +1,10 @@
-from typing import Dict, Union
-
 import e3nn
-import torch
-import torch.nn as nn
-from e3nn import o3
-import torch_geometric.data
 import e3tools
 import e3tools.nn
+import torch
+import torch.nn as nn
+import torch_geometric.data
+from e3nn import o3
 
 
 class E3Transformer(nn.Module):
@@ -14,10 +12,10 @@ class E3Transformer(nn.Module):
 
     def __init__(
         self,
-        irreps_out: Union[str, e3nn.o3.Irreps],
-        irreps_hidden: Union[str, e3nn.o3.Irreps],
-        irreps_sh: Union[str, e3nn.o3.Irreps],
-        irreps_node_attr: Union[str, e3nn.o3.Irreps],
+        irreps_out: str | e3nn.o3.Irreps,
+        irreps_hidden: str | e3nn.o3.Irreps,
+        irreps_sh: str | e3nn.o3.Irreps,
+        irreps_node_attr: str | e3nn.o3.Irreps,
         num_layers: int,
         edge_attr_dim: int,
         num_attention_heads: int,
@@ -28,27 +26,27 @@ class E3Transformer(nn.Module):
         self.irreps_out = o3.Irreps(irreps_out)
         self.irreps_hidden = o3.Irreps(irreps_hidden)
         self.irreps_sh = o3.Irreps(irreps_sh)
-        self.irreps_node_attr = o3.Irreps(irreps_node_attr) # input irreps 
+        self.irreps_node_attr = o3.Irreps(irreps_node_attr)  # input irreps
         self.num_layers = num_layers
         self.edge_attr_dim = edge_attr_dim
         self.num_attention_heads = num_attention_heads
         self.reduce = reduce
-        self.sh = o3.SphericalHarmonics(
-            irreps_out=self.irreps_sh, normalize=True, normalization="component"
-        )
+        self.sh = o3.SphericalHarmonics(irreps_out=self.irreps_sh, normalize=True, normalization="component")
         # Split edge attribute dimensions: radial and temporal (bondedness is optional)
         self.radial_edge_attr_dim = self.edge_attr_dim // 2
         self.temporal_edge_attr_dim = self.edge_attr_dim - self.radial_edge_attr_dim
-        
+
         # Optional bondedness embedding (only used if bond_mask exists in graph)
         self.embed_bondedness = nn.Embedding(2, self.edge_attr_dim // 3)
-        
+
         # Gate for combining node attributes with temporal position
         # Input: node_attr (from data) + temporal_position (1x0e scalar)
         irreps_with_temporal = self.irreps_node_attr + o3.Irreps("1x0e")
-        self.temporal_gate = e3tools.nn.GateWrapper(irreps_in=irreps_with_temporal, \
-                                                    irreps_out=self.irreps_hidden, \
-                                                    irreps_gate=irreps_with_temporal,)
+        self.temporal_gate = e3tools.nn.GateWrapper(
+            irreps_in=irreps_with_temporal,
+            irreps_out=self.irreps_hidden,
+            irreps_gate=irreps_with_temporal,
+        )
         # self.initial_linear = o3.Linear(
         #     self.temporal_gate.irreps_out, self.irreps_hidden
         # )
@@ -98,7 +96,7 @@ class E3Transformer(nn.Module):
             basis="gaussian",
             cutoff=True,
         )
-        
+
         # Temporal edge attributes from temporal_position differences
         temporal_edge_vec = temporal_position[src] - temporal_position[dst]
         temporal_edge_attr = e3nn.math.soft_one_hot_linspace(
@@ -109,9 +107,9 @@ class E3Transformer(nn.Module):
             basis="gaussian",
             cutoff=True,
         )
-        
+
         # Optional bondedness (if bond_mask exists in the temporal graph)
-        if hasattr(temporal_graph, 'bond_mask') and temporal_graph.bond_mask is not None:
+        if hasattr(temporal_graph, "bond_mask") and temporal_graph.bond_mask is not None:
             bonded_edge_attr = self.embed_bondedness(temporal_graph.bond_mask)
             edge_attr = torch.cat((bonded_edge_attr, radial_edge_attr, temporal_edge_attr), dim=-1)
         else:
@@ -122,7 +120,7 @@ class E3Transformer(nn.Module):
         # Concatenate node_attr with temporal_position (scalar)
         temporal_position_expanded = temporal_position.unsqueeze(-1)  # [N, 1] for concatenation
         node_attr_with_temporal = torch.cat([node_attr, temporal_position_expanded], dim=-1)
-        
+
         # Apply temporal gate
         node_attr_processed = self.temporal_gate(node_attr_with_temporal)
         # node_attr_processed = self.initial_linear(node_attr_gated)
@@ -141,22 +139,22 @@ class E3Transformer(nn.Module):
                 dim_size=num_graphs,
                 reduce=self.reduce,
             )
-        
+
         return node_attr_processed
 
 
 class E3SpatioTemporal(nn.Module):
     """
     E(3)-equivariant spatio-temporal model that combines spatial and temporal processing.
-    
+
     This model implements the complete workflow:
     1. Process input spatial graph and hidden states through spatial module
     2. Pool spatial features to temporal graph representation
-    3. Process temporal graph through temporal module  
+    3. Process temporal graph through temporal module
     4. Pool temporal features back to spatial representation
     5. Convert temporal graph back to spatial graph
     """
-    
+
     def __init__(
         self,
         spatial_module: nn.Module,
@@ -168,7 +166,7 @@ class E3SpatioTemporal(nn.Module):
     ):
         """
         Initialize the E3SpatioTemporal model.
-        
+
         Args:
             spatial_module: Module for processing spatial positions (e.g., E3Conv)
             temporal_module: Module for processing temporal graphs (e.g., E3Transformer)
@@ -178,30 +176,30 @@ class E3SpatioTemporal(nn.Module):
             temporal_cutoff: Cutoff for temporal edge weights
         """
         super().__init__()
-        
+
         self.spatial_module = spatial_module
         self.temporal_module = temporal_module
         self.spatial_to_temporal_pooler = spatial_to_temporal_pooler
         self.temporal_to_spatial_pooler = temporal_to_spatial_pooler
         self.radial_cutoff = radial_cutoff
         self.temporal_cutoff = temporal_cutoff
-        
+
     def forward(
         self,
         batch: torch_geometric.data.Batch,
         c_noise: torch.Tensor,
         return_temporal_features: bool = False,
         return_temporal_graph: bool = False,
-    ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> torch.Tensor | dict[str, torch.Tensor]:
         """
         Forward pass implementing the complete spatio-temporal workflow.
-        
+
         Args:
             batch: Input spatial graph batch with pos, batch, num_graphs, and optionally hidden_state
             c_noise: Noise conditioning tensor
             return_temporal_features: Whether to return intermediate temporal features
             return_temporal_graph: Whether to return the temporal graph
-            
+
         Returns:
             If return_temporal_features or return_temporal_graph is True, returns dict with:
                 - 'spatial_features': Final spatial features
@@ -211,39 +209,39 @@ class E3SpatioTemporal(nn.Module):
             Otherwise returns just the final spatial features tensor
         """
         from convert_spatiotemporal import spatial_to_temporal_graphs, temporal_to_spatial_graphs
-        
+
         # Store original device
         device = batch.pos.device
-        
+
         # Step 1: Convert spatial graph to temporal graphs
         temporal_batch = spatial_to_temporal_graphs(batch)
-        
+
         # Step 2: Process all positions (current + hidden states) with spatial module
         # Create topology for spatial processing (without positions)
         topology = batch.clone()
         # Remove position-dependent attributes but keep graph structure
-        if hasattr(topology, 'pos'):
+        if hasattr(topology, "pos"):
             del topology.pos
-        if hasattr(topology, 'batch'):
-            del topology.batch  
-        if hasattr(topology, 'num_graphs'):
+        if hasattr(topology, "batch"):
+            del topology.batch
+        if hasattr(topology, "num_graphs"):
             del topology.num_graphs
-            
+
         node_attr_list = []
-        
+
         # Process current positions
         node_attr_current = self.spatial_module(
-            batch.pos, 
-            topology, 
+            batch.pos,
+            topology,
             batch.batch,
             num_graphs=batch.num_graphs,
             c_noise=c_noise,
-            effective_radial_cutoff=self.radial_cutoff
+            effective_radial_cutoff=self.radial_cutoff,
         ).unsqueeze(1)  # [N, 1, features]
         node_attr_list.append(node_attr_current)
-        
+
         # Process hidden state positions if they exist
-        if hasattr(batch, 'hidden_state') and batch.hidden_state is not None and len(batch.hidden_state) > 0:
+        if hasattr(batch, "hidden_state") and batch.hidden_state is not None and len(batch.hidden_state) > 0:
             for hidden_pos in batch.hidden_state:
                 node_attr_hidden = self.spatial_module(
                     hidden_pos,
@@ -251,54 +249,51 @@ class E3SpatioTemporal(nn.Module):
                     batch.batch,
                     num_graphs=batch.num_graphs,
                     c_noise=c_noise,
-                    effective_radial_cutoff=self.radial_cutoff
+                    effective_radial_cutoff=self.radial_cutoff,
                 ).unsqueeze(1)  # [N, 1, features]
                 node_attr_list.append(node_attr_hidden)
-        
+
         # Step 3: Stack spatial-temporal features
         node_attr_spatial_temporal = torch.cat(node_attr_list, dim=1)  # [N, T, features]
-        
+
         # Step 4: Convert spatial-temporal features to temporal node attributes
         temporal_node_attr = self.spatial_to_temporal_pooler(node_attr_spatial_temporal, temporal_batch)
-        
+
         # Step 5: Process temporal graph through temporal module
         temporal_output = self.temporal_module(
-            temporal_node_attr,
-            temporal_batch,
-            self.radial_cutoff,
-            self.temporal_cutoff
+            temporal_node_attr, temporal_batch, self.radial_cutoff, self.temporal_cutoff
         )
-        
+
         # Step 6: Pool temporal features back to spatial features
         spatial_features = self.temporal_to_spatial_pooler(temporal_output, temporal_batch)
-        
+
         # Step 7: Convert temporal graph back to spatial graph
         output_spatial_graph = temporal_to_spatial_graphs(temporal_batch)
-        
+
         # Prepare return values
         if return_temporal_features or return_temporal_graph:
             result = {
-                'spatial_features': spatial_features,
-                'spatial_graph': output_spatial_graph,
+                "spatial_features": spatial_features,
+                "spatial_graph": output_spatial_graph,
             }
             if return_temporal_features:
-                result['temporal_features'] = temporal_output
+                result["temporal_features"] = temporal_output
             if return_temporal_graph:
-                result['temporal_graph'] = temporal_batch
+                result["temporal_graph"] = temporal_batch
             return result
         else:
             return spatial_features
-            
+
     def get_spatial_output_irreps(self):
         """Get the irreps of the spatial module output."""
-        if hasattr(self.spatial_module, 'irreps_out'):
+        if hasattr(self.spatial_module, "irreps_out"):
             return self.spatial_module.irreps_out
         else:
             raise AttributeError("Spatial module does not have irreps_out attribute")
-            
+
     def get_temporal_output_irreps(self):
-        """Get the irreps of the temporal module output.""" 
-        if hasattr(self.temporal_module, 'irreps_out'):
+        """Get the irreps of the temporal module output."""
+        if hasattr(self.temporal_module, "irreps_out"):
             return self.temporal_module.irreps_out
         else:
             raise AttributeError("Temporal module does not have irreps_out attribute")

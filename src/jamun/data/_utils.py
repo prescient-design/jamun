@@ -11,7 +11,6 @@ from tqdm.auto import tqdm
 
 from jamun.data._mdtraj import MDtrajDataset, MDtrajIterableDataset
 from jamun.data._sdf import MDtrajSDFDataset
-from typing import Optional, List, Sequence, Dict, Any
 
 
 def dloader_map_reduce(f, dloader, reduce_fn=torch.cat, verbose: bool = False):
@@ -44,7 +43,7 @@ def parse_datasets_from_directory(
     max_datasets_offset: int | None = None,
     filter_codes: Sequence[str] | None = None,
     as_iterable: bool = False,
-    label_override: Optional[str] = None,
+    label_override: str | None = None,
     **dataset_kwargs,
 ) -> list[MDtrajDataset]:
     """Helper function to create MDtrajDataset objects from a directory of trajectory files."""
@@ -362,24 +361,24 @@ def create_dataset_from_pdbs(pdbfiles: str, label_prefix: str | None = None) -> 
 def parse_repeated_position_datasets_from_directory(
     root: str,
     traj_pattern: str,
-    pdb_pattern: Optional[str] = None,
-    pdb_file: Optional[Sequence[str]] = None,
-    max_datasets: Optional[int] = None,
-    max_datasets_offset: Optional[int] = None,
-    filter_codes: Optional[Sequence[str]] = None,
+    pdb_pattern: str | None = None,
+    pdb_file: Sequence[str] | None = None,
+    max_datasets: int | None = None,
+    max_datasets_offset: int | None = None,
+    filter_codes: Sequence[str] | None = None,
     as_iterable: bool = False,
-    label_override: Optional[str] = None,
+    label_override: str | None = None,
     **dataset_kwargs,
-) -> List:
+) -> list:
     """Helper function to create RepeatedPositionDataset objects from a directory of trajectory files."""
     # Import here to avoid circular imports
     from jamun.data.noisy_position_dataset import RepeatedPositionDataset
-    
+
     # Print the dataset_kwargs for debugging
-    print(f"=== parse_repeated_position_datasets_from_directory dataset_kwargs ===")
+    print("=== parse_repeated_position_datasets_from_directory dataset_kwargs ===")
     print(f"dataset_kwargs: {dataset_kwargs}")
-    print(f"=== End dataset_kwargs ===")
-    
+    print("=== End dataset_kwargs ===")
+
     if pdb_file is not None and pdb_pattern is not None:
         raise ValueError("Exactly one of pdb_file and pdb_pattern should be provided.")
 

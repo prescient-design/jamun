@@ -2,27 +2,26 @@
 Normalization utilities for jamun models.
 """
 
-from typing import Tuple
 import torch
 
 
 def normalization_factors(
-    sigma: float, 
-    average_squared_distance: float, 
-    normalization_type: str = "JAMUN", 
+    sigma: float,
+    average_squared_distance: float,
+    normalization_type: str = "JAMUN",
     sigma_data: float = None,
-    D: int = 3
-) -> Tuple[float, float, float, float]:
+    D: int = 3,
+) -> tuple[float, float, float, float]:
     """
     Compute normalization factors for the input and output.
-    
+
     Args:
         sigma: Noise level
         average_squared_distance: Average squared distance from the dataset
         normalization_type: Type of normalization ("JAMUN", "EDM", or None)
         sigma_data: Sigma data parameter (only used for EDM normalization)
         D: Dimensionality (default: 3)
-    
+
     Returns:
         Tuple of (c_in, c_skip, c_out, c_noise) normalization factors
     """
@@ -50,4 +49,4 @@ def normalization_factors(
         c_noise = torch.log(sigma) / 4
         return c_in, c_skip, c_out, c_noise
 
-    raise ValueError(f"Unknown normalization type: {normalization_type}") 
+    raise ValueError(f"Unknown normalization type: {normalization_type}")

@@ -2,19 +2,21 @@ import einops
 import torch
 import torch.nn as nn
 import torch_geometric
+from e3tools import scatter
 
 from jamun.utils import mean_center
-from typing import Dict, List, Optional
-from e3tools import scatter
+
 
 class ModelSamplingWrapper:
     """Wrapper to sample positions from a model."""
 
-    def __init__(self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = True):
+    def __init__(
+        self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = True
+    ):
         self._model = model
         self.init_graphs = init_graphs
         self.sigma = sigma
-        
+
         # Apply mean centering if requested
         if recenter_on_init:
             self.init_graphs = mean_center(self.init_graphs)
@@ -95,18 +97,20 @@ class ModelSamplingWrapper:
 class ModelSamplingWrapperMemory:
     """Wrapper for models that depend on a memory of states."""
 
-    def __init__(self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = True):
+    def __init__(
+        self, model: nn.Module, init_graphs: torch_geometric.data.Data, sigma: float, recenter_on_init: bool = True
+    ):
         self._model = model
         self.init_graphs = init_graphs
         self.sigma = sigma
-        
+
         # Apply mean centering if requested
         if recenter_on_init:
             # Mean center positions
             self.init_graphs = mean_center(self.init_graphs)
-            
+
             # Mean center hidden states if they exist and aren't empty
-            if hasattr(self.init_graphs, 'hidden_state') and self.init_graphs.hidden_state:
+            if hasattr(self.init_graphs, "hidden_state") and self.init_graphs.hidden_state:
                 for i in range(len(self.init_graphs.hidden_state)):
                     # Mean center each hidden state in-place
                     mean = scatter(self.init_graphs.hidden_state[i], self.init_graphs.batch, dim=0, reduce="mean")
@@ -115,17 +119,18 @@ class ModelSamplingWrapperMemory:
     @property
     def device(self) -> torch.device:
         return next(self._model.parameters()).device
+
     def sample_initial_noisy_positions(self) -> torch.Tensor:
         pos = self.init_graphs.pos
         pos = pos + torch.randn_like(pos) * self.sigma
         return pos
-    
+
     def sample_initial_noisy_history(self) -> list:
         noisy_history = []
         for hidden_state in self.init_graphs.hidden_state:
             noisy_history.append(hidden_state + torch.randn_like(hidden_state) * self.sigma)
         return noisy_history
-    
+
     def __getattr__(self, name):
         return getattr(self._model, name)
 

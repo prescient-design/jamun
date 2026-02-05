@@ -98,18 +98,18 @@ class Sampler:
 
         self.fabric.call("on_sample_end", sampler=self)
 
+
 class SamplerMemory(Sampler):
     """A sampler for molecular dynamics simulations that uses memory."""
 
     def sample(
-        self,   
+        self,
         model,
         batch_sampler,
         num_batches: int,
         init_graphs: torch_geometric.data.Data,
         continue_chain: bool = False,
     ):
-
         self.fabric.launch()
         self.fabric.setup(model)
         model.eval()

@@ -1,19 +1,17 @@
 import e3nn
+
 e3nn.set_optimization_defaults(jit_script_fx=False)
 import logging
 import os
 import sys
-import torch
-import torch_geometric.data
-import hydra
-from hydra import compose, initialize
-from omegaconf import OmegaConf
-import wandb
-from jamun.utils import find_checkpoint
-import jamun.data
-import dotenv
-from denoiser_test import Denoiser
 
+import dotenv
+import torch
+from denoiser_test import Denoiser
+from hydra import compose, initialize
+
+import jamun.data
+from jamun.utils import find_checkpoint
 
 # Setup logging
 logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname)s] - %(message)s", level=logging.INFO)
@@ -34,17 +32,17 @@ with initialize(config_path="", job_name="check_hidden_state"):
             "+model.arch.N_structures=2",  # We need at least 2 structures to test hidden state
             "model.use_torch_compile=false",  # Disable torch.compile to avoid ScriptModule issues
             "+model.conditioner._target_=scratch.conditioners.SelfConditioner",
-        ]
+        ],
     )
 
 # Load checkpoint
-checkpoint_path = find_checkpoint(wandb_train_run_path="sule-shashank/jamun/y4rm5488", checkpoint_type='last')
-checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+checkpoint_path = find_checkpoint(wandb_train_run_path="sule-shashank/jamun/y4rm5488", checkpoint_type="last")
+checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
 # Modify hyperparameters to disable torch.compile
-if 'hyper_parameters' in checkpoint:
-    checkpoint['hyper_parameters']['use_torch_compile'] = False
-    checkpoint['hyper_parameters']['torch_compile_kwargs'] = None
+if "hyper_parameters" in checkpoint:
+    checkpoint["hyper_parameters"]["use_torch_compile"] = False
+    checkpoint["hyper_parameters"]["torch_compile_kwargs"] = None
 
 # Load model with modified hyperparameters
 breakpoint()
@@ -61,7 +59,7 @@ datasets = {
         root=f"{JAMUN_DATA_PATH}/timewarp/2AA-1-large/train/",
         traj_pattern="^(.*)-traj-arrays.npz",
         pdb_file="AA-traj-state0.pdb",
-        filter_codes=['AA'],
+        filter_codes=["AA"],
         as_iterable=False,
         subsample=100,
         max_datasets=1,
@@ -73,12 +71,12 @@ datamodule = jamun.data.MDtrajDataModule(
     batch_size=3,
     num_workers=2,
 )
-datamodule.setup('test')
+datamodule.setup("test")
 _, test_data = next(enumerate(datamodule.test_dataloader()))
 test_data = test_data.to(model.device)
 
 # Ensure test_data has hidden_state
-if not hasattr(test_data, 'hidden_state') or not test_data.hidden_state:
+if not hasattr(test_data, "hidden_state") or not test_data.hidden_state:
     py_logger.info("Adding hidden state to test data")
     test_data.hidden_state = [torch.randn_like(test_data.pos) for _ in range(model.g.N_structures - 1)]
 
@@ -105,4 +103,4 @@ print(f"Mean absolute difference between original and denoised positions: {pos_d
 
 # Check if noisy positions are different from original
 noisy_pos_diff = torch.abs(y.pos - test_data.pos).mean()
-print(f"Mean absolute difference between original and noisy positions: {noisy_pos_diff.item()}") 
+print(f"Mean absolute difference between original and noisy positions: {noisy_pos_diff.item()}")

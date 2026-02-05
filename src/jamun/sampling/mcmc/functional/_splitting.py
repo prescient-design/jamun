@@ -1,7 +1,7 @@
 import logging
 import math
-from typing import Callable, Optional, Tuple, Union
-from copy import deepcopy
+from collections.abc import Callable
+
 import torch
 from tqdm.auto import tqdm
 
@@ -26,7 +26,7 @@ def initialize_velocity(v_init: str | torch.Tensor, y: torch.Tensor, u: float) -
 def create_score_fn(score_fn: Callable, inverse_temperature: float, score_fn_clip: float | None) -> Callable:
     """Create a score function that is clipped and scaled by the inverse temperature."""
 
-    def score_fn_processed(y: torch.Tensor, *args, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
+    def score_fn_processed(y: torch.Tensor, *args, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         """Score function clipped and scaled by the inverse temperature."""
         orig_score = score_fn(y, *args, **kwargs).to(dtype=y.dtype)
         # Clip the score by norm.
@@ -183,7 +183,7 @@ def aboba_memory(
     y_hist: list,
     score_fn: Callable,
     steps: int,
-    v_init: Union[str, torch.Tensor] = "zero",
+    v_init: str | torch.Tensor = "zero",
     save_trajectory=False,
     save_every_n_steps=1,
     burn_in_steps=0,
@@ -194,9 +194,9 @@ def aboba_memory(
     friction: float = 1.0,
     M: float = 1.0,
     inverse_temperature: float = 1.0,
-    score_fn_clip: Optional[float] = None,
-    cleanup: Optional[bool] = None,
-    sigma: Optional[float] = None,
+    score_fn_clip: float | None = None,
+    cleanup: bool | None = None,
+    sigma: float | None = None,
     **_,
 ):
     """ABOBA splitting scheme that updates a state history."""
@@ -204,13 +204,13 @@ def aboba_memory(
     y_traj = [] if save_trajectory else None
     score_traj = []
     y_hist_traj = []
-    
+
     # Initialize trajectory with initial state
     if y_traj is not None and i >= burn_in_steps:
         y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
         score_traj.append(torch.zeros_like(y).detach().cpu() if cpu_offload else torch.zeros_like(y).detach())
         y_hist_traj.append(list(y_hist))
-    
+
     u = pow(M, -1)
     zeta2 = math.sqrt(1 - math.exp(-2 * friction))
     v = initialize_velocity(v_init=v_init, y=y, u=u)
@@ -221,7 +221,7 @@ def aboba_memory(
         steps_iter = tqdm(steps_iter, leave=False, desc="ABOBA Memory")
 
     for i in steps_iter:
-        for j in range(1,history_update_frequency):
+        for j in range(1, history_update_frequency):
             # inner aboba loop for equilibration to conditional density p(y_t | y_hist)
             y_current = y.clone().detach()
             y = y + (delta / 2) * v
@@ -240,7 +240,7 @@ def aboba_memory(
         if cleanup is not None and cleanup and sigma is not None:
             y_current = y.clone().detach()
             _, orig_score = score_fn_processed(y_current, y_hist=y_hist)
-            y_denoised_and_noised = y_current + (sigma**2)*orig_score
+            y_denoised_and_noised = y_current + (sigma**2) * orig_score
             y_hist.pop(-1)
             y_hist.insert(0, y_denoised_and_noised)
             y = y_denoised_and_noised
@@ -249,7 +249,14 @@ def aboba_memory(
             y_hist.pop(-1)
             y_hist.insert(0, y_current)
 
-    return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj
+    return (
+        y,
+        v,
+        y_hist,
+        torch.stack(y_traj) if y_traj else None,
+        torch.stack(score_traj) if score_traj else None,
+        y_hist_traj,
+    )
 
 
 def baoab_memory(
@@ -257,7 +264,7 @@ def baoab_memory(
     y_hist: list,
     score_fn: Callable,
     steps: int,
-    v_init: Union[str, torch.Tensor] = "zero",
+    v_init: str | torch.Tensor = "zero",
     save_trajectory=False,
     save_every_n_steps=1,
     burn_in_steps=0,
@@ -268,9 +275,9 @@ def baoab_memory(
     friction: float = 1.0,
     M: float = 1.0,
     inverse_temperature: float = 1.0,
-    score_fn_clip: Optional[float] = None,
-    cleanup: Optional[bool] = None,
-    sigma: Optional[float] = None,
+    score_fn_clip: float | None = None,
+    cleanup: bool | None = None,
+    sigma: float | None = None,
     **_,
 ):
     """BAOAB splitting scheme that updates a state history."""
@@ -278,7 +285,7 @@ def baoab_memory(
     y_traj = [] if save_trajectory else None
     score_traj = []
     y_hist_traj = []
-    
+
     u = pow(M, -1)
     zeta2 = math.sqrt(1 - math.exp(-2 * friction))
     v = initialize_velocity(v_init=v_init, y=y, u=u)
@@ -289,7 +296,7 @@ def baoab_memory(
         steps_iter = tqdm(steps_iter, leave=False, desc="BAOAB Memory")
 
     psi, orig_score = score_fn_processed(y, y_hist=y_hist)
-    
+
     # Initialize trajectory with initial state
     if y_traj is not None and i >= burn_in_steps:
         y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
@@ -298,30 +305,39 @@ def baoab_memory(
 
     for i in steps_iter:
         # print(f"Equilibrating to conditional density p(y_t | y_hist) for {history_update_frequency} steps...")
-        for j in range(1,history_update_frequency):
+        for j in range(1, history_update_frequency):
             # inner baoab loop for equilibration to conditional density p(y_t | y_hist)
             y_current = y.clone().detach()
-            v = v + u * (delta / 2) * psi # update with previous psi 
-            y = y + (delta / 2) * v # update with previous v 
+            v = v + u * (delta / 2) * psi  # update with previous psi
+            y = y + (delta / 2) * v  # update with previous v
             R = torch.randn_like(y)
             vhat = math.exp(-friction) * v + zeta2 * math.sqrt(u) * R
             y = y + (delta / 2) * vhat
             psi, orig_score = score_fn_processed(y, y_hist=y_hist)
             v = vhat + (delta / 2) * psi
-        
+
         if cleanup is not None and cleanup and sigma is not None:
             y_current = y.clone().detach()
             _, orig_score = score_fn_processed(y_current, y_hist=y_hist)
-            y_denoised_and_noised = y_current + (sigma**2)*orig_score + sigma*torch.randn_like(y_current) # clean and add noise
+            y_denoised_and_noised = (
+                y_current + (sigma**2) * orig_score + sigma * torch.randn_like(y_current)
+            )  # clean and add noise
             y_hist.pop(-1)
             y_hist.insert(0, y_denoised_and_noised)
             y = y_denoised_and_noised
         else:
-            y_hist.pop(-1) # remove the last element of the history
-            y_hist.insert(0, y_current) # present point is the first element of the history
+            y_hist.pop(-1)  # remove the last element of the history
+            y_hist.insert(0, y_current)  # present point is the first element of the history
         if save_trajectory and ((i % save_every_n_steps) == 0) and (i >= burn_in_steps):
             y_traj.append(y.detach().cpu() if cpu_offload else y.detach())
             score_traj.append(orig_score.detach().cpu() if cpu_offload else orig_score.detach())
             y_hist_traj.append(list(y_hist))
 
-    return y, v, y_hist, torch.stack(y_traj) if y_traj else None, torch.stack(score_traj) if score_traj else None, y_hist_traj
+    return (
+        y,
+        v,
+        y_hist,
+        torch.stack(y_traj) if y_traj else None,
+        torch.stack(score_traj) if score_traj else None,
+        y_hist_traj,
+    )

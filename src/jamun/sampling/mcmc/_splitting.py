@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-from jamun.sampling.mcmc.functional import aboba, baoab, aboba_memory, baoab_memory
+from jamun.sampling.mcmc.functional import aboba, aboba_memory, baoab, baoab_memory
 
 
 @dataclass
@@ -61,7 +61,7 @@ class BAOAB:
 @dataclass
 class ABOBA_memory(ABOBA):
     history_update_frequency: int = 1
-    
+
     def __call__(self, y: torch.Tensor, y_hist: list, score_fn: Callable, **kwargs):
         kwargs = dataclasses.asdict(self) | kwargs
         return aboba_memory(y=y, y_hist=y_hist, score_fn=score_fn, **kwargs)
@@ -70,7 +70,7 @@ class ABOBA_memory(ABOBA):
 @dataclass
 class BAOAB_memory(BAOAB):
     history_update_frequency: int = 1
-    
+
     def __call__(self, y: torch.Tensor, y_hist: list, score_fn: Callable, **kwargs):
         kwargs = dataclasses.asdict(self) | kwargs
         return baoab_memory(y=y, y_hist=y_hist, score_fn=score_fn, **kwargs)

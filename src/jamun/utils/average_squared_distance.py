@@ -75,26 +75,24 @@ def compute_average_squared_distance_from_datasets(
 
 
 def compute_temporal_average_squared_distance_from_datasets(
-    datasets,
-    num_samples: int = 100,
-    verbose: bool = False
+    datasets, num_samples: int = 100, verbose: bool = False
 ) -> float:
     """
     Compute average squared distance between neighboring vertices in temporal graphs.
-    
+
     Args:
         datasets: Collection of datasets containing spatial graphs with hidden states
         num_samples: Number of samples to use for estimation
         verbose: Whether to print verbose output
-        
+
     Returns:
         float: Average squared distance between temporal neighbors
     """
     from jamun.model.arch.spatiotemporal import spatial_to_temporal_graphs
-    
+
     avg_sq_dists = []
     num_graphs = 0
-    
+
     # Follow pattern from existing functions in this module
     for item in datasets:
         if num_graphs >= num_samples:
@@ -114,11 +112,10 @@ def compute_temporal_average_squared_distance_from_datasets(
             num_graphs += 1
         mean_avg_sq_dist = sum(avg_sq_dists) / num_graphs
 
-    
     if verbose:
         print(f"Total graphs processed: {num_graphs}")
         print(f"Total temporal graphs processed: {len(avg_sq_dists)}")
         print(f"Mean average squared distance between temporal nodes: {mean_avg_sq_dist:.6f}")
         print(f"Standard deviation: {np.std(avg_sq_dists):.6f}")
-    
+
     return float(mean_avg_sq_dist)
