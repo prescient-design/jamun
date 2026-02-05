@@ -38,7 +38,7 @@ def to_device(obj, device):
     """Helper function to move objects to device, handling various types."""
     if hasattr(obj, "to"):
         return obj.to(device)
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, list | tuple):
         return type(obj)(to_device(item, device) for item in obj)
     elif isinstance(obj, dict):
         return {key: to_device(value, device) for key, value in obj.items()}

@@ -160,7 +160,7 @@ def test_large_numbers():
 
         # Check each value individually
         for j, val in enumerate(lagged):
-            assert isinstance(val, (int, np.integer)), (
+            assert isinstance(val, int | np.integer), (
                 f"Value at index {j} is not an integer: {val} (type: {type(val)})"
             )
             assert val >= 0, f"Found negative value at index {j}: {val}"

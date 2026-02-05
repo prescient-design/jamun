@@ -160,10 +160,10 @@ def main(cfg):
     print(f"Using ALA_ALA data from: {JAMUN_DATA_PATH}")
 
     # Test automatic optimization mode
-    model_auto = test_training_mode(cfg.copy(), "AUTOMATIC", None)
+    test_training_mode(cfg.copy(), "AUTOMATIC", None)
 
     # Test manual optimization mode
-    model_manual = test_training_mode(cfg.copy(), "MANUAL", 2)  # Process 2 graphs at a time
+    test_training_mode(cfg.copy(), "MANUAL", 2)  # Process 2 graphs at a time
 
     print(f"\n{'=' * 50}")
     print("ALL TESTS PASSED!")

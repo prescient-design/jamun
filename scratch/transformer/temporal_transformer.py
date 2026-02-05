@@ -211,7 +211,6 @@ class E3SpatioTemporal(nn.Module):
         from convert_spatiotemporal import spatial_to_temporal_graphs, temporal_to_spatial_graphs
 
         # Store original device
-        device = batch.pos.device
 
         # Step 1: Convert spatial graph to temporal graphs
         temporal_batch = spatial_to_temporal_graphs(batch)

@@ -460,7 +460,6 @@ class E3SpatioTemporal(nn.Module):
             Otherwise returns just the final spatial features tensor
         """
         # Store original device
-        device = batch.pos.device
 
         # Step 1: Convert spatial graph to temporal graphs
         if hasattr(self, "graph_type") and self.graph_type is not None:

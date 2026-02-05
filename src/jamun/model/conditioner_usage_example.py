@@ -293,7 +293,7 @@ def test_conditioning_shapes():
         else:
             print("❌ Last conditioned structure does NOT match x_clean.pos")
             print(f"  Max difference: {torch.max(torch.abs(last_structure - clean_structure)).item():.8f}")
-            assert False, "Last conditioned structure should match x_clean.pos"
+            raise AssertionError("Last conditioned structure should match x_clean.pos")
 
     assert concatenated.shape == (N_atoms, expected_dim)
     print("✅ Shape test passed!")
