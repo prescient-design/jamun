@@ -208,16 +208,15 @@ python scripts/process_mdgen.py \
 
 ## Citation
 
-If you found this repository useful, please cite our preprint!
+If you found this repository useful, please cite our paper!
 
 ```bibtex
-@misc{daigavane2024jamuntransferablemolecularconformational,
-      title={JAMUN: Bridging Smoothed Molecular Dynamics and Score-Based Learning for Conformational Ensembles},
-      author={Ameya Daigavane and Bodhi P. Vani and Darcy Davidson and Saeed Saremi and Joshua Rackers and Joseph Kleinhenz},
-      year={2024},
-      eprint={2410.14621},
-      archivePrefix={arXiv},
-      primaryClass={physics.bio-ph},
-      url={https://arxiv.org/abs/2410.14621},
+@inproceedings{daigavane2025jamun,
+  title = {{JAMUN}: Bridging Smoothed Molecular Dynamics and Score-Based Learning for Conformational Ensemble Generation},
+  author = {Daigavane, Ameya and Vani, Bodhi P. and Davidson, Darcy and Saremi, Saeed and Rackers, Joshua A. and Kleinhenz, Joseph},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume = {38},
+  year = {2025},
+  url = {https://proceedings.neurips.cc/paper_files/paper/2025/hash/3476352269e5a76b91cb4670390f1b5c-Abstract-Conference.html}
 }
 ```
